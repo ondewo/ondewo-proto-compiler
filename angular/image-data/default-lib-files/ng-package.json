@@ -1,0 +1,14 @@
+{
+    "$schema": "../node_modules/ng-packagr/ng-package.schema.json",
+    "dest": "lib",
+    "lib": {
+      "entryFile": "./public-api.ts"
+    },
+    "whitelistedNonPeerDependencies": [
+      "@ngx-grpc/common",
+      "@ngx-grpc/core",
+      "@ngx-grpc/grpc-web-client",
+      "google-protobuf",
+      "grpc-web"
+    ]
+}

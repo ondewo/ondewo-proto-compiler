@@ -1,0 +1,22 @@
+{
+  "name": "@ondewo/ondewo-angular-proto-compiler-example",
+  "version": "0.1.0",
+  "description": "Example for how to use the ondewo proto angular compiler",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "ng build"
+  },
+  "author": "",
+  "license": "",
+  "peerDependencies": {
+    "@angular/common": ">=8.0.0",
+    "@angular/core": ">=8.0.0"
+  },
+  "dependencies": {
+    "@ngx-grpc/common": "^0.3.1",
+    "@ngx-grpc/core": "^0.3.1",
+    "google-protobuf": "^3.11.4",
+    "grpc-web": "^1.0.7",
+    "tslib": "^1.10.0"
+  }
+}
