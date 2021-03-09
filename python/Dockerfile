@@ -5,7 +5,7 @@ WORKDIR /opt/ondewo-proto-compiler
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY example example
+COPY protos protos
 COPY Makefile .
 
 ENTRYPOINT make generate_protos
