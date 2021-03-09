@@ -7,7 +7,7 @@ build:
 	docker build -t ${IMAGE_NAME} .
 
 run:
-	docker run -v ${shell pwd}/output:/opt/ondewo-proto-compiler/output ${IMAGE_NAME}
+	docker run -v ${shell pwd}/output:/home/ondewo/ondewo-proto-compiler/output ${IMAGE_NAME}
 
 generate_protos:
 	for f in $$(find ${PROTOS_DIR} -name '*.proto'); do \
