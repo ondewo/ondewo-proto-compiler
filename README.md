@@ -28,6 +28,11 @@ Then uses webpack to transpile the commonjs classes to a single vanilla javascri
 Uses the npm **grpc-tools** and **grpc_tools_node_protoc_ts** to compile the .proto files of the source directory to commonjs service/classes and type definitions to consume those classes in a node client. (uses commonjs,binary options for performant communication)  
 Then proceeds to create an entry point file for all resulting classes and creates an npm installable typescript package.
 
+### Typescript ###
+
+Uses the **grpc-web** protobuf compiler plugin to compile the .proto files of the source directory to commonjs service/classes and type definitions to consume those classes in typescript. (uses commonjs,binary options for performant communication)  
+Then proceeds to create an entry point file for all resulting classes and creates an npm installable typescript package.
+
 ## How to use? ##
 
 ### Requirements ###
@@ -50,6 +55,7 @@ On Windows using **Windows Subsystem for Linux (WSL)** is recommended, to preven
 bash angular/build.sh
 bash js/build.sh
 bash nodejs/build.sh
+bash typescript/build.sh
 ```
 Creates the following image tags:
 - Angular:
@@ -58,6 +64,8 @@ ondewo-angular-proto-compiler
 ondewo-js-proto-compiler
 - Node.js:
 ondewo-nodejs-proto-compiler
+- Typescript:
+ondewo-typescript-proto-compiler
 
 ### Using the docker images to consume .proto directories and create platform specific client packages ###
 

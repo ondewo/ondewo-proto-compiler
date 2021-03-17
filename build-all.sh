@@ -5,3 +5,5 @@ cd ../js
 bash build.sh
 cd ../node
 bash build.sh
+cd ../typescript
+bash build.sh
