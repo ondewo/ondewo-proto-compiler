@@ -1,115 +1,68 @@
-#echo "enter something"
-#read my_var
-#echo "You entered $my_var"
-
-DEFAULTFILESDIR=default-lib-files
-
-TEMPSRCDIRECTORY=/usr/src/app/src
-PROTOSDIR=$TEMPSRCDIRECTORY/protos
-PROTOTARGETDIR=$TEMPSRCDIRECTORY/api
-#Mouted at root
-INPUTVOLUMEFS=/input-volume
-OUTPUTVOLUMEFS=/output-volume
-CALLWORKINGDIR=$(pwd)
-
-if [ -f $OUTPUTVOLUMEFS ]; then
-    #Clean output volume if exists
-    rm -r OUTPUTVOLUMEFS/*
+#Root path of all the protos to be compiled
+RELATIVE_PROTOS_DIR=$1
+if [ -z "$1" ]; then
+    RELATIVE_PROTOS_DIR="protos"
 fi
 
 
-#INPUTVOLUMEFS=example
+IMAGE_DATA_DIRECTORY=/image-data
+DEFAULT_FILES_DIR=$IMAGE_DATA_DIRECTORY/default-lib-files
 
-PROTOGENNG=./node_modules/.bin/protoc-gen-ng
+#Input volumes mouted at root
+INPUT_VOLUME_FS=/input-volume
+OUTPUT_VOLUME_FS=/output-volume
 
+TEMP_SRC_DIRECTORY=$IMAGE_DATA_DIRECTORY/src
 #Copy source-volume contents to new directory (to not modify the original files during compilation)
-#rm -r $TEMPSRCDIRECTORY
-mkdir -p $TEMPSRCDIRECTORY
-cp -r $INPUTVOLUMEFS/* $TEMPSRCDIRECTORY
+mkdir -p $TEMP_SRC_DIRECTORY
+cp -r $INPUT_VOLUME_FS/* $TEMP_SRC_DIRECTORY
+
+PROTOS_ROOT_PATH=$INPUT_VOLUME_FS/$RELATIVE_PROTOS_DIR
+
+#If not specified take all protos in the protos root path (otherwise a relative directory)
+#Subdir of the protos to be compiled
+COMPILE_SELECTED_PROTOS_DIR=$PROTOS_ROOT_PATH/$2
+if [ -z "$2" ]; then
+    COMPILE_SELECTED_PROTOS_DIR=$PROTOS_ROOT_PATH/
+fi
+
+
+#Clean output volume if exists
+if [ ! -d $OUTPUT_VOLUME_FS ]; then
+    echo "Destination volume not specified/ does not exist -> creating output in sourcevolume/lib directory"
+    OUTPUT_VOLUME_FS=$INPUT_VOLUME_FS/lib
+    mkdir -p $OUTPUT_VOLUME_FS
+fi
+#rm -r $OUTPUT_VOLUME_FS/*
 
 # -------------- Check if all the requirements are there and exist if not
 echo "Checking if all the source requirements are fulfilled ..."
-TSCONFIGFILE=$TEMPSRCDIRECTORY/tsconfig.json
-if [ ! -f $TSCONFIGFILE ]; then
+
+if [ ! -f $TEMP_SRC_DIRECTORY/tsconfig.json ]; then
     echo "No tsconfig.json specified in source directory -> copying default file"
-    cp $DEFAULTFILESDIR/tsconfig.json $TSCONFIGFILE
+    cp $DEFAULT_FILES_DIR/tsconfig.json $TEMP_SRC_DIRECTORY/tsconfig.json
 fi
 
-NGPACKAGEFILE=$TEMPSRCDIRECTORY/ng-package.json
-if [ ! -f $NGPACKAGEFILE ]; then
+if [ ! -f $TEMP_SRC_DIRECTORY/ng-package.json ]; then
     echo "No ng-package.json specified in source directory -> copying default file"
-    cp $DEFAULTFILESDIR/ng-package.json $NGPACKAGEFILE
+    cp $DEFAULT_FILES_DIR/ng-package.json $TEMP_SRC_DIRECTORY/ng-package.json
 fi
 
-PACKAGEFILE=$TEMPSRCDIRECTORY/package.json
-if [ ! -f $PACKAGEFILE ]; then
+if [ ! -f $TEMP_SRC_DIRECTORY/package.json ]; then
     echo "ERROR: A package.json file was not specified in the mounted directory this is however required - exitting"
     exit 1
 fi
 
-#Find .protos in directory and count the occurances
-echo "Checking $PROTOSDIR for .proto files"
-PROTOFILESCNT=$(tree $PROTOSDIR | fgrep .proto | wc -l)
-if [[ $PROTOFILESCNT -lt 1 ]]; then
-    echo "ERROR: No proto files were found in the '/protos' directory, but are required to build a library from - exitting"
-    exit 1
-fi
-echo "Found $PROTOFILESCNT .proto files in directory: $PROTOSDIR"
-echo "Source verified."
-
-# -------------- Generate the proto client library stubs
-echo "Starting .proto to grpc client stubs compilation ..."
-PROTOFILES=$(find $PROTOSDIR -iname "*.proto")
-echo "Consuming .proto files: $PROTOFILES: "
-
-mkdir -p $PROTOTARGETDIR
-protoc \
---plugin=$PROTOGENNG \
---ng_out=service=grpc-node:$PROTOTARGETDIR \
--I $PROTOSDIR \
-$PROTOFILES
-
-#protoc --plugin=/usr/src/app/node_modules/@ngx-grpc/protoc-gen-ts --ts-out=service=grpc-node:/usr/src/app/out -I /usr/src/app/protos /usr/src/app/protos/test.proto
-echo ".proto compilation finished"
-
-# -------------- Create pulbic-api.ts from the typescript output of the proto compilation step
-
-PUBLICAPIFILE=$TEMPSRCDIRECTORY/public-api.ts
-if [ ! -f $PUBLICAPIFILE ]; then
-    echo "No public-api.ts specified in source directory -> copying default file"
-    cp $DEFAULTFILESDIR/public-api.ts $PUBLICAPIFILE
-
-    # Trying to auto generate public-api file
-    cd $TEMPSRCDIRECTORY
-
-    export PREFIX="export * from '"
-    export POSTFIX="';"
-
-    #find api -iname "*.ts" -printf "$PREFIX%p$POSTFIX\n" >> $PUBLICAPIFILE
-    find api -iname "*.ts" -exec bash -c 'printf "$PREFIX./%s$POSTFIX\n" "${@%.*}"' _ {} + >> $PUBLICAPIFILE
-fi
-
-
-# -------------- Start the angular build process
-echo "Starting angular build process of library package ..."
-
-cd $TEMPSRCDIRECTORY
-npm install
-ng build
-echo "Finished angular build."
-cd $CALLWORKINGDIR
+# -------------- Running compilation steps
+bash ./compile-proto-2-stubs.sh $TEMP_SRC_DIRECTORY/api $PROTOS_ROOT_PATH $COMPILE_SELECTED_PROTOS_DIR
+bash ./make-lib-entry-point.sh $TEMP_SRC_DIRECTORY
+bash ./compile-stubs-2-lib.sh $IMAGE_DATA_DIRECTORY $TEMP_SRC_DIRECTORY
 
 # -------------- Copy results back to mounted directory
 
-if [ ! -f $OUTPUTVOLUMEFS ]; then
-    echo "Destination volume not specified/ does not exist -> creating output in sourcevolume/lib directory"
-    OUTPUTVOLUMEFS=$INPUTVOLUMEFS/lib
-    mkdir -p $OUTPUTVOLUMEFS
-fi
-
 echo "Copying output files to mounted directory"
-#mkdir -p $INPUTVOLUMEFS/lib
-cp -r $TEMPSRCDIRECTORY/lib/* $OUTPUTVOLUMEFS
+#mkdir -p $INPUT_VOLUME_FS/lib
+cp -r $TEMP_SRC_DIRECTORY/lib/* $OUTPUT_VOLUME_FS
 echo "Finished copying"
 
 # -------------- END
