@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package dependency;
+
+message MyImport {
+    string name = 1;
+}
+
+service MyImportService {
+    rpc SendImport (MyImport) returns (MyImport);
+}
