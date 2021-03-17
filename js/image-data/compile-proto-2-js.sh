@@ -1,31 +1,40 @@
-
 LIB_ENTRY_NAME=$1
 if [ -z "$1" ]; then
     LIB_ENTRY_NAME=output_lib_name
 fi
 
+#Root path of all the protos to be compiled
+RELATIVE_PROTOS_DIR=$1
+if [ -z "$1" ]; then
+    RELATIVE_PROTOS_DIR="protos"
+fi
 
 IMAGE_DATA_DIRECTORY=/image-data
-
 DEFAULT_FILES_DIR=$IMAGE_DATA_DIRECTORY/default-lib-files
-
 TEMP_SRC_DIRECTORY=/temp_src
 
 #Input volumes mouted at root
 INPUT_VOLUME_FS=/input-volume
 OUTPUT_VOLUME_FS=/output-volume
-#CALLWORKINGDIR=$(pwd)
+
+PROTOS_ROOT_PATH=$INPUT_VOLUME_FS/$RELATIVE_PROTOS_DIR
+
+#If not specified take all protos in the protos root path (otherwise a relative directory)
+#Subdir of the protos to be compiled
+COMPILE_SELECTED_PROTOS_DIR=$PROTOS_ROOT_PATH/$2
+if [ -z "$2" ]; then
+    COMPILE_SELECTED_PROTOS_DIR=$PROTOS_ROOT_PATH/
+fi
 
 #Clean output volume if exists
-if [ ! -f $OUTPUT_VOLUME_FS ]; then
+if [ ! -d $OUTPUT_VOLUME_FS ]; then
     echo "Destination volume not specified/ does not exist -> creating output in sourcevolume/lib directory"
     OUTPUT_VOLUME_FS=$INPUT_VOLUME_FS/lib
     mkdir -p $OUTPUT_VOLUME_FS
 fi
-rm -r $OUTPUT_VOLUME_FS/*
+#rm -r $OUTPUT_VOLUME_FS/*
 
 #Copy source-volume contents to new directory (to not modify the original files during compilation)
-#rm -r $TEMP_SRC_DIRECTORY
 mkdir -p $TEMP_SRC_DIRECTORY
 cp -r $INPUT_VOLUME_FS/* $TEMP_SRC_DIRECTORY
 
@@ -46,7 +55,7 @@ fi
 
 # -------------- Running compilation steps
 
-bash ./compile-proto-2-stubs.sh $TEMP_SRC_DIRECTORY/protos $TEMP_SRC_DIRECTORY/api
+bash ./compile-proto-2-stubs.sh $TEMP_SRC_DIRECTORY/api $PROTOS_ROOT_PATH $COMPILE_SELECTED_PROTOS_DIR
 
 bash ./make-lib-entry-point.sh $TEMP_SRC_DIRECTORY
 

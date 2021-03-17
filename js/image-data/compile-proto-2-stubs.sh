@@ -1,5 +1,6 @@
-PROTOS_SRC_DIR=$1
-STUBS_TARGET_DIR=$2
+STUBS_TARGET_DIR=$1
+PROTOS_ROOT_DIR=$2
+PROTOS_SRC_DIR=$3
 
 #Find .protos in directory and count the occurances
 echo "Checking $PROTOS_SRC_DIR for .proto files"
@@ -21,7 +22,7 @@ mkdir -p $STUBS_TARGET_DIR
 protoc \
 --js_out=import_style=commonjs,binary:$STUBS_TARGET_DIR \
 --grpc-web_out=import_style=commonjs+dts,mode=grpcwebtext:$STUBS_TARGET_DIR \
--I $PROTOS_SRC_DIR \
+-I $PROTOS_ROOT_DIR \
 $ALL_PROTO_FILES
 
 echo ".proto compilation finished."
