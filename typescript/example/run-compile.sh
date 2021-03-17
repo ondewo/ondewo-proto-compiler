@@ -6,10 +6,10 @@ FILEDIRECTORY=$(pwd)/`dirname $0`
 # Consume protos and package.json from input volume and write library to output volume
 if [ -z "$1" ]; then
     mkdir -p $FILEDIRECTORY/lib
-    docker run -it -v $FILEDIRECTORY:/input-volume -v $FILEDIRECTORY/lib:/output-volume ondewo-angular-proto-compiler protos
+    docker run -it -v $FILEDIRECTORY:/input-volume -v $FILEDIRECTORY/lib:/output-volume ondewo-typescript-proto-compiler protos library
 else
     #Use bash inside container for debugging container and script issues
-    docker run -it --entrypoint /bin/bash -v $FILEDIRECTORY:/input-volume -v $FILEDIRECTORY/lib:/output-volume ondewo-angular-proto-compiler
+    docker run -it --entrypoint /bin/bash -v $FILEDIRECTORY:/input-volume -v $FILEDIRECTORY/lib:/output-volume ondewo-typescript-proto-compiler
 fi
 
 

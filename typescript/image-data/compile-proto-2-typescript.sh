@@ -43,20 +43,16 @@ if [ ! -f $TEMP_SRC_DIRECTORY/tsconfig.json ]; then
     cp $DEFAULT_FILES_DIR/tsconfig.json $TEMP_SRC_DIRECTORY/tsconfig.json
 fi
 
-if [ ! -f $TEMP_SRC_DIRECTORY/ng-package.json ]; then
-    echo "No ng-package.json specified in source directory -> copying default file"
-    cp $DEFAULT_FILES_DIR/ng-package.json $TEMP_SRC_DIRECTORY/ng-package.json
-fi
-
 if [ ! -f $TEMP_SRC_DIRECTORY/package.json ]; then
     echo "ERROR: A package.json file was not specified in the mounted directory this is however required - exitting"
     exit 1
 fi
 
 # -------------- Running compilation steps
-bash ./compile-proto-2-stubs.sh $TEMP_SRC_DIRECTORY/api $PROTOS_ROOT_PATH $COMPILE_SELECTED_PROTOS_DIR
-bash ./make-lib-entry-point.sh $TEMP_SRC_DIRECTORY
-bash ./compile-stubs-2-lib.sh $IMAGE_DATA_DIRECTORY $TEMP_SRC_DIRECTORY
+bash ./compile-proto-2-stubs.sh $TEMP_SRC_DIRECTORY/api $PROTOS_ROOT_PATH $COMPILE_SELECTED_PROTOS_DIR $TEMP_SRC_DIRECTORY/proto-deps.txt
+bash ./make-lib-entry-point.sh $TEMP_SRC_DIRECTORY .d.ts
+bash ./make-lib-entry-point.sh $TEMP_SRC_DIRECTORY .js
+bash ./compile-stubs-2-lib.sh $TEMP_SRC_DIRECTORY
 
 # -------------- Copy results back to mounted directory
 

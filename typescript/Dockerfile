@@ -17,11 +17,11 @@ RUN wget https://github.com/grpc/grpc-web/releases/download/1.2.1/protoc-gen-grp
 WORKDIR /image-data
 ADD image-data /image-data
 
-# --------------- Install npm modules required for compilation with webpack
-RUN npm install -g webpack@5.11.1
-RUN npm install -g webpack-cli
+# --------------- Install npm modules required for compilation with angular
+#RUN npm install
+#RUN npm install -g typescript
 
 # --------------- Entrypoint when the docker container is executed
-ENTRYPOINT ["bash","compile-proto-2-js.sh"]
+ENTRYPOINT ["bash","compile-proto-2-typescript.sh"]
 
 # -----------------------------------------------------------------------------------------------------

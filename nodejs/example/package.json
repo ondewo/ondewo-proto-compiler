@@ -1,0 +1,16 @@
+{
+  "name": "@ondewo/angular-proto-compiler-example",
+  "version": "0.1.0",
+  "description": "Example for how to use the ondewo proto angular compiler",
+  "main": "public-api.js",
+  "typings": "public-api.d.ts",
+  "author": "",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "google-protobuf": "^3.11.4",
+    "grpc-tools": "^1.10.0"
+  },
+  "devDependencies": {
+    "@types/google-protobuf": "^3.7.4"
+  }
+}

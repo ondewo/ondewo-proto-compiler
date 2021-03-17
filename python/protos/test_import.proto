@@ -1,0 +1,11 @@
+syntax = "proto3";
+import "test.proto";
+
+message AnotherTest {
+    string name = 1;
+    Test test = 2;
+}
+
+service AnotherService {
+    rpc SendAnotherTest (AnotherTest) returns (AnotherTest);
+}

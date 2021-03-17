@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package library;
+
+import "dependency/myimport.proto";
+
+message Test {
+    string name = 1;
+}
+
+service SimpleService {
+    rpc SendTest (Test) returns (Test);
+}

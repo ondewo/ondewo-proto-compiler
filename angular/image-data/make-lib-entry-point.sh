@@ -6,7 +6,7 @@ TEMP_SRC_DIRECTORY=$1
 #Location of the directory where the target api file will be put
 #OUT_DIRECTORY=$2
 DEFAULT_FILES_DIR=default-lib-files
-FILE_EXT=".js"
+FILE_EXT=".ts"
 
 #Can also be specified in provided directory -> no auto generation
 PUBLIC_API_FILE=$TEMP_SRC_DIRECTORY/public-api$FILE_EXT

@@ -1,5 +1,5 @@
 {
-  "name": "@ondewo/ondewo-angular-proto-compiler-example",
+  "name": "@ondewo/angular-proto-compiler-example",
   "version": "0.1.0",
   "description": "Example for how to use the ondewo proto angular compiler",
   "scripts": {
@@ -7,7 +7,7 @@
     "build": "ng build"
   },
   "author": "",
-  "license": "",
+  "license": "Apache-2.0",
   "peerDependencies": {
     "@angular/common": ">=8.0.0",
     "@angular/core": ">=8.0.0"
