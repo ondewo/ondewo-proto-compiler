@@ -1,4 +1,11 @@
-# Ondewo Proto Compiler #
+<p align="center">
+    <a href="https://www.ondewo.com">
+      <img alt="ONDEWO Logo" src="https://raw.githubusercontent.com/ondewo/ondewo-logos/master/github/ondewo_logo_github_2.png"/>
+    </a>
+  <h1 align="center">
+    Ondewo Proto Compiler
+  </h1>
+</p>
 
 A collection of docker images for the purpose of creating installable client packages from the protcol buffer definition (.proto) files.
 
