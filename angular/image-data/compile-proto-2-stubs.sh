@@ -22,8 +22,8 @@ echo "Consuming .proto files: $ALL_PROTO_FILES: "
 mkdir -p $STUBS_TARGET_DIR
 
 protoc \
---plugin=$PROTO_GEN_NG \
---ng_out=service=grpc-node:$STUBS_TARGET_DIR \
+--plugin=protoc-gen-ng=$PROTO_GEN_NG \
+--ng_out=$STUBS_TARGET_DIR \
 -I $PROTOS_ROOT_DIR \
 $ALL_PROTO_FILES
 

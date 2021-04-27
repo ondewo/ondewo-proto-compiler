@@ -33,7 +33,6 @@ if [ ! -d $OUTPUT_VOLUME_FS ]; then
     OUTPUT_VOLUME_FS=$INPUT_VOLUME_FS/lib
     mkdir -p $OUTPUT_VOLUME_FS
 fi
-#rm -r $OUTPUT_VOLUME_FS/*
 
 # -------------- Check if all the requirements are there and exist if not
 echo "Checking if all the source requirements are fulfilled ..."
@@ -52,6 +51,8 @@ if [ ! -f $TEMP_SRC_DIRECTORY/package.json ]; then
     echo "ERROR: A package.json file was not specified in the mounted directory this is however required - exitting"
     exit 1
 fi
+
+# TEMP_LIB_DIRECTORY=$IMAGE_DATA_DIRECTORY/lib
 
 # -------------- Running compilation steps
 bash ./compile-proto-2-stubs.sh $TEMP_SRC_DIRECTORY/api $PROTOS_ROOT_PATH $COMPILE_SELECTED_PROTOS_DIR
