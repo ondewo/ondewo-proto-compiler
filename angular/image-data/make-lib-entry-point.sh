@@ -1,10 +1,9 @@
-# -------------- Create pulbic-api.js from the commonjs output of the proto compilation step
+# -------------- Create pulbic-api.ts from the commonjs output of the proto compilation step
 # to pass a single file to webpack as an entry point
 
 #Root directory of the compilation ( -> public api file in this directory + proto commonjs stubs are in this/api )
 TEMP_SRC_DIRECTORY=$1
-#Location of the directory where the target api file will be put
-#OUT_DIRECTORY=$2
+
 DEFAULT_FILES_DIR=default-lib-files
 FILE_EXT=".ts"
 
@@ -22,6 +21,5 @@ if [ ! -f $PUBLIC_API_FILE ]; then
     export PREFIX="export * from '"
     export POSTFIX="';"
 
-    #find api -iname "*.ts" -printf "$PREFIX%p$POSTFIX\n" >> $PUBLIC_API_FILE
     find api -iname "*$FILE_EXT" -exec bash -c 'printf "$PREFIX./%s$POSTFIX\n" "${@%.*}"' _ {} + >> $PUBLIC_API_FILE
 fi

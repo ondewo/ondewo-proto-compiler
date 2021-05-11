@@ -1,9 +1,12 @@
 syntax = "proto3";
 
+import "google/protobuf/empty.proto";
+
 message Test {
     string name = 1;
 }
 
 service SimpleService {
     rpc SendTest (Test) returns (Test);
+    rpc SendEmpty (google.protobuf.Empty) returns (google.protobuf.Empty);
 }
