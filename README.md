@@ -18,6 +18,9 @@ The ondewo proto compiler docker images are available for following target platf
 Uses **ngx-grpc**'s **protoc-gen-ng** to compile the .proto files of the source directory to injectable typescript services and classes for to use as a client.  
 Then proceeds to package these classes to a npm installable grpc client library using **ng-packagr** and the angular compiler. 
 
+Also creates a `npm`-folder which can be published to NPM by running `npm run publish-npm` in the `src` folder of the corresponding project.
+(**IMPORTANT**: Check the versions in the package.json and RELEASE.md files. These versions should match the GitHub release.)
+
 ### (Vanilla) - Javascript ###
 
 Also uses **grpc-web** to compile the protobuf defs to commonjs.  
