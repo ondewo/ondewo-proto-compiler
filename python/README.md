@@ -17,4 +17,11 @@ TARGET_DIR      ->  Proto directory to compile. Defaults to everything
 
 Your generated Python files will be in the `output` directory.
 
+Example:
+
+```bash
+make -f python/Makefile run PROTO_DIR='ondewo-survey-api/ondewo' EXTRA_PROTO_DIR='ondewo-survey-api/googleapis/google'
+```
+
+
 
