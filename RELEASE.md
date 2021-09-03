@@ -5,6 +5,8 @@
 ## Release ONDEWO Proto Compiler 1.1.1
 * Proto compiler for Python is now easier to use and more general
 
+***
+
 ## Release ONDEWO Proto Compiler 1.1.0 
 
 ### New Features
