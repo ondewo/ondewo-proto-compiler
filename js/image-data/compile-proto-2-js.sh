@@ -8,7 +8,7 @@ fi
 
 #Root path of all the protos to be compiled
 RELATIVE_PROTOS_DIR="$2"
-if [ -z "$1" ]; then
+if [ -z "$2" ]; then
     RELATIVE_PROTOS_DIR="protos"
 fi
 
@@ -63,15 +63,7 @@ fi
 
 bash ./compile-proto-2-stubs.sh "$TEMP_SRC_DIRECTORY/api" "$PROTOS_ROOT_PATH" "$COMPILE_SELECTED_PROTOS_DIR"
 bash ./make-lib-entry-point.sh "$TEMP_SRC_DIRECTORY"
-
-cd "$TEMP_SRC_DIRECTORY" || exit
-npm install
-webpack --config ./webpack.common.js --output-library "$LIB_ENTRY_NAME" --output-filename "$LIB_ENTRY_NAME.js" --output-path ./lib/ --entry ./public-api.js
-#npm install
-#npm run build
-
-#bash ./compile-stubs-2-lib.sh $TEMP_SRC_DIRECTORY/public-api.js $TEMP_SRC_DIRECTORY/lib/library.js
-
+bash ./compile-stubs-2-lib.sh "$TEMP_SRC_DIRECTORY" "$LIB_ENTRY_NAME" "$LIB_ENTRY_NAME"
 
 # -------------- Copy results back to mounted directory
 

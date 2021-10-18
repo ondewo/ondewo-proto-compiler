@@ -48,9 +48,10 @@ CWD=$(pwd)
 
 cd "$PROTOS_ROOT_DIR"
 
+#mode=grpcwebtext mode=grpcweb
 COMMAND="protoc \
 --js_out=import_style=commonjs,binary:\"$STUBS_TARGET_DIR\" \
---grpc-web_out=import_style=commonjs+dts,mode=grpcwebtext:\"$STUBS_TARGET_DIR\" \
+--grpc-web_out=import_style=commonjs,mode=grpcwebtext:\"$STUBS_TARGET_DIR\" \
 -I \"$PROTOS_ROOT_DIR\" $ALL_PROTO_FILES"
 
 echo "$COMMAND"
