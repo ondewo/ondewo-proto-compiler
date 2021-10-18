@@ -2,10 +2,16 @@
 
 SRC_DIRECTORY="$1"
 OUT_FILE_NAME="$2"
-OUT_LIB_NAME="$3"
+WEBPACK_CONFIG="$3"
+OUT_LIB_NAME="$4"
+
 
 if [ -z "$OUT_LIB_NAME" ]; then
-    OUT_LIB_NAME=OUT_FILE_NAME
+    OUT_LIB_NAME="$OUT_FILE_NAME"
+fi
+
+if [ -z "$OUT_LIB_NAME" ]; then
+    WEBPACK_CONFIG=webpack.js
 fi
 
 #Exit on error
@@ -21,7 +27,7 @@ ENTRY_POINT_FILE=./public-api.js
 
 cd "$SRC_DIRECTORY" || exit
 npm install
-node_modules/.bin/webpack --config ./webpack.dev.js --output-library "$OUT_FILE_NAME" --output-filename "$OUT_FILE_NAME.js" --output-path "$OUTPUT_DIR" --entry "$ENTRY_POINT_FILE"
+node_modules/.bin/webpack --config "$WEBPACK_CONFIG" --output-library "$OUT_LIB_NAME" --output-filename "$OUT_FILE_NAME.js" --output-path "$OUTPUT_DIR" --entry "$ENTRY_POINT_FILE"
 
 cd "$CWD"
 
