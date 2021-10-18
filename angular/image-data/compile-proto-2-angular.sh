@@ -1,9 +1,14 @@
+#!/bin/bash
+
 #Root path of all the protos to be compiled
+
+echo "HELLLLLOOOOO"
+
 RELATIVE_PROTOS_DIR=$1
 if [ -z "$1" ]; then
     RELATIVE_PROTOS_DIR="protos"
 fi
-
+echo "$RELATIVE_PROTOS_DIR"
 
 IMAGE_DATA_DIRECTORY=/image-data
 DEFAULT_FILES_DIR=$IMAGE_DATA_DIRECTORY/default-lib-files
@@ -24,7 +29,7 @@ COMPILE_SELECTED_PROTOS_DIR=$PROTOS_ROOT_PATH/$2
 if [ -z "$2" ]; then
     COMPILE_SELECTED_PROTOS_DIR=$PROTOS_ROOT_PATH/
 fi
-
+echo "$COMPILE_SELECTED_PROTOS_DIR"
 
 #Clean output volume if exists
 echo "Clean output volume (remove everything except src-folder and dot prefixed files/dirs)"

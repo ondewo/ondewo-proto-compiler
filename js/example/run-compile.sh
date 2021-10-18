@@ -1,6 +1,6 @@
 #Excute the example compilation (by runnning the image with mounting this directory in the image)
-FILEDIRECTORY=$(pwd)/`dirname $0`
-
+FILEDIRECTORY="$(pwd)/$(dirname "$0")"
+echo $FILEDIRECTORY
 # -it flag for running in interactive mode (stdout/stdin) + mounting volume containing src files
 
 # Consume protos and package.json from input volume and write library to output volume
