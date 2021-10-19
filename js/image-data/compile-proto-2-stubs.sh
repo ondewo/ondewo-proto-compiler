@@ -21,7 +21,7 @@ if [[ $PROTO_FILES_CNT -lt 1 ]]; then
     echo "ERROR: No proto files were found in the '/protos' directory, but are required to build a library from - exitting"
     exit 1
 fi
-echo "Found $PROTO_FILES_CNT .proto files in directory: $PROTO_FILES_CNT"
+echo "Found $PROTO_FILES_CNT .proto files in directory: $PROTOS_SRC_DIR"
 echo "Source verified."
 
 #ONE_FILE=$(echo "$ENTRY_PROTO_FILES" | head -n 1)
@@ -30,7 +30,9 @@ echo "Source verified."
 export -f echoDependencies
 export -f echoProtoDependencies
 #echo "$ENTRY_PROTO_FILES" | xargs -I % bash -c "$(echoProtoDependencies "$PROTOS_ROOT_DIR" "%")"
-ALL_PROTO_FILES=$(echo "$ENTRY_PROTO_FILES" | xargs -I % bash -c "echoProtoDependencies \"$PROTOS_ROOT_DIR\" %" | tac | tr "\n" " ")
+#ALL_PROTO_FILES=$(echo "$ENTRY_PROTO_FILES" | xargs -I % bash -c "echoProtoDependencies \"$PROTOS_ROOT_DIR\" %" | tac | tr "\n" " ")
+#ALL_PROTO_FILES=$(echoProtoDependencies "$ENTRY_PROTO_FILES" "$PROTOS_ROOT_DIR" | tac | tr "\n" " ")
+ALL_PROTO_FILES=$(echoProtoDependencies "$PROTOS_ROOT_DIR" "$ENTRY_PROTO_FILES" | sort | uniq | tr "\n" " ")
 #ALL_PROTO_FILES=$(printf "%s\n%s" "$ENTRY_PROTO_FILES" "$ALL_PROTO_FILES")
 ALL_PROTO_FILES_CNT=$(echo "$ALL_PROTO_FILES" | wc -l)
 
