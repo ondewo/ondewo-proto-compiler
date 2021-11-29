@@ -40,6 +40,7 @@ Thumbs.db
 *.app
 *.exe
 *.war
+*.swp
 
 # Large media files
 *.mp4
