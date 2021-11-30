@@ -3,7 +3,7 @@ INTERNAL_OUTPUT_DIR=${PWD}/ondewo/ondewo-proto-compiler/python/output
 INTERNAL_PROTO_DIR=${PWD}/ondewo/ondewo-proto-compiler/python/protos
 
 build:
-	docker build --build-arg CD=${PWD} --tag ${IMAGE_NAME} --file ${PWD}/ondewo/ondewo-proto-compiler/python/Dockerfile .
+	docker build --tag ${IMAGE_NAME} .
 
 OUTPUT_DIR=output
 PROTO_DIR=ondewo
