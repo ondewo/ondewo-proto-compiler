@@ -1,9 +1,7 @@
 FROM python:slim-buster
-ARG CD=CD
-RUN echo $CD
-WORKDIR /home/ondewo/ondewo-proto-compiler
-COPY /${CD}/ondewo/ondewo-proto-compiler/python/requirements.txt .
-RUN pip install -r requirements.txt
+RUN mkdir /workspace
+COPY requirements.txt /workspace/requirements.txt
+RUN pip install -r /workspace/requirements.txt
 
 COPY Makefile .
 
