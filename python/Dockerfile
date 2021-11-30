@@ -1,4 +1,4 @@
-FROM python:3.8 
+FROM python:slim-buster
 ARG CD=CD
 RUN echo $CD
 WORKDIR /home/ondewo/ondewo-proto-compiler
