@@ -1,0 +1,283 @@
+// Copyright 2021 ONDEWO GmbH
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package ondewo.nlu;
+
+import "google/api/annotations.proto";
+import "ondewo/nlu/intent.proto";
+import "ondewo/nlu/entity_type.proto";
+
+
+// The Central class defining the ondewo ai services
+service AiServices {
+    // Processes a natural language query and returns detected entities
+    rpc ExtractEntities (ExtractEntitiesRequest) returns (ExtractEntitiesResponse) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}/entities:extract"
+            body: "*"
+        };
+    };
+    rpc GenerateUserSays (GenerateUserSaysRequest) returns (GenerateUserSaysResponse) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}/generate_user_says"
+            body: "*"
+        };
+    };
+    rpc GenerateResponses (GenerateResponsesRequest) returns (GenerateResponsesResponse) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}/generate_responses"
+            body: "*"
+        };
+    };
+    rpc GetAlternativeSentences (GetAlternativeSentencesRequest) returns (GetAlternativeSentencesResponse) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}/get_alternative:sentence"
+            body: "*"
+        };
+    }
+    rpc GetAlternativeTrainingPhrases (GetAlternativeTrainingPhrasesRequest) returns (GetAlternativeTrainingPhrasesResponse) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}/get_alternative:training_phrases"
+            body: "*"
+        };
+    }
+    rpc GetSynonyms (GetSynonymsRequest) returns (GetSynonymsResponse) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}/get_synonyms"
+            body: "*"
+        };
+    }
+    // Processes a natural language query and returns detected entities
+    rpc ExtractEntitiesFuzzy (ExtractEntitiesFuzzyRequest) returns (ExtractEntitiesResponse);
+}
+
+// The request to detect parameters.
+message ExtractEntitiesRequest {
+    // the parent of the request
+    // Format: `projects/<Project ID>`.
+    string parent = 1;
+    // the input text
+    string text = 2;
+    // the input language
+    string language_code = 3;
+    // Optional. The name of the relevant intent. Used to establish preference
+    // hierarchy for entities that correspond to intent parameters
+    // Format: `projects/<Project ID>/agent/intents/<Intent ID>`
+    string intent_name = 4;
+}
+
+message ExtractEntitiesFuzzyRequest {
+    // the parent of the request
+    // Format: `projects/<Project ID>`.
+    string parent = 1;
+    // The text to be analyzed
+    string text = 2;
+    // Potential entities to be extracted from the text with entity-specific configs
+    repeated EntityTypeFuzzyNerConfig potential_entities = 3;
+    // Minimal similarity score to consider entity as "matched"
+    float minimal_score = 4;
+    // Optional. Whether or not entities are allowed to overlap.
+    bool allow_overlaps = 5;
+}
+
+message EntityTypeFuzzyNerConfig {
+    // The Entity Type
+    EntityType entity_type = 1;
+    // Optional. Overrides the minimal score in ExtractEntitiesFuzzyRequest.
+    float minimal_score = 2;
+    // Optional. If defined, only entity value from this list are considered.
+    repeated string entity_values = 3;
+
+    // Enum of fuzzy ner algorithms
+    enum FuzzyNerAlgorithm {
+        PREFILTER_LEVENSHTEIN = 0;
+        LOCAL_MAXIMUM = 1;
+    }
+    // Optional. Specify the Fuzzy Ner algorithm
+    FuzzyNerAlgorithm algorithm = 4;
+    // Should not use allow_overlaps here, since its default value is False
+    // bool allow_overlaps = 5;
+}
+
+message EntityDetected{
+    Intent.TrainingPhrase.Entity entity = 1;
+    string extraction_method = 2;
+    float score = 3;
+}
+
+message ExtractEntitiesResponse {
+    repeated EntityDetected entities_detected = 1;
+    string text = 2;
+}
+
+message GetAlternativeSentencesRequest {
+    DataEnrichmentConfig config = 1;
+    string sentence = 2;
+    string language_code = 4;
+    string parent = 5;
+    repeated string protected_words = 6;
+    repeated string words_to_change = 7;
+}
+
+message GenerateUserSaysRequest {
+    string language_code = 4;
+    string parent = 5;
+    int32 n_repeat_synonym = 6;
+    string branch = 8;
+}
+message GenerateResponsesRequest {
+    string language_code = 4;
+    string parent = 5;
+    int32 n_repeat_synonym = 7;
+    string branch = 8;
+    bool drop_unknown_parameters = 9;
+}
+
+message GetAlternativeTrainingPhrasesRequest {
+    DataEnrichmentConfig config = 1;
+    Intent.TrainingPhrase training_phrase = 2;
+    string intent_name = 3;
+    string language_code = 4;
+    string parent = 5;
+    bool detect_entities = 6;
+    // similarity threshold defines how similar sentences should be to drop generated training phrase
+    // as duplicate. Meaningful values of similarity_threshold are between 0.95 and 1.0
+    float similarity_threshold = 7;
+    repeated string protected_words = 8;
+    repeated string words_to_change = 9;
+    string branch = 10;
+}
+
+message GetSynonymsRequest {
+    DataEnrichmentConfig config = 1;
+    string word = 2;
+    string language_code = 4;
+    string parent = 5;
+}
+
+message GetSynonymsResponse {
+    repeated Synonym synonyms = 1;
+}
+
+message Synonym {
+    string synonym = 1;
+    int32 score = 2;
+}
+
+message GetAlternativeSentencesResponse {
+    repeated AltSentence alternative_sentences = 1;
+}
+
+message GenerateResponsesResponse {
+    repeated string responses =2;
+}
+
+message GenerateUserSaysResponse {
+    repeated string user_says =2;
+}
+
+message GetAlternativeTrainingPhrasesResponse {
+    repeated AltTrainingPhrase alternative_training_phrases = 1;
+}
+
+message AltSentence {
+    string sentence = 1;
+    float score = 2;
+}
+
+message AltTrainingPhrase {
+    Intent.TrainingPhrase training_phrase = 1;
+    float score = 2;
+}
+
+message DataEnrichmentConfig {
+
+
+    EntityEnrichmentConfig entity_enrichment = 1;
+    ThesaurusEnrichmentConfig thesaurus_enrichment = 2;
+    Word2VecEnrichmentConfig word2vec_enrichment = 3;
+    WordNetAugEnrichmentConfig word_net_enrichment = 4;
+    GPT2EnrichmentConfig gpt2_enrichment = 5;
+    GloVeEnrichmentConfig glove_enrichment = 6;
+    FastTextEnrichmentConfig fasttext_enrichment = 7;
+    BertAugEnrichmentConfig bert_enrichment = 8;
+    XLNetAugEnrichmentConfig xlnet_enrichment = 9;
+
+}
+
+message EntityEnrichmentConfig {
+    bool is_active = 1;
+
+    int32 enrichment_factor = 2;
+
+    int32 execution_order = 3;
+}
+message ThesaurusEnrichmentConfig {
+    bool is_active = 1;
+
+    int32 enrichment_factor = 2;
+
+    int32 execution_order = 3;
+}
+message FastTextEnrichmentConfig {
+    bool is_active = 1;
+
+    int32 enrichment_factor = 2;
+
+    int32 execution_order = 3;
+}
+message BertAugEnrichmentConfig {
+    bool is_active = 1;
+
+    int32 enrichment_factor = 2;
+
+    int32 execution_order = 3;
+}
+message GloVeEnrichmentConfig {
+    bool is_active = 1;
+
+    int32 enrichment_factor = 2;
+
+    int32 execution_order = 3;
+}
+message GPT2EnrichmentConfig {
+    bool is_active = 1;
+
+    int32 enrichment_factor = 2;
+
+    int32 execution_order = 3;
+}
+message Word2VecEnrichmentConfig {
+    bool is_active = 1;
+
+    int32 enrichment_factor = 2;
+
+    int32 execution_order = 3;
+}
+message WordNetAugEnrichmentConfig {
+    bool is_active = 1;
+
+    int32 enrichment_factor = 2;
+
+    int32 execution_order = 3;
+}
+message XLNetAugEnrichmentConfig {
+    bool is_active = 1;
+
+    int32 enrichment_factor = 2;
+
+    int32 execution_order = 3;
+}

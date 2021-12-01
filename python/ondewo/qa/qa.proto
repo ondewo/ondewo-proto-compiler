@@ -1,0 +1,163 @@
+// Copyright 2021 ONDEWO GmbH
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package ondewo.qa;
+
+import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
+import "ondewo/nlu/session.proto";
+
+/////// Services ///////
+
+service QA {
+    rpc GetAnswer (GetAnswerRequest) returns (GetAnswerResponse) {
+        option (google.api.http) = {
+            post: "/qa"
+            body: "*"
+        };
+    }
+    rpc RunScraper (RunScraperRequest) returns (RunScraperResponse) {
+        option (google.api.http) = {
+            get: "/qa:RunScraper"
+        };
+    }
+
+    rpc UpdateDatabase (UpdateDatabaseRequest) returns (UpdateDatabaseResponse) {
+        option (google.api.http) = {
+            get: "/qa:UpdateDatabase"
+        };
+    }
+
+    rpc RunTraining (google.protobuf.Empty) returns (RunTrainingResponse) {
+        option (google.api.http) = {
+            get: "/qa:RunTraining"
+        };
+    }
+
+    rpc GetServerState (google.protobuf.Empty) returns (GetServerStateResponse) {
+        option (google.api.http) = {
+            get: "/qa:GetServerState"
+        };
+    }
+    rpc ListProjectIds (google.protobuf.Empty) returns (ListProjectIdsResponse) {
+        option (google.api.http) = {
+            get: "/qa:ListProjectIds"
+        };
+    }
+    rpc GetProjectConfig (GetProjectConfigRequest) returns (GetProjectConfigResponse) {
+        option (google.api.http) = {
+            get: "/qa:ListProjectConfig"
+        };
+    }
+}
+
+/////// Messages ///////
+
+// The request message
+message GetAnswerRequest {
+    // Required. The name of the session this query is sent to. Format:
+    // `projects/<Project ID>/agent/sessions/<Session ID>`. It's up to the API
+    // caller to choose an appropriate session ID. It can be a random number or
+    // some type of user identifier (preferably hashed). The length of the session
+    // ID must not exceed 36 bytes.
+    string session_id = 1;
+
+    // Required. The context of the request. A message containing a string (in the form of a sentence) and a
+    // language code.
+    ondewo.nlu.TextInput text = 2;
+
+    // Maximal number of answers returned
+    int32 max_num_answers = 3;
+
+    // Threshold (minimal score) to give back reader result
+    float threshold_reader = 4;
+
+    // Threshold (minimal score) to give back retriever result
+    float threshold_retriever = 5;
+
+    // Threshold (minimal score) overall probability
+    float threshold_overall = 6;
+
+    // Reader model name
+    string reader_model_name = 7;
+
+    // Optional. Filters applied to the urls, to restrict the retrieved documents.
+    UrlFilter url_filter = 8;
+}
+
+// The response message containing the greetings
+message GetAnswerResponse {
+    // The results of the conversational query or event processing.
+    ondewo.nlu.DetectIntentResponse query_result = 2;
+}
+
+message RunScraperRequest {
+    // List of project_ids
+    repeated string project_ids = 1;
+}
+
+message RunScraperResponse {
+    message ScraperContainer {
+        // Name of the docker container that is running the job
+        string container_name = 1;
+        // ID of the docker container that is running the scraping job
+        string container_id = 2;
+    }
+    repeated ScraperContainer scraper_containers = 1;
+}
+
+message RunTrainingResponse {
+    // Response message of training
+    float f1 = 1;
+    float accuracy = 2;
+}
+
+message UrlFilter {
+    // Optional. List of values that the metadata_field 'url' is allowed to take.
+    repeated string allowed_values = 1;
+
+    // Optional. Regular expression which must be matched by the meta data.
+    string regex_filter_include = 2;
+
+    // Optional. Regular expression which must not be matched by the meta data.
+    string regex_filter_exclude = 3;
+}
+
+message GetServerStateResponse {
+    // Whether or not the server is ready to accept requests
+    bool server_is_ready = 1;
+}
+
+message ListProjectIdsResponse {
+    repeated string project_ids = 1;
+}
+
+message GetProjectConfigRequest {
+    string project_id = 1;
+}
+
+message GetProjectConfigResponse {
+    string config_serialized = 1;
+}
+
+message UpdateDatabaseRequest {
+    // List of project_ids of which to update the database
+    repeated string project_ids = 1;
+}
+
+message UpdateDatabaseResponse {
+    repeated string error_messages = 1;
+}

@@ -1,0 +1,287 @@
+// Copyright 2021 ONDEWO GmbH
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package ondewo.nlu;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "ondewo/nlu/project_role.proto";
+
+service Users {
+    rpc CreateUser (CreateUserRequest) returns (User) {
+        option (google.api.http) = {
+            post: "/v2/users"
+            body: "*"
+        };
+    }
+
+    rpc GetUser (GetUserRequest) returns (User) {
+        option (google.api.http) = {
+           get: "/v2/users/{user_identifier=*}"
+        };
+    }
+
+    rpc GetUserInfo (GetUserRequest) returns (UserInfo) {
+        option (google.api.http) = {
+           get: "/v2/user_infos/{user_identifier=*}"
+        };
+    }
+
+    rpc DeleteUser (GetUserRequest) returns (google.protobuf.Empty) {
+        option (google.api.http) = {
+           delete: "/v2/users/{user_identifier=*}"
+        };
+    }
+
+    rpc UpdateUser (UpdateUserRequest) returns (User) {
+        option (google.api.http) = {
+            patch: "/v2/users"
+            body: "*"
+        };
+    }
+
+    rpc ListUsers (ListUsersRequest) returns (ListUsersResponse) {
+        option (google.api.http) = {
+            get: "/v2/users"
+        };
+    }
+
+    rpc ListUserInfos (ListUsersRequest) returns (ListUserInfosResponse) {
+        option (google.api.http) = {
+            get: "/v2/users_infos"
+        };
+    }
+
+    rpc CreateServerRole (CreateServerRoleRequest) returns (ServerRole) {
+        option (google.api.http) = {
+            post: "/v2/server_roles"
+            body: "*"
+        };
+    }
+
+    rpc GetServerRole (GetServerRoleRequest) returns (ServerRole) {
+        option (google.api.http) = {
+            get: "/v2/server_roles/{role_id=*}"
+        };
+    }
+
+    rpc DeleteServerRole (DeleteServerRoleRequest) returns (google.protobuf.Empty) {
+        option (google.api.http) = {
+           delete: "/v2/server_roles/{role_id=*}"
+        };
+    }
+
+    rpc UpdateServerRole (UpdateServerRoleRequest) returns (ServerRole) {
+        option (google.api.http) = {
+            patch: "/v2/server_roles"
+            body: "*"
+        };
+    }
+
+    rpc ListServerRoles (ListServerRolesRequest) returns (ListServerRolesResponse) {
+        option (google.api.http) = {
+            get: "/v2/server_roles"
+        };
+    }
+
+    rpc ListServerPermissions (ListServerPermissionsRequest) returns (ListServerPermissionsResponse) {
+        option (google.api.http) = {
+            get: "/v2/server_permissions"
+        };
+    }
+
+    rpc Login (LoginRequest) returns (LoginResponse) {
+        option (google.api.http) = {
+            post: "/v2/login"
+            body: "*"
+        };
+    }
+
+    rpc CheckLogin (google.protobuf.Empty) returns (google.protobuf.Empty) {
+        option (google.api.http) = {
+            delete: "/v2/check_login"
+        };
+    }
+}
+
+// User messages
+
+// this message contains all the fields that required for user db
+message User {
+    // when creating user user_id is empty, then it will be generated on creation time on backend
+    string user_id = 2;
+    // Optional field display_name is the name that will be used on the frontend to interact with the user
+    // it shouldn't be unique. If not provided user_name will also be used as display name
+    string display_name = 3;
+    // server role type of the given user. If nothing is provided, the user is set to USER (minimum access)
+    uint32 server_role_id = 6;
+    // user e-mail should be a valid e-mail and unique
+    string user_email = 7;
+}
+
+message UserInfo {
+    User user = 1;
+
+    //If in GetUser, ListUser requests UserView is FULL, then the mapping is additionally provided
+    //of parent of the project and corresponding ProjectRole of the user
+    map<string, ProjectRole> project_roles = 2;
+}
+
+message CreateUserRequest {
+    User user = 1;
+    string password = 3;
+}
+
+message UpdateUserRequest {
+    // user_id in the User message should be given, if empty will throw an error in the backend
+    // password and other fields in the User are optional. Only the fields to be updated should be provided
+    User user = 1;
+    string password = 4;
+
+    // Optional. The mask to control which fields get updated.
+    google.protobuf.FieldMask update_mask = 5;
+}
+
+message GetUserRequest {
+    oneof user_identifier {
+        // the user is identified by user id
+        string user_id = 1;
+        // the user can identified by their email
+        string user_email = 3;
+    }
+}
+
+message DeleteUserRequest {
+    //user is identified by user id, if empty will throw an error in the backend
+    string user_id = 1;
+}
+
+message ListUsersRequest {
+    // Optional. The next_page_token value returned from a previous list request.
+    string page_token = 1;
+}
+
+message ListUsersResponse {
+    // The list of users. There will be a maximum number of items
+    // returned based on the page_token field in the request.
+    repeated User users = 1;
+
+    // Token to retrieve the next page of results, or empty if there are no
+    // more results in the list.
+    string next_page_token = 2;
+}
+
+message ListUserInfosResponse {
+    // The list of server roles. There will be a maximum number of items
+    // returned based on the page_token field in the request.
+    repeated UserInfo users = 1;
+
+    // Token to retrieve the next page of results, or empty if there are no
+    // more results in the list.
+    string next_page_token = 2;
+}
+
+// Server Role messages
+message ServerRole {
+    // unique identifier of the role
+    uint32 role_id = 1;
+    // unique name of the role
+    string name = 2;
+    // defines the permissions for the given role (the strings can be gotten from the ListServerPermissions)
+    repeated string permissions = 3;
+}
+
+enum DefaultServerRole {
+    SERVER_UNSPECIFIED = 0; // unspecified server role
+    SERVER_USER = 1; // read-only access
+    SERVER_MANAGER = 2; // SERVER_USER's permissions + CRUD of projects and Users
+    SERVER_ADMIN = 3; // this role can do everything
+    SERVER_INACTIVE = 4; // this role can do nothing. Used to set a user as inactive in the server.
+}
+
+message CreateServerRoleRequest {
+    //If the role_id is not provided, an incremental value will be assigned
+    //The "name" and "role_type" are mandatory values
+    //The permissions all default to False if not provided specifically
+    ServerRole role = 1;
+}
+
+message UpdateServerRoleRequest {
+    //role_id in the Role message should be given, if empty will throw an error in the backend
+    //other fields in the Role are optional. Only the fields to be updated should be provided
+    ServerRole role = 1;
+
+    // Optional. The mask to control which fields get updated.
+    google.protobuf.FieldMask update_mask = 2;
+}
+
+message DeleteServerRoleRequest {
+    //role is identified by role id, if empty will throw an error in the backend
+    uint32 role_id = 1;
+}
+
+message GetServerRoleRequest {
+    oneof server_role_identifier {
+        // role is identified by role id
+        uint32 role_id = 1;
+
+        // role can also be uniquely identified by its name
+        string role_name = 2;
+    }
+}
+
+message ListServerRolesRequest {
+    // Optional. The next_page_token value returned from a previous list request.
+    string page_token = 1;
+}
+
+message ListServerRolesResponse {
+    // The list of server roles. There will be a maximum number of items
+    // returned based on the page_token field in the request.
+    repeated ServerRole server_roles = 1;
+
+    // Token to retrieve the next page of results, or empty if there are no
+    // more results in the list.
+    string next_page_token = 2;
+}
+
+// Server permissions
+message ListServerPermissionsRequest {
+    // Optional. The next_page_token value returned from a previous list request.
+    string page_token = 1;
+}
+
+message ListServerPermissionsResponse {
+    // The list of server permissions. There will be a maximum number of items
+    // returned based on the page_token field in the request.
+    repeated string permissions = 1;
+
+    // Token to retrieve the next page of results, or empty if there are no
+    // more results in the list.
+    string next_page_token = 2;
+}
+
+// Authentication messages
+message LoginRequest {
+    string user_email = 1;
+    string password = 2;
+}
+
+message LoginResponse {
+    User user = 1;
+    string auth_token = 2;
+}

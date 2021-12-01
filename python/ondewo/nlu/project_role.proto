@@ -1,0 +1,158 @@
+// Copyright 2021 ONDEWO GmbH
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package ondewo.nlu;
+
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/empty.proto";
+
+service ProjectRoles {
+    rpc CreateProjectRole (CreateProjectRoleRequest) returns (ProjectRole) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}/project_roles"
+            body: "*"
+        };
+    }
+
+    rpc GetProjectRole (GetProjectRoleRequest) returns (ProjectRole) {
+        option (google.api.http) = {
+            get: "/v2/{parent=projects/*/agent}/project_roles/{role_id=*}"
+        };
+    }
+
+    rpc DeleteProjectRole (DeleteProjectRoleRequest) returns (google.protobuf.Empty) {
+        option (google.api.http) = {
+           delete: "/v2/{parent=projects/*/agent}/project_roles/{role_id=*}"
+        };
+    }
+
+    rpc UpdateProjectRole (UpdateProjectRoleRequest) returns (ProjectRole) {
+        option (google.api.http) = {
+            patch: "/v2/{parent=projects/*/agent}/project_roles"
+            body: "*"
+        };
+    }
+
+    rpc ListProjectRoles (ListProjectRolesRequest) returns (ListProjectRolesResponse) {
+        option (google.api.http) = {
+            get: "/v2/{parent=projects/*/agent}/project_roles"
+        };
+    }
+}
+
+// Project Role messages
+message ProjectRole {
+    // unique identifier of the role
+    uint32 role_id = 1;
+    // unique name of the role
+    string name = 2;
+    // defines the permissions for the given role (the strings can be gotten from the ListProjectPermissions)
+    repeated string permissions = 3;
+}
+
+enum DefaultProjectRole {
+    // These roles have permissions valid only on a specific project
+    PROJECT_UNSPECIFIED = 0; // unspecified, default value depends on endpoint # TODO
+
+    PROJECT_USER = 1; // read-only access
+
+    PROJECT_EXECUTOR = 2; // permissions of PROJECT_USER + execution rights (detect intent, extract entities,
+    //   train, etc)
+
+    PROJECT_DEVELOPER = 3; // permissions of PROJECT_EXECUTOR + CRUD rights
+
+    PROJECT_ADMIN = 4; // this role can do everything. The creator of a project is set
+    //    automatically as PROJECT_ADMIN of it.
+
+    PROJECT_INACTIVE = 5; // This role can do nothing.
+    // Used to set a user as inactive inside a project
+}
+
+enum ProjectRoleView {
+    // The view depends on the endpoint:
+    // * CreateProjectRole: FULL
+    // * GetProjectRole: FULL
+    // * UpdateProjectRole: FULL
+    // * ListProjectRoles: FULL
+    PROJECT_ROLE_VIEW_UNSPECIFIED = 0;
+    // only role ID and name fields are populated
+    PROJECT_ROLE_VIEW_SHALLOW = 1;
+    // all fields including permissions are populated
+    PROJECT_ROLE_VIEW_FULL = 2;
+}
+
+message CreateProjectRoleRequest {
+    string parent = 1;
+    //If the role_id is not provided, an incremental value will be assigned
+    //The "name" and "role_type" are mandatory values
+    //The permissions all default to False if not provided specifically
+    ProjectRole role = 2;
+
+    // Optional. specify the view of the created project role, PROJECT_ROLE_VIEW_FULL by default
+    ProjectRoleView project_role_view = 3;
+}
+
+message UpdateProjectRoleRequest {
+    string parent = 1;
+    //role_id in the Role message should be given, if empty will throw an error in the backend
+    //other fields in the Role are optional. Only the fields to be updated should be provided
+    ProjectRole role = 2;
+
+    // Optional. The mask to control which fields get updated.
+    google.protobuf.FieldMask update_mask = 3;
+
+    // Optional. specify the view of the updated project role, PROJECT_ROLE_VIEW_FULL by default
+    ProjectRoleView project_role_view = 4;
+}
+
+message GetProjectRoleRequest {
+    string parent = 1;
+
+    oneof project_role_identifier {
+        // role is identified by role id
+        uint32 role_id = 2;
+        // role can also be uniquely identified by its name
+        string role_name = 3;
+    }
+
+    // Optional. specify the view of the project role, PROJECT_ROLE_VIEW_FULL by default
+    ProjectRoleView project_role_view = 4;
+}
+
+message DeleteProjectRoleRequest {
+    string parent = 1;
+    //role is identified by role id, if empty will throw an error in the backend
+    uint32 role_id = 2;
+}
+
+message ListProjectRolesRequest {
+    string parent = 1;
+    // Optional. The next_page_token value returned from a previous list request.
+    string page_token = 2;
+    // Optional. specify the view of the project roles, PROJECT_ROLE_VIEW_FULL by default
+    ProjectRoleView project_role_view = 3;
+}
+
+message ListProjectRolesResponse {
+    // The list of project roles. There will be a maximum number of items
+    // returned based on the page_token field in the request.
+    repeated ProjectRole project_roles = 1;
+
+    // Token to retrieve the next page of results, or empty if there are no
+    // more results in the list.
+    string next_page_token = 2;
+}

@@ -1,0 +1,107 @@
+// Copyright 2021 ONDEWO GmbH
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package ondewo.nlu;
+
+import "google/protobuf/timestamp.proto";
+
+// Represents the metadata of the long-running operation that can be a parent operation for sub-operations or
+// can be a sub-operation itself
+message OperationMetadata {
+    // long-running operation status code
+    Status status = 1;
+
+    enum Status {
+        // unspecified status code
+        STATUS_UNSPECIFIED = 0;
+        // operation haven't started yet
+        NOT_STARTED = 1;
+        // operation currently in progress
+        IN_PROGRESS = 2;
+        // operation has completed without any error
+        DONE = 3;
+        // operation has completed with cancellation by user
+        CANCELLED = 4;
+        // operation has completed with errors
+        FAILED = 5;
+    }
+
+    // optional parent operation name
+    string parent_operation_name = 2;
+
+    // list of the sub-operations' names of the operation
+    repeated string sub_operation_names = 3;
+
+    // the time the operation was submitted.
+    google.protobuf.Timestamp create_time = 4;
+
+    // the time operation processing started.
+    google.protobuf.Timestamp start_time = 5;
+
+    // the time operation processing completed.
+    google.protobuf.Timestamp end_time = 6;
+
+    // indicates whether a request to cancel this operation has been made.
+    bool is_cancellation_requested = 7;
+
+    // command executed at cancel operation
+    string cancel_command = 8;
+
+    // id of the user who created the operation
+    string user_id_created = 9;
+
+    // id of the user who cancelled the operation
+    string user_id_cancelled = 10;
+
+    // project parent name, e.g. "projects/pepper/agent"
+    string project_parent = 11;
+
+    // operation type
+    OperationType operation_type = 12;
+
+    enum OperationType {
+        // unspecified operation type
+        OPERATION_TYPE_UNSPECIFIED = 0;
+        // create a new agent with specified configuration
+        CREATE_AGENT = 1;
+        // import agent from a zip file
+        IMPORT_AGENT = 2;
+        // export agent to a zip file
+        EXPORT_AGENT = 3;
+        // delete agent
+        DELETE_AGENT = 4;
+        // restore agent
+        RESTORE_AGENT = 5;
+        // build agent cache
+        BUILD_AGENT_CACHE = 6;
+        // train agent
+        TRAIN_AGENT = 7;
+        // export benchmark agent to a zip file
+        EXPORT_BENCHMARK_AGENT = 8;
+    }
+
+    // name of the host where the operation was executed
+    string host_name = 13;
+
+    // number of times the operation was re-run
+    int32 num_reruns = 14;
+
+    // maximum number of re-runs in case the operation fails
+    int32 max_num_reruns = 15;
+
+    // description, normally needed for suboperations when type is OPERATION_TYPE_UNSPECIFIED
+    string description = 16;
+}

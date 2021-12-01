@@ -1,0 +1,982 @@
+// Copyright 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Modifications Copyright 2021 ONDEWO GmbH
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// File-level comment for <code>ondewo/nlu/agent.proto</code>.
+//
+// This file contains a single service <a href="#ondewo.nlu.Agents">Agents</a>.
+//
+// The most important messages is <a href="#ondewo.nlu.Agent">Agent</a> and its most complicated field is <code>configs</code>.
+syntax = "proto3";
+
+package ondewo.nlu;
+
+import "google/api/annotations.proto";
+import "google/longrunning/operations.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+import "ondewo/nlu/common.proto";
+import "ondewo/nlu/intent.proto";
+import "ondewo/nlu/user.proto";
+import "ondewo/nlu/project_role.proto";
+import "google/protobuf/timestamp.proto";
+
+// Agents are best described as Natural Language Understanding (NLU) modules that transform user requests into actionable data. You can include agents in your app, product, or service to determine user intent and respond to the user in a natural way.
+//
+// After you create an agent, you can add [Intents][google.cloud.dialogflow.v2.Intents], [Contexts][google.cloud.dialogflow.v2.Contexts], [Entity Types][google.cloud.dialogflow.v2.EntityTypes], [Webhooks][google.cloud.dialogflow.v2.WebhookRequest], and so on to manage the flow of a conversation and match user input to predefined intents and actions.
+//
+// You can create an agent using both Dialogflow Standard Edition and Dialogflow Enterprise Edition. For details, see [Dialogflow Editions](/dialogflow-enterprise/docs/editions).
+//
+// You can save your agent for backup or versioning by exporting the agent by using the [ExportAgent][google.cloud.dialogflow.v2.Agents.ExportAgent] method. You can import a saved agent by using the [ImportAgent][google.cloud.dialogflow.v2.Agents.ImportAgent] method.
+//
+// Dialogflow provides several [prebuilt agents](https://dialogflow.com/docs/prebuilt-agents) for common conversation scenarios such as determining a date and time, converting currency, and so on.
+//
+// For more information about agents, see the [Dialogflow documentation](https://dialogflow.com/docs/agents).
+service Agents {
+    // Creates the specified agent.
+    //
+    // <p>Examples:</p>
+    //
+    // <pre>
+    // grpcurl -plaintext -H 'cai-token: aimp' -d '{
+    //   "agent": {
+    //     "display_name": "Pizza Bot",
+    //     "default_language_code": "en",
+    //     "supported_language_codes": ["en"],
+    //     "time_zone": "Europe/Vienna",
+    //     "nlu_platform": "ONDEWO"
+    //   }
+    // }' localhost:50055 ondewo.nlu.Agents.CreateAgent
+    // </pre>
+    //
+    // <samp>{
+    //   "parent": "projects/76aaf4f3-a1f6-4fda-b4b3-351c64e65bc4/agent",
+    //   "display_name": "Pizza Bot",
+    //   "default_language_code": "en",
+    //   "supported_language_codes": [
+    //     "en"
+    //   ],
+    //   "time_zone": "Europe/Vienna",
+    //   "nlu_platform": "ONDEWO",
+    //   "owner_id": "5aac51b8-668f-49dd-913f-cc683e56af34"
+    // }
+    // </samp>
+    rpc CreateAgent (CreateAgentRequest) returns (Agent) {
+        option (google.api.http) = {
+            post: "/v2/projects"
+            body: "*"
+        };
+    }
+
+    // Updates the specified agent.
+    //
+    // <p>Examples:</p>
+    //
+    // <pre>
+    // grpcurl -plaintext -H 'cai-token: aimp' -d '{
+    //   "agent": {
+    //     "parent": "projects/76aaf4f3-a1f6-4fda-b4b3-351c64e65bc4/agent",
+    //     "display_name": "Pizza Bot 2",
+    //     "supported_language_codes": ["en", "de"]
+    //   },
+    //   "update_mask": {
+    //     "paths": [
+    //       "agent.display_name",
+    //       "agent.supported_language_codes"
+    //     ]
+    //   }
+    // }' localhost:50055 ondewo.nlu.Agents.UpdateAgent
+    // </pre>
+    //
+    // <samp>{
+    //   "parent": "projects/76aaf4f3-a1f6-4fda-b4b3-351c64e65bc4/agent",
+    //   "display_name": "Pizza Bot 2",
+    //   "default_language_code": "en",
+    //   "supported_language_codes": [
+    //     "en",
+    //     "de"
+    //   ],
+    //   "time_zone": "Europe/Vienna",
+    //   "nlu_platform": "ONDEWO",
+    //   "owner_id": "5aac51b8-668f-49dd-913f-cc683e56af34"
+    // }
+    // </samp>
+    rpc UpdateAgent (UpdateAgentRequest) returns (Agent) {
+        option (google.api.http) = {
+            patch: "/v2/{agent.parent=projects/*/agent}"
+            body: "*"
+        };
+    }
+
+    // Retrieves the specified agent.
+    //
+    // <p>Examples:</p>
+    //
+    // <pre>
+    // grpcurl -plaintext -H 'cai-token: aimp' -d '{
+    //   "parent": "projects/76aaf4f3-a1f6-4fda-b4b3-351c64e65bc4/agent"
+    // }' localhost:50055 ondewo.nlu.Agents.GetAgent
+    // </pre>
+    // <samp>{
+    //   "parent": "projects/76aaf4f3-a1f6-4fda-b4b3-351c64e65bc4/agent",
+    //   "display_name": "Pizza Bot 2",
+    //   "default_language_code": "en",
+    //   "supported_language_codes": [
+    //     "en",
+    //     "de"
+    //   ],
+    //   "time_zone": "Europe/Vienna",
+    //   "nlu_platform": "ONDEWO",
+    //   "configs": {...},
+    //   "owner_id": "5aac51b8-668f-49dd-913f-cc683e56af34"
+    // }
+    // </samp>
+    rpc GetAgent (GetAgentRequest) returns (Agent) {
+        option (google.api.http) = {
+            get: "/v2/{parent=projects/*/agent}"
+        };
+    }
+
+    // Deletes the specified agent.
+    //
+    // <p>Examples:</p>
+    //
+    // <pre>
+    // grpcurl -plaintext -H 'cai-token: aimp' -d '{
+    //   "parent": "projects/76aaf4f3-a1f6-4fda-b4b3-351c64e65bc4/agent"
+    // }' localhost:50055 ondewo.nlu.Agents.DeleteAgent
+    // </pre>
+    // <samp>{}</samp>
+    rpc DeleteAgent (DeleteAgentRequest) returns (google.protobuf.Empty) {
+        option (google.api.http) = {
+            delete: "/v2/{parent=projects/*/agent}"
+        };
+    }
+
+    // Deletes all agents in the server (for development purposes only).
+    //
+    // <p>Examples:</p>
+    //
+    // <pre>
+    // grpcurl -plaintext -H 'cai-token: aimp' localhost:50055 ondewo.nlu.Agents.DeleteAllAgents
+    // </pre>
+    // <samp>{}</samp>
+    rpc DeleteAllAgents (google.protobuf.Empty) returns (google.protobuf.Empty) {
+        option (google.api.http) = {
+            delete: "/v2/projects"
+        };
+    }
+
+    // Lists agents in the server associated to the current user
+    //
+    // <p>Examples:</p>
+    //
+    // <pre>
+    // grpcurl -plaintext -H 'cai-token: aimp' localhost:50055 ondewo.nlu.Agents.ListAgents
+    // </pre>
+    // <samp>{
+    //   "agents_with_owners": [
+    //     {
+    //       "agent": {
+    //         "parent": "projects/76aaf4f3-a1f6-4fda-b4b3-351c64e65bc4/agent",
+    //         "display_name": "Pizza Bot 2",
+    //         "owner_id": "5aac51b8-668f-49dd-913f-cc683e56af34"
+    //       },
+    //       "owner": {
+    //         "user_id": "5aac51b8-668f-49dd-913f-cc683e56af34",
+    //         "display_name": "admin",
+    //         "server_role_id": 3,
+    //         "user_email": "admin@ondewo.com"
+    //       }
+    //     }
+    //   ],
+    //   "next_page_token": "current_index-1"
+    // }
+    // </samp>
+    rpc ListAgents (ListAgentsRequest) returns (ListAgentsResponse) {
+        option (google.api.http) = {
+            get: "/v2/projects"
+        };
+    }
+
+    // Lists agents in the server associated to the given user
+    //
+    // <p>Examples:</p>
+    //
+    // <pre>
+    // grpcurl -plaintext -H 'cai-token: aimp' localhost:50055 ondewo.nlu.Agents.ListAgentsOfUser
+    // </pre>
+    // <samp>{
+    //   "agents_of_user_with_owners": [
+    //     {
+    //       "agent_with_owner": {
+    //         "agent": {
+    //           "parent": "projects/76aaf4f3-a1f6-4fda-b4b3-351c64e65bc4/agent",
+    //           "display_name": "Pizza Bot 2",
+    //           "owner_id": "5aac51b8-668f-49dd-913f-cc683e56af34"
+    //         },
+    //         "owner": {
+    //           "user_id": "5aac51b8-668f-49dd-913f-cc683e56af34",
+    //           "display_name": "admin",
+    //           "server_role_id": 3,
+    //           "user_email": "admin@ondewo.com"
+    //         }
+    //       },
+    //       "project_role": {
+    //         "role_id": 4,
+    //         "name": "ADMIN"
+    //       }
+    //     }
+    //   ],
+    //   "next_page_token": "current_index-1"
+    // }
+    // </samp>
+    rpc ListAgentsOfUser (ListAgentsRequest) returns (ListAgentsOfUserResponse) {
+        option (google.api.http) = {
+            get: "/v2/projects"
+        };
+    }
+
+    // Lists all agents in the server
+    //
+    // <p>Examples:</p>
+    //
+    // <pre>
+    // grpcurl -plaintext -H 'cai-token: aimp' localhost:50055 ondewo.nlu.Agents.ListAllAgents
+    // </pre>
+    // <samp>{
+    //   "agents_with_owners": [
+    //     {
+    //       "agent": {
+    //         "parent": "projects/76aaf4f3-a1f6-4fda-b4b3-351c64e65bc4/agent",
+    //         "display_name": "Pizza Bot 2",
+    //         "owner_id": "5aac51b8-668f-49dd-913f-cc683e56af34"
+    //       },
+    //       "owner": {
+    //         "user_id": "5aac51b8-668f-49dd-913f-cc683e56af34",
+    //         "display_name": "admin",
+    //         "server_role_id": 3,
+    //         "user_email": "admin@ondewo.com"
+    //       }
+    //     }
+    //   ],
+    //   "next_page_token": "current_index-1"
+    // }
+    // </samp>
+    rpc ListAllAgents (ListAgentsRequest) returns (ListAgentsResponse) {
+        option (google.api.http) = {
+            get: "/v2/projects:all"
+        };
+    }
+
+    // Adds a user with specified id to the project (agent)
+    rpc AddUserToProject (AddUserToProjectRequest) returns (google.protobuf.Empty) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}/users/{user_id=*}"
+            body: "*"
+        };
+    }
+
+    // Removes a user with specified id from the project (agent)
+    rpc RemoveUserFromProject (RemoveUserFromProjectRequest) returns (google.protobuf.Empty) {
+        option (google.api.http) = {
+            delete: "/v2/{parent=projects/*/agent}/users/{user_id=*}"
+        };
+    }
+
+    rpc ListUsersInProject (ListUsersInProjectRequest) returns (ListUsersInProjectResponse) {
+        option (google.api.http) = {
+            get: "/v2/{parent=projects/*/agent}/users"
+        };
+    }
+
+    rpc GetPlatformInfo (google.protobuf.Empty) returns (GetPlatformInfoResponse) {
+        option (google.api.http) = {
+            get: "/v2/version"
+        };
+    }
+
+    rpc ListProjectPermissions (ListProjectPermissionsRequest) returns (ListProjectPermissionsResponse) {
+        option (google.api.http) = {
+            get: "/v2/project_permissions"
+        };
+    }
+
+    // Trains the specified agent.
+    //
+    // Operation <response: [google.protobuf.Empty][google.protobuf.Empty],
+    //            metadata: [google.protobuf.Struct][google.protobuf.Struct]>
+    rpc TrainAgent (TrainAgentRequest) returns (google.longrunning.Operation) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}:train"
+            body: "*"
+        };
+    }
+    // Builds cache for the specified agent.
+    //
+    // Operation <response: [google.protobuf.Empty][google.protobuf.Empty],
+    //            metadata: [google.protobuf.Struct][google.protobuf.Struct]>
+    rpc BuildCache (BuildCacheRequest) returns (google.longrunning.Operation) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}:build_cache"
+            body: "*"
+        };
+    }
+
+    // Exports the specified agent to a ZIP file.
+    //
+    // Operation <response: [ExportAgentResponse][google.cloud.dialogflow.v2.ExportAgentResponse],
+    //            metadata: [google.protobuf.Struct][google.protobuf.Struct]>
+    rpc ExportAgent (ExportAgentRequest) returns (google.longrunning.Operation) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}:export"
+            body: "*"
+        };
+    }
+
+    // Exports the specified train agent to a ZIP file after train-test split, returns the test TrainingPhrase list.
+    //
+    rpc ExportBenchmarkAgent (ExportBenchmarkAgentRequest) returns (google.longrunning.Operation) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}:export_benchmark"
+            body: "*"
+        };
+    }
+
+    // Imports the specified agent from a ZIP file.
+    //
+    // Uploads new intents and entity types without deleting the existing ones.
+    // Intents and entity types with the same name are replaced with the new
+    // versions from ImportAgentRequest.
+    //
+    // Operation <response: [google.protobuf.Empty][google.protobuf.Empty],
+    //            metadata: [google.protobuf.Struct][google.protobuf.Struct]>
+    rpc ImportAgent (ImportAgentRequest) returns (google.longrunning.Operation) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}:import"
+            body: "*"
+        };
+    }
+    rpc OptimizeRankingMatch (OptimizeRankingMatchRequest) returns (google.longrunning.Operation) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}:optimize_ranking_match"
+            body: "*"
+        };
+    }
+    // Restores the specified agent from a ZIP file.
+    //
+    // Replaces the current agent version with a new one. All the intents and
+    // entity types in the older version are deleted.
+    //
+    // Operation <response: [google.protobuf.Empty][google.protobuf.Empty],
+    //            metadata: [google.protobuf.Struct][google.protobuf.Struct]>
+    rpc RestoreAgent (RestoreAgentRequest) returns (google.longrunning.Operation) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}:restore"
+            body: "*"
+        };
+    }
+
+    rpc GetAgentStatistics (GetAgentStatisticsRequest) returns (GetAgentStatisticsResponse) {
+        option (google.api.http) = {
+            get: "/v2/{parent=projects/*/agent}:statistics"
+        };
+    }
+
+    rpc SetAgentStatus (SetAgentStatusRequest) returns (Agent) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}:status"
+            body: "*"
+        };
+    }
+    rpc SetResources (SetResourcesRequest) returns (google.protobuf.Empty) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}:resources"
+            body: "*"
+        };
+    }
+    rpc DeleteResources (DeleteResourcesRequest) returns (google.protobuf.Empty) {
+        option (google.api.http) = {
+            delete: "/v2/{parent=projects/*/agent}:resources"
+        };
+    }
+    rpc ExportResources (ExportResourcesRequest) returns (ExportResourcesResponse) {
+        option (google.api.http) = {
+            post: "/v2/{parent=projects/*/agent}:resources"
+            body: "*"
+        };
+    }
+    // Get statuses of models related to project
+    rpc GetModelStatuses (GetModelStatusesRequest) returns (GetModelStatusesResponse);
+
+    // Get all set platform name mappings for an Agent
+    rpc GetPlatformMapping (GetPlatformMappingRequest) returns (PlatformMapping);
+
+    // Set platform name mappings for an Agent
+    rpc SetPlatformMapping (PlatformMapping) returns (PlatformMapping);
+}
+
+// Project/Agent messages
+message Agent {
+    // Required. The project of this agent.
+    // Format: `projects/<Project ID>/agent`.
+    // Read-only in the Agent message
+    string parent = 1;
+
+    // Required. The name of this agent.
+    string display_name = 2;
+
+    // Required. The default language of the agent as a language tag. See
+    // [Language Support](https://dialogflow.com/docs/reference/language) for a
+    // list of the currently supported language codes.
+    // This field cannot be set by the `Update` method.
+    string default_language_code = 3;
+
+    // Optional. The list of all languages supported by this agent (except for the
+    // `default_language_code`).
+    repeated string supported_language_codes = 4;
+
+    // Required. The time zone of this agent from the
+    // [time zone database](https://www.iana.org/time-zones), e.g.,
+    // America/New_York, Europe/Paris.
+    string time_zone = 5;
+
+    // Required. Specifies the format of the agent data.
+    string nlu_platform = 6;
+
+    // Optional. Agent configuration as OndewoConfig converted to Struct format.
+    google.protobuf.Struct configs = 7;
+
+    // Optional. User id of the project owner. If empty, in CreateAgent call it is set to user id in the call
+    // metadata.
+    // Read-only in the Agent message
+    string owner_id = 8;
+
+    // Optional. Status of the agent
+    // Read-only in the Agent message
+    AgentStatus status = 9;
+
+    string description = 10;
+}
+
+message AgentWithOwner {
+    Agent agent = 1;
+    User owner = 2;
+}
+
+message AgentOfUserWithOwner {
+    // Required. Agent message and User message of its owner.
+    AgentWithOwner agent_with_owner = 1;
+
+    // Required. The role of the user in the project in SHALLOW view (only ID and name fields are populated)
+    ProjectRole project_role = 2;
+}
+
+
+enum AgentView {
+    // Unspecified agent view: the view is defined by the call:
+    // - CreateAgent: AGENT_VIEW_SHALLOW
+    // - UpdateAgent: AGENT_VIEW_SHALLOW
+    // - GetAgent: AGENT_VIEW_FULL
+    // - ListAgents: AGENT_VIEW_SHALLOW
+    AGENT_VIEW_UNSPECIFIED = 0;
+
+    // Full agent view: populate all the fields of the Agent message including configs.
+    AGENT_VIEW_FULL = 1;
+
+    // Shallow agent view: populates all the fields except configs.
+    AGENT_VIEW_SHALLOW = 2;
+}
+
+message CreateAgentRequest {
+    Agent agent = 1;
+
+    // Optional. Specify the view of the returned agent (sparse view by default)
+    AgentView agent_view = 2;
+}
+
+message UpdateAgentRequest {
+    Agent agent = 1;
+
+    // Optional. Specify the view of the returned agent (sparse view by default)
+    AgentView agent_view = 2;
+
+    // Optional. The mask to control which fields get updated.
+    google.protobuf.FieldMask update_mask = 3;
+}
+
+message DeleteAgentRequest {
+    string parent = 1;
+}
+
+// The request message for [Agents.GetAgent][google.cloud.dialogflow.v2.Agents.GetAgent].
+message GetAgentRequest {
+    // Required. The project that the agent to fetch is associated with.
+    // Format: `projects/<Project ID>/agents`.
+    string parent = 1;
+
+    // Optional. Specify the view of the returned agent (full view by default)
+    AgentView agent_view = 2;
+}
+
+message ListAgentsRequest {
+    // Optional. Specify the view of the returned agent (full view by default)
+    AgentView agent_view = 1;
+
+    // Optional. The next_page_token value returned from a previous list request.
+    string page_token = 2;
+
+    // Optional. Defines the sorting of the list. Default, no sorting.
+    AgentSorting sort_by_field = 3;
+}
+
+message ListAgentsResponse {
+    // The list of agent and their owners. There will be a maximum number of items
+    // returned based on the page_token field in the request.
+    repeated AgentWithOwner agents_with_owners = 1;
+
+    // Token to retrieve the next page of results, or empty if there are no
+    // more results in the list.
+    string next_page_token = 2;
+}
+
+message ListAgentsOfUserResponse {
+    // The list of agents with their owners of the given user. There will be a maximum number of items
+    // returned based on the page_token field in the request.
+    repeated AgentOfUserWithOwner agents_of_user_with_owners = 1;
+
+    // Token to retrieve the next page of results, or empty if there are no
+    // more results in the list.
+    string next_page_token = 2;
+}
+
+// Defines when to initiate newly created agent when training started
+enum InitiationProtocol {
+    // after cache successfully built and after each model trained the agent will be updated
+    AS_SOON_AS_POSSIBLE = 0;
+    // after cache successfully built and all the active models successfully trained
+    WHEN_TRAINED = 1;
+    // do not initiate
+    NEVER = 2;
+}
+// The request message for [Agents.TrainAgent][google.cloud.dialogflow.v2.Agents.TrainAgent].
+message TrainAgentRequest {
+    // Required. The project that the agent to train is associated with.
+    // Format: `projects/<Project ID>`.
+    string parent = 1;
+    string branch = 2;
+    InitiationProtocol initiation_protocol = 3;
+}
+
+// The request message for [Agents.TrainAgentBuildCache][google.cloud.dialogflow.v2.Agents.BuildCache].
+message BuildCacheRequest {
+    // Required. The project that the agent to build cache is associated with.
+    // Format: `projects/<Project ID>`.
+    string parent = 1;
+    string branch = 2;
+}
+
+// The request message for [Agents.ExportAgent][google.cloud.dialogflow.v2.Agents.ExportAgent].
+message ExportAgentRequest {
+    // Required. The project that the agent to export is associated with.
+    // Format: `projects/<Project ID>`.
+    string parent = 1;
+
+    // Optional. The Google Cloud Storage URI to export the agent to.
+    // Note: The URI must start with
+    // "gs://". If left unspecified, the serialized agent is returned inline.
+    string agent_uri = 2;
+
+    // Optional. The compression level of the zip file created.
+    // Valid range 1-9; the grpc-default value 0 will be mapped to 1,
+    // other values cause an error in the request validation handler.
+    int32 compression_level = 3;
+}
+
+// The response message for [Agents.ExportAgent][google.cloud.dialogflow.v2.Agents.ExportAgent].
+message ExportAgentResponse {
+    // Required. The exported agent.
+    oneof agent {
+        // The URI to a file containing the exported agent. This field is populated
+        // only if `agent_uri` is specified in `ExportAgentRequest`.
+        string agent_uri = 1;
+
+        // The exported agent.
+        //
+        // Example for how to export an agent to a zip file via a command line:
+        //
+        // curl \
+        //   'https://dialogflow.googleapis.com/v2/projects/<project_name>/agent:export'\
+        //   -X POST \
+        //   -H 'Authorization: Bearer '$(gcloud auth print-access-token) \
+        //   -H 'Accept: application/json' \
+        //   -H 'Content-Type: application/json' \
+        //   --compressed \
+        //   --data-binary '{}' \
+        // | grep agentContent | sed -e 's/.*"agentContent": "\([^"]*\)".*/\1/' \
+        // | base64 --decode > <agent zip file>
+        bytes agent_content = 2;
+    }
+}
+
+message ExportBenchmarkAgentRequest {
+    // Agent related info
+    // Required. The project that the agent to export is associated with.
+    // Format: `projects/<Project ID>`.
+    string parent = 1;
+    // Optional. The compression level of the zip file created.
+    // Valid range 1-9; the grpc-default value 0 will be mapped to 1,
+    // other values cause an error in the request validation handler.
+    int32 compression_level = 2;
+
+    // Train-test split related parameters, for further info,
+    // check https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html
+    // default values come from API definition above
+    // Optional: bigger than zero
+    float test_size = 3;
+    // Optional: bigger than zero
+    float train_size = 4;
+    // Optional: random seed
+    int32 random_state = 5;
+}
+
+message ExportBenchmarkAgentResponse {
+    bytes agent_content = 1;
+    // Key is the language code, value is the corresponding ListTrainingPhrasesResponse
+    map<string, ListTrainingPhrasesResponse> training_phrases = 2;
+}
+
+message OptimizeRankingMatchRequest {
+    string parent = 1;
+    repeated string language_codes = 2;
+    // optimization config will contain all possible optimizations, with which we will come up in the future
+    repeated RankingMatchOptimizationConfig optimization_configs = 3;
+    // if in_place is true then the config of the agent on the server will be updated, if False then config
+    // with optimized thresholds will be returned but not updated on the server
+    bool in_place = 4;
+}
+
+message RankingMatchOptimizationConfig {
+    string language_code = 1;
+    int32 n_splits = 2;
+    int32 random_seed = 3;
+    // initial thresholds are optional, if not given will be taken from the current config
+    // example {'OndewoIntentSimilarityMatch': 0.59, 'OndewoIntentNamedSimilarityMatch': 0.39}
+    google.protobuf.Struct initial_thresholds = 4;
+}
+
+message OptimizeRankingMatchResponse {
+    google.protobuf.Struct optimization_info = 1;
+    google.protobuf.Struct optimized_ondewo_config = 3;
+}
+
+// The request message for [Agents.ImportAgent][google.cloud.dialogflow.v2.Agents.ImportAgent].
+message ImportAgentRequest {
+    // Required. The project that the agent to import is associated with.
+    // Format: `projects/<Project ID>`.
+    string parent = 1;
+
+    // Required. The agent to import.
+    oneof agent {
+        // The URI to a Google Cloud Storage file containing the agent to import.
+        // Note: The URI must start with "gs://".
+        string agent_uri = 2;
+
+        // The agent to import.
+        //
+        // Example for how to import an agent via the command line:
+        //
+        // curl \
+        //   'https://dialogflow.googleapis.com/v2/projects/<project_name>/agent:import\
+        //    -X POST \
+        //    -H 'Authorization: Bearer '$(gcloud auth print-access-token) \
+        //    -H 'Accept: application/json' \
+        //    -H 'Content-Type: application/json' \
+        //    --compressed \
+        //    --data-binary "{
+        //       'agentContent': '$(cat <agent zip file> | base64 -w 0)'
+        //    }"
+        bytes agent_content = 3;
+    }
+}
+
+// The request message for [Agents.RestoreAgent][google.cloud.dialogflow.v2.Agents.RestoreAgent].
+message RestoreAgentRequest {
+    // Required. The project that the agent to restore is associated with.
+    // Format: `projects/<Project ID>`.
+    string parent = 1;
+
+    // Required. The agent to restore.
+    oneof agent {
+        // The URI to a Google Cloud Storage file containing the agent to restore.
+        // Note: The URI must start with "gs://".
+        string agent_uri = 2;
+
+        // The agent to restore.
+        //
+        // Example for how to restore an agent via the command line:
+        //
+        // curl \
+        //   'https://dialogflow.googleapis.com/v2/projects/<project_name>/agent:restore\
+        //    -X POST \
+        //    -H 'Authorization: Bearer '$(gcloud auth print-access-token) \
+        //    -H 'Accept: application/json' \
+        //    -H 'Content-Type: application/json' \
+        //    --compressed \
+        //    --data-binary "{
+        //        'agentContent': '$(cat <agent zip file> | base64 -w 0)'
+        //    }" \
+        bytes agent_content = 3;
+    }
+}
+
+message GetAgentStatisticsRequest {
+    // Required. The project to get statistics from.
+    // Format: `projects/<Project ID>`.
+    string parent = 1;
+    ReportFormat format = 2;
+    string language_code = 3;
+    ReportType type = 4;
+}
+
+message GetAgentStatisticsResponse {
+    // Statistic info.
+    bytes reports = 1;
+    ReportFormat format = 2;
+    ReportType type = 3;
+}
+
+enum ReportType {
+    // will return all reports as files of specified format compressed into a single zipfile
+    ALL = 0;
+    // statistics of the language specific part of the intent database
+    INTENT_PER_LANGUAGE = 1;
+    // statistics of the language specific part of the entity database
+    ENTITY_PER_LANGUAGE = 2;
+    // report on collision of the entity synonyms
+    ENTITY_COLLISION = 3;
+    // report of statistics of the general (relevant to all supported languages) part of intent database
+    INTENT_GENERAL = 4;
+}
+
+enum ReportFormat {
+    CSV = 0;
+    HTML = 1;
+    JSON = 2;
+}
+
+message AddUserToProjectRequest {
+    string parent = 1;
+    string user_id = 2;
+    uint32 project_role_id = 4;
+}
+
+message RemoveUserFromProjectRequest {
+    string parent = 1;
+    string user_id = 2;
+}
+
+message ListUsersInProjectRequest {
+    string parent = 1;
+    // Optional. The next_page_token value returned from a previous list request.
+    string page_token = 2;
+}
+
+message UserInProject {
+    // ID of the project
+    string parent = 1;
+
+    // User object
+    User user = 2;
+
+    // ID of the project role of the user
+    uint32 role_id = 3;
+}
+
+message ListUsersInProjectResponse {
+    // The list of users in a project. There will be a maximum number of items
+    // returned based on the page_token field in the request.
+    repeated UserInProject users = 1;
+
+    // Token to retrieve the next page of results, or empty if there are no
+    // more results in the list.
+    string next_page_token = 2;
+}
+
+message GetPlatformInfoResponse {
+    string version = 1;
+    string commit_hash = 2;
+}
+
+// Project permissions
+message ListProjectPermissionsRequest {
+    // Optional. The next_page_token value returned from a previous list request.
+    string page_token = 1;
+}
+
+message ListProjectPermissionsResponse {
+    // The list of project permissions. There will be a maximum number of items
+    // returned based on the page_token field in the request.
+    repeated string permissions = 1;
+
+    // Token to retrieve the next page of results, or empty if there are no
+    // more results in the list.
+    string next_page_token = 2;
+}
+
+message SetAgentStatusRequest {
+    // Required. The project of which to set the status.
+    // Format: `projects/<Project ID>/agent`.
+    string parent = 1;
+
+    // Required. Status of the agent
+    AgentStatus status = 2;
+
+    // Optional. View of the returned agent
+    AgentView agent_view = 3;
+}
+
+// fixme: add endpoint to set agent owner
+
+enum AgentStatus {
+    // If project is active, all its endpoints are active
+    ACTIVE = 0;
+
+    // If project is inactive:
+    // * members of the project do not see the project anymore except users with project role "PROJECT_ADMIN" and users with server role "SERVER_ADMIN"
+    // * nothing is allowed (no endpoint) on the project except "SetAgentStatus" by PROJECT_ADMIN or SERVER_ADMIN
+    INACTIVE = 1;
+
+    // TODO: add more statuses
+    // BUILDING_CACHE = 2;
+    // ENRICHING = 3;
+    // TRAINING = 4;
+    // READY = 5;
+}
+
+message AgentSorting {
+    enum AgentSortingField {
+        NO_AGENT_SORTING = 0;
+        SORT_AGENT_BY_NAME = 1;
+        SORT_AGENT_BY_CREATION_DATE = 2;
+        SORT_AGENT_BY_LAST_UPDATED = 3;
+        SORT_AGENT_BY_OWNER_NAME = 4;
+    }
+
+    AgentSortingField sorting_field = 1;
+    SortingMode sorting_mode = 2;
+}
+
+message SetResourcesRequest {
+    string parent = 1;
+    string name = 2;
+    string type = 3;
+    bytes resource_file = 4;
+    string language_code = 5;
+}
+
+message DeleteResourcesRequest {
+    string parent = 1;
+    string name = 2;
+    string type = 3;
+    string language_code = 4;
+}
+
+message ExportResourcesRequest {
+    string parent = 1;
+    string name = 2;
+    string type = 3;
+    string language_code = 4;
+}
+
+message ExportResourcesResponse {
+    string parent = 1;
+    string name = 2;
+    string type = 3;
+    string language_code = 4;
+    bytes resource_file = 5;
+}
+message GetModelStatusesRequest {
+    // Required. The project that the agent to fetch is associated with.
+    // Format: `projects/<Project ID>/agent`.
+    string parent = 1;
+    int32 cache_version = 2;
+    string language_code = 3;
+    string model_name = 4;
+}
+
+message ModelStatus {
+    int32 cache_version = 1;
+    string language_code = 2;
+    string model_name = 3;
+    google.protobuf.Timestamp status_set_time = 4;
+    enum StatusName {
+        UNKNOWN = 0;
+        INITIALIZING = 1;
+        INITIALIZED = 2;
+        LOADING_DATA = 3;
+        TRAINING = 4;
+        TESTING = 5;
+        TRAINED = 6;
+    }
+    string config = 5;
+    StatusName status = 6;
+}
+
+message GetModelStatusesResponse {
+    repeated ModelStatus model_statuses = 1;
+}
+
+message CustomPlatformInfo {
+    // Required. ID of the Platform.
+    // Custom Intent.Message.Platform placeholder. Note: it will not work with non-placeholders values
+    Intent.Message.Platform platform = 1;
+
+    // Required.
+    // Name to be displayed.
+    string display_name = 2;
+
+    // Optional.
+    // Sorting position of the GetPlatformMappingRequest.
+    uint32 position = 3;
+}
+
+message GetPlatformMappingRequest {
+    // Required. The project that the agent is associated with.
+    // Format: `projects/<Project ID>/agent`.
+    string parent = 1;
+}
+
+message PlatformMapping {
+    // Required. The project that the agent is associated with.
+    // Format: `projects/<Project ID>/agent`.
+    string parent = 1;
+    // Required.
+    // If not set, it will set it empty.
+    repeated CustomPlatformInfo platform_info = 2;
+}

@@ -1,0 +1,172 @@
+// Copyright 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Modifications Copyright 2021 ONDEWO GmbH
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package ondewo.nlu;
+
+import "google/api/annotations.proto";
+import "ondewo/nlu/context.proto";
+import "ondewo/nlu/intent.proto";
+import "ondewo/nlu/session.proto";
+import "google/protobuf/struct.proto";
+
+option cc_enable_arenas = true;
+option csharp_namespace = "Google.Cloud.Dialogflow.V2";
+option go_package = "google.golang.org/genproto/googleapis/cloud/dialogflow/v2;dialogflow";
+option java_multiple_files = true;
+option java_outer_classname = "WebhookProto";
+option java_package = "com.google.cloud.dialogflow.v2";
+option objc_class_prefix = "DF";
+
+
+// service to send requests to a webhook server
+service Webhook {
+
+  // send a request for /response_refinement/ to the webhook server
+  // fulfillment messages can be overwritten by the webhook server
+  rpc ResponseRefinement (WebhookRequest) returns (WebhookResponse) {
+      option (google.api.http) = {
+          post: "/{session=projects/*/agent/sessions/*}:responseRefinement"
+          body: "*"
+      };
+  }
+
+  // send a request for /slot_filling/ to the webhook server
+  // parameter values can be provided &
+  // context information can be changed by the webhook server
+  rpc SlotFilling (WebhookRequest) returns (WebhookResponse) {
+      option (google.api.http) = {
+          post: "/{session=projects/*/agent/sessions/*}:slotFilling"
+          body: "*"
+      };
+  }
+
+  // send a Ping to the webhook server to check server health
+  // will return True if http status_code==200 is detected in the response
+  rpc Ping (PingRequest) returns (PingResponse) {
+      option (google.api.http) = {
+          get: "/projects/*/agent/webhook:ping"
+      };
+  }
+
+}
+
+// request sent for webhook ping
+message PingRequest {
+  // session ID for webhook ping
+  string session = 1;
+}
+
+// The request message for a webhook call.
+message WebhookRequest {
+  // The unique identifier of detectIntent request session.
+  // Can be used to identify end-user inside webhook implementation.
+  // Format: `projects/<Project ID>/agent/sessions/<Session ID>`.
+  string session = 4;
+
+  // The unique identifier of the response. Contains the same value as
+  // `[Streaming]DetectIntentResponse.response_id`.
+  string response_id = 1;
+
+  // The result of the conversational query or event processing. Contains the
+  // same value as `[Streaming]DetectIntentResponse.query_result`.
+  QueryResult query_result = 2;
+
+  // Optional. The contents of the original request that was passed to
+  // `[Streaming]DetectIntent` call.
+  OriginalDetectIntentRequest original_detect_intent_request = 3;
+
+  // Optional. The headers of the request message
+  google.protobuf.Struct headers = 5;
+}
+
+// The response message for a webhook call.
+message WebhookResponse {
+  // Optional. The text to be shown on the screen. This value is passed directly
+  // to `QueryResult.fulfillment_text`.
+  string fulfillment_text = 1;
+
+  // Optional. The collection of rich messages to present to the user. This
+  // value is passed directly to `QueryResult.fulfillment_messages`.
+  repeated Intent.Message fulfillment_messages = 2;
+
+  // Optional. This value is passed directly to `QueryResult.webhook_source`.
+  string source = 3;
+
+  // Optional. This value is passed directly to `QueryResult.webhook_payload`.
+  // See the related `fulfillment_messages[i].payload field`, which may be used
+  // as an alternative to this field.
+  //
+  // This field can be used for Actions on Google responses.
+  // It should have a structure similar to the JSON message shown here. For more
+  // information, see
+  // [Actions on Google Webhook
+  // Format](https://developers.google.com/actions/dialogflow/webhook)
+  // <pre>{
+  //   "google": {
+  //     "expectUserResponse": true,
+  //     "richResponse": {
+  //       "items": [
+  //         {
+  //           "simpleResponse": {
+  //             "textToSpeech": "this is a simple response"
+  //           }
+  //         }
+  //       ]
+  //     }
+  //   }
+  // }</pre>
+  google.protobuf.Struct payload = 4;
+
+  // Optional. The collection of output contexts. This value is passed directly
+  // to `QueryResult.output_contexts`.
+  repeated Context output_contexts = 5;
+
+  // Optional. Makes the platform immediately invoke another `DetectIntent` call
+  // internally with the specified event as input.
+  EventInput followup_event_input = 6;
+}
+
+// Represents the contents of the original request that was passed to
+// the `[Streaming]DetectIntent` call.
+message OriginalDetectIntentRequest {
+  // The source of this request, e.g., `google`, `facebook`, `slack`. It is set
+  // by Dialogflow-owned servers.
+  string source = 1;
+
+  // Optional. This field is set to the value of `QueryParameters.payload` field
+  // passed in the request.
+  google.protobuf.Struct payload = 3;
+}
+
+message PingResponse {
+  // This is the response message of a Ping request.
+  // It's purpose is to report the reachability of a Webhook server.
+  bool is_reachable = 1;
+}
