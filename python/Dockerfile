@@ -4,7 +4,7 @@ WORKDIR /workspace/
 
 ADD ondewo-proto-compiler/ondewo ondewo
 
-COPY python/requirements.txt requirements.txt
+COPY ondewo-proto-compiler/python/requirements.txt requirements.txt
 
 RUN pip install -r requirements.txt
 
