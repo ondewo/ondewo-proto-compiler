@@ -2,7 +2,7 @@ FROM python:3.9
 
 WORKDIR /workspace/
 
-ADD protos protos
+ADD ondewo ondewo
 
 COPY python/requirements.txt requirements.txt
 
