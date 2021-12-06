@@ -25,9 +25,8 @@ pipeline {
                 sh(script: "cp -r ${params.api_dir}/ondewo ${params.compiler_dir}")
                 sh(script: "cp ${params.compiler_dir}/python/Dockerfile ${params.compiler_dir}/Dockerfile")
                 sh(script: "docker build -t proto-compiler-image --build-arg api_directory=${params.api_dir} --build-arg compiler_directory=${params.compiler_dir} -f ${params.compiler_dir}/Dockerfile .", label: "building dockerimage")
-                sh(script: "docker run --rm proto-compiler-image", label: "running dockerimage")
+                sh(script: "docker run --rm -v clients:/workspace/clients proto-compiler-image", label: "running dockerimage")
             }
         }
     }
 }
-
