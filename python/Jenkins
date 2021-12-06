@@ -1,0 +1,33 @@
+pipeline {
+    agent any
+    parameters{
+        string(name:"api_repo", defaultValue:'git@github.com:ondewo/ondewo-nlu-api.git', description:"repo for the API")
+        string(name:"api_dir", defaultValue:'ondewo-nlu-api', description:"path for the API")
+        string(name:"compiler_repo",defaultValue:'git@github.com:ondewo/ondewo-proto-compiler.git', description:'repo for the proto compiler')
+        string(name:"compiler_dir",defaultValue:'ondewo-proto-compiler', description:'path for the proto compiler')
+    }
+    stages {
+        stage('Cleaning work space'){
+            steps{
+                sh(script: "pwd ; ls ")
+                sh(script: "rm -rf *")
+                sh(script: "mkdir -p clients/python clients/nj clients/nodejs clients/angular clients/typescript")
+            }
+        }
+        stage('Cloning Repositories') {
+            steps {
+                sh(script: "git clone -b master ${params.api_repo} ${params.api_dir} ", label: 'Clonning API repo')
+                sh(script: "git clone -b automation ${params.compiler_repo} ${params.compiler_dir}", label: 'Clonning proto compiler repo')
+            }
+        }
+        stage("Building Images"){
+            steps{
+                sh(script: "cp -r ${params.api_dir}/ondewo ${params.compiler_dir}")
+                sh(script: "cp ${params.compiler_dir}/python/Dockerfile ${params.compiler_dir}/Dockerfile")
+                sh(script: "docker build -t proto-compiler-image --build-arg api_directory=${params.api_dir} --build-arg compiler_directory=${params.compiler_dir} -f ${params.compiler_dir}/Dockerfile .", label: "building dockerimage")
+                sh(script: "docker run --rm proto-compiler-image", label: "running dockerimage")
+            }
+        }
+    }
+}
+
