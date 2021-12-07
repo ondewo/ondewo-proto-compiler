@@ -5,10 +5,11 @@ ARG compiler_directory
 ARG api_directory
 ENV API_DIR ${api_directory}
 
-WORKDIR /workspace/
 
+WORKDIR /workspace/
 COPY ${compiler_directory} /workspace/${compiler_directory}
 COPY ${api_directory} /workspace/${api_directory}
+
 
 RUN pip install -r /workspace/${compiler_directory}/python/requirements.txt
 
