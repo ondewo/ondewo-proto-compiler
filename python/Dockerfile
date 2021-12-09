@@ -16,4 +16,4 @@ RUN pip install -r /workspace/${compiler_directory}/python/requirements.txt
 CMD find . -path "*${API_DIR}/ondewo/*proto" -exec python -m grpc_tools.protoc -I ${API_DIR}/googleapis -I ${API_DIR} \
  --python_out /workspace/clients/python --mypy_out /workspace/clients/python --grpc_python_out /workspace/clients/python {} +
 
-CMD chown -R jenkins clients
+CMD chmod -R 777 clients
