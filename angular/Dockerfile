@@ -1,6 +1,6 @@
 FROM node:14.14-buster as debugging_image
 
-RUN apt update && apt install -y parallel unzip tree
+RUN apt-get update && apt-get install -y parallel unzip tree
 
 # --------------- Installing protoc (Protobuf compiler binary)
 RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip -O /tmp/protoc.zip &&\
@@ -11,6 +11,7 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.15.8/p
 
 # --------------- Copy all files from "image-data" directory to docker container
 WORKDIR /image-data
+RUN chmod -R 777 /image-data
 ADD image-data /image-data
 
 # --------------- Install npm modules required for compilation with angular
