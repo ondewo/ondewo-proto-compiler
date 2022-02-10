@@ -1,9 +1,9 @@
 FROM node:14.14-buster as debugging_image
 
-RUN apt update && apt install -y parallel unzip tree
+RUN apt update && apt install -y parallel unzip tree vim curl wget tree tmux
 
 # --------------- Installing protoc (Protobuf compiler binary)
-RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip -O /tmp/protoc.zip &&\
+RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.19.4/protoc-3.19.4-linux-x86_64.zip -O /tmp/protoc.zip &&\
  unzip -o /tmp/protoc.zip  -d /tmp/protoc/ &&\
  cp /tmp/protoc/bin/protoc /usr/local/bin/protoc &&\
  cp -r /tmp/protoc/include/* /usr/local/include &&\
