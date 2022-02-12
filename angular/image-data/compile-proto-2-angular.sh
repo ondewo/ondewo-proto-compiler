@@ -2,7 +2,7 @@
 
 #Root path of all the protos to be compiled
 
-echo "HELLLLLOOOOO"
+echo "START COMPILING PROTO 2 ANGULAR"
 
 RELATIVE_PROTOS_DIR=$1
 if [ -z "$1" ]; then
@@ -39,7 +39,9 @@ cd $OUTPUT_VOLUME_FS
 # rm -r !(".*"|"src")
 rm -r bundles
 rm -r esm2015
+rm -r esm2020
 rm -r fesm2015
+rm -r fesm2020
 rm -r node_modules
 rm -r npm
 rm -r src/node_modules
@@ -104,6 +106,7 @@ bash ./compile-stubs-2-lib.sh $IMAGE_DATA_DIRECTORY $TEMP_SRC_DIRECTORY
 # -------------- Copy results back to mounted directory
 
 echo "Copying output files to mounted directory"
+mkdir -p $TEMP_SRC_DIRECTORY/lib
 cp -r $TEMP_SRC_DIRECTORY/lib/* $OUTPUT_VOLUME_FS
 echo "Finished copying"
 

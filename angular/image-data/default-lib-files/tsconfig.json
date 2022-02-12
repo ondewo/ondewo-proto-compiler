@@ -1,23 +1,40 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "baseUrl": "./",
-    "outDir": "./lib/out-tsc",
-    "declarationMap": false,
-    "sourceMap": false,
-    "declaration": false,
-    "downlevelIteration": true,
-    "experimentalDecorators": true,
-    "moduleResolution": "node",
-    "importHelpers": true,
     "target": "es2015",
     "module": "es2020",
     "lib": [
       "es2018",
       "dom"
-    ]
+    ],
+    /* Specify library files to be included in the compilation:  */
+    "declarationMap": true,
+    "outDir": "./lib/out-tsc",
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    /* Strict Type-Checking Options */
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "stripInternal": true,
+    "downlevelIteration": true,
+    /* Module Resolution Options */
+    "moduleResolution": "node",
+    "baseUrl": "./",
+    "paths": {
+      "@angular/core": [
+        "node_modules/@angular/core/*"
+      ]
+    },
+    /* Source Map Options */
+    "inlineSources": true,
+    /* Experimental Options */
+    "experimentalDecorators": true,
+    "importHelpers": true,
   },
   "angularCompilerOptions": {
-    "enableIvy": false
+    "compilationMode": "partial",
+    "skipMetadataEmit": false
   }
 }

@@ -1,4 +1,4 @@
-FROM node:14.14-buster as debugging_image
+FROM node:16.14.0-buster as debugging_image
 
 RUN apt update && apt install -y parallel unzip tree vim curl wget tree tmux
 
@@ -14,7 +14,7 @@ WORKDIR /image-data
 ADD image-data /image-data
 
 # --------------- Install npm modules required for compilation with angular
-RUN npm run reinstall
+RUN npm install -g npm@8.5.0 && npm run reinstall
 
 # --------------- Entrypoint when the docker container is executed
 ENTRYPOINT ["bash","compile-proto-2-angular.sh"]
