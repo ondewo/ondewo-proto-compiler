@@ -1,14 +1,15 @@
 {
   "name": "ondewo-angular-proto-compiler",
   "version": "1.0.0",
-  "description": "",
+  "description": "ondewo-angular-proto-compiler",
   "main": "index.js",
   "scripts": {
     "build": "ng build --prod",
     "clean": "rm -rf node_modules",
-    "reinstall": "npm run clean && npm install"
+    "reinstall": "npm run clean && npm install -g npm@latest && npm install"
   },
-  "author": "",
+  "author": "ONDEWO GmbH <office@ondewo.com>",
+  "homepage": "https://ondewo.com/",
   "license": "Apache-2.0",
   "devDependencies": {
     "@angular-devkit/build-angular": ">=13.3.3",
@@ -18,9 +19,10 @@
     "@angular/compiler-cli": ">=13.3.3",
     "@angular/core": ">=13.3.3",
     "@ngx-grpc/common": ">=3.0.1",
-    "@ngx-grpc/core": "^>=3.0.1",
+    "@ngx-grpc/core": ">=3.0.1",
     "@ngx-grpc/protoc-gen-ng": ">=3.0.1",
     "@ngx-grpc/well-known-types": ">=3.0.1",
+    "@babel/plugin-transform-unicode-regex": ">=7.16.7",
     "google-protobuf": ">=3.20.0",
     "ng-packagr": ">=13.3.1",
     "tslib": ">=2.3.1",
