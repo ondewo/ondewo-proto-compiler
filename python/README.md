@@ -22,7 +22,7 @@ Your generated Python files will be in the `output` directory.
 Example:
 
 ```bash
-make -f python/Makefile run PROTO_DIR='ondewo-survey-api/ondewo' EXTRA_PROTO_DIR='ondewo-survey-api/googleapis/google'
+make -f Makefile PROTO_DIR='protos' TARGET_DIR='protos' OUTPUT_DIR='.' run
 ```
 
 
