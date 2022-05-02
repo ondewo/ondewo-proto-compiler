@@ -24,7 +24,7 @@ generate_protos:
 	#	If none is passed, the `/` will be ignored which is the default behaviour.
 	for f in $$(find ${INTERNAL_PROTO_DIR} -path '${INTERNAL_PROTO_DIR}/${INTERNAL_TARGET_PROTO_DIR}?*.proto'); do \
 		python -m grpc_tools.protoc \
-			-I ${INTERNAL_PROTO_DIR} \
+			-I ${INTERNAL_PROTO_DIR}/${INCLUDE_DIR} \
 			--python_out=${INTERNAL_OUTPUT_DIR} \
 			--mypy_out=${INTERNAL_OUTPUT_DIR} \
 			--grpc_python_out=${INTERNAL_OUTPUT_DIR} \
