@@ -6,7 +6,7 @@ build:
 	docker build -t ${IMAGE_NAME} .
 
 OUTPUT_DIR=output
-PROTO_DIR=ondewo
+PROTO_DIR=protos
 EXTRA_PROTO_DIR=googleapis/google
 TARGET_DIR=
 run:
