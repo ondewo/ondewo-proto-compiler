@@ -10,7 +10,7 @@ PROTO_DIR=protos
 EXTRA_PROTO_DIR=googleapis/google
 TARGET_DIR=
 run:
-	-mkdir ${OUTPUT_DIR}
+	[ -d $(OUTPUT_DIR) ] || mkdir -p $(OUTPUT_DIR)
 	docker run \
 		--user ${shell id -u}:${shell id -g} \
 		-v ${shell pwd}/${OUTPUT_DIR}:/home/ondewo/ondewo-proto-compiler/output \
