@@ -1,4 +1,4 @@
-IMAGE_NAME=ondewo-python-proto-compiler
+IMAGE_NAME=ondewo-proto-compiler-python
 INTERNAL_OUTPUT_DIR=/home/ondewo/ondewo-proto-compiler/output
 INTERNAL_PROTO_DIR=/home/ondewo/ondewo-proto-compiler/protos
 
@@ -6,11 +6,11 @@ build:
 	docker build -t ${IMAGE_NAME} .
 
 OUTPUT_DIR=output
-PROTO_DIR=ondewo
+PROTO_DIR=protos
 EXTRA_PROTO_DIR=googleapis/google
 TARGET_DIR=
 run:
-	-mkdir ${OUTPUT_DIR}
+	[ -d $(OUTPUT_DIR) ] || mkdir -p $(OUTPUT_DIR)
 	docker run \
 		--user ${shell id -u}:${shell id -g} \
 		-v ${shell pwd}/${OUTPUT_DIR}:/home/ondewo/ondewo-proto-compiler/output \
@@ -24,7 +24,7 @@ generate_protos:
 	#	If none is passed, the `/` will be ignored which is the default behaviour.
 	for f in $$(find ${INTERNAL_PROTO_DIR} -path '${INTERNAL_PROTO_DIR}/${INTERNAL_TARGET_PROTO_DIR}?*.proto'); do \
 		python -m grpc_tools.protoc \
-			-I ${INTERNAL_PROTO_DIR} \
+			-I ${INTERNAL_PROTO_DIR}/${INCLUDE_DIR} \
 			--python_out=${INTERNAL_OUTPUT_DIR} \
 			--mypy_out=${INTERNAL_OUTPUT_DIR} \
 			--grpc_python_out=${INTERNAL_OUTPUT_DIR} \

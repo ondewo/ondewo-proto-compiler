@@ -1,6 +1,6 @@
-grpcio==1.31.0
-grpcio-reflection==1.31.0
-grpcio-tools==1.31.0
-mypy-protobuf==1.20
-google-api-core==1.13.0
-googleapis-common-protos==1.5.10
+grpcio==1.46.3
+grpcio-reflection==1.46.3
+grpcio-tools==1.46.3
+mypy-protobuf==3.2.0
+google-api-core==2.8.1
+googleapis-common-protos==1.56.2

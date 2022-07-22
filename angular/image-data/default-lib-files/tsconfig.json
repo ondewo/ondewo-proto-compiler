@@ -3,21 +3,27 @@
   "compilerOptions": {
     "baseUrl": "./",
     "outDir": "./lib/out-tsc",
-    "declarationMap": false,
-    "sourceMap": false,
+    "sourceMap": true,
     "declaration": false,
-    "downlevelIteration": true,
-    "experimentalDecorators": true,
-    "moduleResolution": "node",
-    "importHelpers": true,
-    "target": "es2015",
     "module": "es2020",
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "skipLibCheck": true,
+    "target": "es2020",
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "typeRoots": [
+      "node_modules/@types"
+    ],
     "lib": [
-      "es2018",
+      "es2020",
       "dom"
     ]
   },
   "angularCompilerOptions": {
-    "enableIvy": false
+    "strictTemplates": true,
+    "strictInjectionParameters": true,
+    "compilationMode": "partial"
   }
 }

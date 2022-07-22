@@ -1,9 +1,14 @@
+#!/bin/bash
+
 #Root path of all the protos to be compiled
+
+echo "HELLLLLOOOOO"
+
 RELATIVE_PROTOS_DIR=$1
 if [ -z "$1" ]; then
     RELATIVE_PROTOS_DIR="protos"
 fi
-
+echo "$RELATIVE_PROTOS_DIR"
 
 IMAGE_DATA_DIRECTORY=/image-data
 DEFAULT_FILES_DIR=$IMAGE_DATA_DIRECTORY/default-lib-files
@@ -24,14 +29,24 @@ COMPILE_SELECTED_PROTOS_DIR=$PROTOS_ROOT_PATH/$2
 if [ -z "$2" ]; then
     COMPILE_SELECTED_PROTOS_DIR=$PROTOS_ROOT_PATH/
 fi
-
+echo "$COMPILE_SELECTED_PROTOS_DIR"
 
 #Clean output volume if exists
 echo "Clean output volume (remove everything except src-folder and dot prefixed files/dirs)"
 CURRENT_DIR=$(pwd)
 shopt -s extglob # needed to allow pattern matching on rm
 cd $OUTPUT_VOLUME_FS
-rm -r !(".*"|"src")
+# rm -r !(".*"|"src")
+rm -r bundles
+rm -r esm2015
+rm -r fesm2015
+rm -r node_modules
+rm -r npm
+rm -r src/node_modules
+rm -r ondewo-vtsi-client-angular.d.ts
+rm -r ondewo-vtsi-client-angular.metadata.json
+rm -r package.json
+rm -r public-api.d.ts
 cd $CURRENT_DIR
 
 #Create lib dir for output if no output specified
@@ -93,9 +108,10 @@ cp -r $TEMP_SRC_DIRECTORY/lib/* $OUTPUT_VOLUME_FS
 echo "Finished copying"
 
 # -------------- Copy GitHub README and RELEASE
-echo "Copying GitHub README and RELEASE files"
+echo "Copying GitHub README $TEMP_SRC_DIRECTORY/RELEASE.md and RELEASE files"
 cp -r $TEMP_SRC_DIRECTORY/.github $OUTPUT_VOLUME_FS
 cp $TEMP_SRC_DIRECTORY/RELEASE.md $OUTPUT_VOLUME_FS
+cat $TEMP_SRC_DIRECTORY/RELEASE.md
 echo "Finished copying"
 
 # -------------- Creating NPM folder
