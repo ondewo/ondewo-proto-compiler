@@ -2,6 +2,15 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 2.1.0
+
+### Improvements
+
+* Upgraded libraries for Angular Proto-Compiler
+* Turned off command line prompt for google analytics
+
+*****************
+
 ## Release ONDEWO Proto Compiler 2.0.0
 
 ### New Features
