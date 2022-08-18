@@ -15,7 +15,7 @@
     "@angular-devkit/build-angular": ">=14.1.3",
     "@angular/cli": ">=14.1.3",
     "@angular/common": ">=14.1.3",
-    "@angular/compiler": ">=14.1.1",
+    "@angular/compiler": ">=14.1.3",
     "@angular/compiler-cli": ">=14.1.3",
     "@angular/core": ">=14.1.3",
     "@ngx-grpc/common": ">=3.0.2",
