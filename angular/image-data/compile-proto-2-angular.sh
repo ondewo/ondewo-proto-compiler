@@ -45,6 +45,7 @@ rm -r npm
 rm -r src/node_modules
 rm -r ondewo-vtsi-client-angular.d.ts
 rm -r ondewo-vtsi-client-angular.metadata.json
+rm -r ondewo-vtsi-client-angular.d.ts.map
 rm -r package.json
 rm -r public-api.d.ts
 cd $CURRENT_DIR
@@ -97,9 +98,15 @@ fi
 # TEMP_LIB_DIRECTORY=$IMAGE_DATA_DIRECTORY/lib
 
 # -------------- Running compilation steps
+echo "START: Executing \"compile-proto-2-stubs.sh\"..."
 bash ./compile-proto-2-stubs.sh $TEMP_SRC_DIRECTORY/api $PROTOS_ROOT_PATH $COMPILE_SELECTED_PROTOS_DIR
+echo "DONE: Executing \"compile-proto-2-stubs.sh\"..."
+echo "START: Executing \"make-lib-entry-point.sh\"..."
 bash ./make-lib-entry-point.sh $TEMP_SRC_DIRECTORY
+echo "DONE: Executing \"make-lib-entry-point.sh\"..."
+echo "START: Executing \"compile-stubs-2-lib.sh\"..."
 bash ./compile-stubs-2-lib.sh $IMAGE_DATA_DIRECTORY $TEMP_SRC_DIRECTORY
+echo "DONE: Executing \"compile-stubs-2-lib.sh\"..."
 
 # -------------- Copy results back to mounted directory
 

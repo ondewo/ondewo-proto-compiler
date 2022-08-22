@@ -2,6 +2,14 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 3.0.0
+
+### Improvements
+
+* Upgraded libraries for Compilers
+
+*****************
+
 ## Release ONDEWO Proto Compiler 2.1.0
 
 ### Improvements
