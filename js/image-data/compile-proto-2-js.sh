@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-LIB_ENTRY_NAME="$1"
+LIB_ENTRY_NAME=$(echo "$1" | sed -e 's/\-/\_/g')
 if [ -z "$1" ]; then
     LIB_ENTRY_NAME=output_lib_name
 fi
@@ -61,8 +61,8 @@ fi
 
 # -------------- Running compilation steps
 
-bash ./compile-proto-2-stubs.sh "$TEMP_SRC_DIRECTORY/api" "$PROTOS_ROOT_PATH" "$COMPILE_SELECTED_PROTOS_DIR"
-bash ./generate-client-wrappers.sh "$TEMP_SRC_DIRECTORY/api/$3"
+bash ./compile-proto-2-stubs.sh "$TEMP_SRC_DIRECTORY" "$PROTOS_ROOT_PATH" "$COMPILE_SELECTED_PROTOS_DIR"
+bash ./generate-client-wrappers.sh "$TEMP_SRC_DIRECTORY/$3"
 bash ./make-lib-entry-point.sh "$TEMP_SRC_DIRECTORY"
 bash ./compile-stubs-2-lib.sh "$TEMP_SRC_DIRECTORY" "$LIB_ENTRY_NAME.min" "webpack.js" "$LIB_ENTRY_NAME"
 bash ./compile-stubs-2-lib.sh "$TEMP_SRC_DIRECTORY" "$LIB_ENTRY_NAME" "webpack.dev.js"
