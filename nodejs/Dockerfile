@@ -1,6 +1,6 @@
 FROM node:18.7.0-buster-slim as debugging_image
 
-RUN apt update && apt install -y parallel unzip tree
+RUN apt update && apt install -y parallel unzip tree wget
 
 # --------------- Installing protoc (Protobuf compiler binary)
 RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.5/protoc-21.5-linux-x86_64.zip -O /tmp/protoc.zip &&\
