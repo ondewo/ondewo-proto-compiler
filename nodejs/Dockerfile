@@ -18,7 +18,7 @@ WORKDIR /image-data
 ADD image-data /image-data
 
 # --------------- Install npm modules required for compilation with nodejs
-RUN npm install -g npm@^7.6.0
+RUN npm install -g npm@^8.15.1
 RUN npm install
 RUN npm install -g grpc-tools
 
