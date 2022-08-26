@@ -1,9 +1,9 @@
-FROM node:14.16-buster as debugging_image
+FROM node:18.7.0-buster-slim as debugging_image
 
-RUN apt update && apt install -y parallel unzip tree
+RUN apt update && apt install -y parallel unzip tree wget
 
 # --------------- Installing protoc (Protobuf compiler binary)
-RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.15.5/protoc-3.15.5-linux-x86_64.zip -O /tmp/protoc.zip &&\
+RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.5/protoc-21.5-linux-x86_64.zip -O /tmp/protoc.zip &&\
  unzip -o /tmp/protoc.zip  -d /tmp/protoc/ &&\
  cp /tmp/protoc/bin/protoc /usr/local/bin/protoc &&\
  cp -r /tmp/protoc/include/* /usr/local/include &&\
@@ -18,7 +18,7 @@ WORKDIR /image-data
 ADD image-data /image-data
 
 # --------------- Install npm modules required for compilation with nodejs
-RUN npm install -g npm@^7.6.0
+RUN npm install -g npm@^8.15.1
 RUN npm install
 RUN npm install -g grpc-tools
 

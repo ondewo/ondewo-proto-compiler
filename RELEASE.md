@@ -1,6 +1,16 @@
 # Release History
 
 *****************
+## Release ONDEWO Proto Compiler 4.0.0
+
+### Improvements
+
+* Automated google-proto dependencies-reading for typescript
+* Automated google-proto dependencies-reading for nodejs
+* Updated Dockerfile image to node:18.7.0-buster-slim for JS, NodeJs and Typescript Compiler
+* Updated protoc-gen-grpc-web (Dockerfile) to 1.3.1 for JS, NodeJs and Typescript Compiler
+
+*****************
 
 ## Release ONDEWO Proto Compiler 3.0.0
 

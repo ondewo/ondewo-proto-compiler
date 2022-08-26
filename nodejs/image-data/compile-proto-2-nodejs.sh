@@ -48,6 +48,37 @@ if [ ! -f $TEMP_SRC_DIRECTORY/package.json ]; then
     exit 1
 fi
 
+for protofile in $(find $COMPILE_SELECTED_PROTOS_DIR -iname "*.proto")
+do
+    cat $protofile | grep import | grep google >> $TEMP_SRC_DIRECTORY/proto-deps.txt
+done
+
+REMOVE_LINES=""
+for import in $(cat $TEMP_SRC_DIRECTORY/proto-deps.txt | grep "\"" | cut -c 7-300 )
+do
+    OCCURENCES=$(cat $TEMP_SRC_DIRECTORY/proto-deps.txt | grep $import | wc -l)
+    if [ $OCCURENCES -gt 1 ]; then
+        for line in $(cat $TEMP_SRC_DIRECTORY/proto-deps.txt | grep -n $import | cut -d':' -f1 | tail -n +2)
+        do
+            REMOVE_LINES=$REMOVE_LINES";$line""d"
+        done
+        for line in $(cat $TEMP_SRC_DIRECTORY/proto-deps.txt | grep -n "//" | cut -d':' -f1)
+        do
+            REMOVE_LINES=$REMOVE_LINES";$line""d"
+        done
+    fi
+done
+REMOVE_LINES=$(echo $REMOVE_LINES | cut -c 2-600)
+
+sed -i -e "$REMOVE_LINES" $TEMP_SRC_DIRECTORY/proto-deps.txt
+
+REMOVE_IMPORT=$(cat $TEMP_SRC_DIRECTORY/proto-deps.txt  | cut -c 8-600 | sed 's/\"//g' | sed 's/\;//')
+echo "$REMOVE_IMPORT" > $TEMP_SRC_DIRECTORY/proto-deps.txt
+
+
+echo "Gooogle Protos Dependencies:"
+cat $TEMP_SRC_DIRECTORY/proto-deps.txt
+
 # -------------- Running compilation steps
 bash ./compile-proto-2-stubs.sh $TEMP_SRC_DIRECTORY/api $PROTOS_ROOT_PATH $COMPILE_SELECTED_PROTOS_DIR $TEMP_SRC_DIRECTORY/proto-deps.txt
 bash ./make-lib-entry-point.sh $TEMP_SRC_DIRECTORY .d.ts
