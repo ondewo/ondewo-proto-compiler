@@ -75,6 +75,8 @@ sed -i -e "$REMOVE_LINES" $TEMP_SRC_DIRECTORY/proto-deps.txt
 REMOVE_IMPORT=$(cat $TEMP_SRC_DIRECTORY/proto-deps.txt  | cut -c 8-600 | sed 's/\"//g' | sed 's/\;//')
 echo "$REMOVE_IMPORT" > $TEMP_SRC_DIRECTORY/proto-deps.txt
 
+REMOVE_DUPLICATES=$(sort $TEMP_SRC_DIRECTORY/proto-deps.txt | uniq -u)
+echo "$REMOVE_DUPLICATES" > $TEMP_SRC_DIRECTORY/proto-deps.txt
 
 echo "Gooogle Protos Dependencies:"
 cat $TEMP_SRC_DIRECTORY/proto-deps.txt
