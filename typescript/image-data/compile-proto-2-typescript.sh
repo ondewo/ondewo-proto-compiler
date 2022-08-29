@@ -50,7 +50,7 @@ fi
 
 for protofile in $(find $COMPILE_SELECTED_PROTOS_DIR -iname "*.proto")
 do
-    cat $protofile | grep import | grep google >> $TEMP_SRC_DIRECTORY/proto-deps.txt
+    cat $protofile | grep import | grep "google/" >> $TEMP_SRC_DIRECTORY/proto-deps.txt
 done
 
 REMOVE_LINES=""
@@ -59,10 +59,6 @@ do
     OCCURENCES=$(cat $TEMP_SRC_DIRECTORY/proto-deps.txt | grep $import | wc -l)
     if [ $OCCURENCES -gt 1 ]; then
         for line in $(cat $TEMP_SRC_DIRECTORY/proto-deps.txt | grep -n $import | cut -d':' -f1 | tail -n +2)
-        do
-            REMOVE_LINES=$REMOVE_LINES";$line""d"
-        done
-        for line in $(cat $TEMP_SRC_DIRECTORY/proto-deps.txt | grep -n "//" | cut -d':' -f1)
         do
             REMOVE_LINES=$REMOVE_LINES";$line""d"
         done
