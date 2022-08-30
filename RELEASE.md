@@ -1,6 +1,14 @@
 # Release History
 
 *****************
+## Release ONDEWO Proto Compiler 4.1.0
+
+### Bug fixes
+
+* Fixed bug where multiple occurences of same google proto dependency werent removed
+
+*****************
+
 ## Release ONDEWO Proto Compiler 4.0.0
 
 ### Improvements
