@@ -54,7 +54,7 @@ do
 done
 
 REMOVE_LINES=""
-for import in $(cat $TEMP_SRC_DIRECTORY/proto-deps.txt | grep "\"" | cut -c 7-300 )
+for import in $(cat $TEMP_SRC_DIRECTORY/proto-deps.txt | grep "\"" | cut -c 7- )
 do
     OCCURENCES=$(cat $TEMP_SRC_DIRECTORY/proto-deps.txt | grep $import | wc -l)
     if [ $OCCURENCES -gt 1 ]; then
@@ -64,11 +64,11 @@ do
         done
     fi
 done
-REMOVE_LINES=$(echo $REMOVE_LINES | cut -c 2-600)
+REMOVE_LINES=$(echo $REMOVE_LINES | cut -c 2-)
 
 sed -i -e "$REMOVE_LINES" $TEMP_SRC_DIRECTORY/proto-deps.txt
 
-REMOVE_IMPORT=$(cat $TEMP_SRC_DIRECTORY/proto-deps.txt  | cut -c 8-600 | sed 's/\"//g' | sed 's/\;//')
+REMOVE_IMPORT=$(cat $TEMP_SRC_DIRECTORY/proto-deps.txt  | cut -c 8- | sed 's/\"//g' | sed 's/\;//')
 echo "$REMOVE_IMPORT" > $TEMP_SRC_DIRECTORY/proto-deps.txt
 
 REMOVE_DUPLICATES=$(sort $TEMP_SRC_DIRECTORY/proto-deps.txt | uniq -u)

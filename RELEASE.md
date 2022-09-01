@@ -1,6 +1,13 @@
 # Release History
 
 *****************
+## Release ONDEWO Proto Compiler 4.1.1
+
+### Bug fixes
+
+* Removed end-limit on cut commands in google-proto-dependency-automation for nodejs and typescript
+
+*****************
 ## Release ONDEWO Proto Compiler 4.1.0
 
 ### Bug fixes
