@@ -2,7 +2,7 @@ FROM node:18.7.0-buster-slim as debugging_image
 
 RUN apt update && apt install -y parallel unzip tree nano wget
 
-RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.6/protoc-21.6-linux-x86_64.zip -O /tmp/protoc.zip &&\
+RUN wget https://github.com/protocolbuffers/protobuf-javascript/archive/refs/tags/v3.21.0.zip -O /tmp/protoc.zip &&\
  unzip -o /tmp/protoc.zip  -d /tmp/protoc/ &&\
  cp /tmp/protoc/bin/protoc /usr/local/bin/protoc &&\
  cp -r /tmp/protoc/include/* /usr/local/include &&\
