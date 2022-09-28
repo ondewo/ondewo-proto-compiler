@@ -10,7 +10,7 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.20.1/p
  chmod a+x /usr/local/bin/protoc
 
 # --------------- Installing protoc compile web (typescript javscript) plugin
-RUN wget https://github.com/grpc/grpc-web/releases/download/1.4.0/protoc-gen-grpc-web-1.4.0-linux-x86_64 -O /usr/local/bin/protoc-gen-grpc-web &&\
+RUN wget https://github.com/grpc/grpc-web/releases/download/1.3.1/protoc-gen-grpc-web-1.3.1-linux-x86_64 -O /usr/local/bin/protoc-gen-grpc-web &&\
   chmod a+x /usr/local/bin/protoc-gen-grpc-web
 
 # --------------- Copy all files from "image-data" directory to docker container
