@@ -1,6 +1,13 @@
 # Release History
 
 *****************
+## Release ONDEWO Proto Compiler 4.1.2
+
+### Improvements
+
+* Commented out creations of .github-folder for Angular Compiler
+
+*****************
 ## Release ONDEWO Proto Compiler 4.1.1
 
 ### Bug fixes
