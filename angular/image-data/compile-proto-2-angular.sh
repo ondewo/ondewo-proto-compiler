@@ -115,11 +115,11 @@ cp -r $TEMP_SRC_DIRECTORY/lib/* $OUTPUT_VOLUME_FS
 echo "Finished copying"
 
 # -------------- Copy GitHub README and RELEASE
-echo "Copying GitHub README $TEMP_SRC_DIRECTORY/RELEASE.md and RELEASE files"
-cp -r $TEMP_SRC_DIRECTORY/.github $OUTPUT_VOLUME_FS
-cp $TEMP_SRC_DIRECTORY/RELEASE.md $OUTPUT_VOLUME_FS
-cat $TEMP_SRC_DIRECTORY/RELEASE.md
-echo "Finished copying"
+# echo "Copying GitHub README $TEMP_SRC_DIRECTORY/RELEASE.md and RELEASE files"
+# cp -r $TEMP_SRC_DIRECTORY/.github $OUTPUT_VOLUME_FS
+# cp $TEMP_SRC_DIRECTORY/RELEASE.md $OUTPUT_VOLUME_FS
+# cat $TEMP_SRC_DIRECTORY/RELEASE.md
+# echo "Finished copying"
 
 # -------------- Creating NPM folder
 echo "Copying files for NPM publish to NPM folder"
