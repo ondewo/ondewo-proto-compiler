@@ -7,3 +7,5 @@ cd ../node
 bash build.sh
 cd ../typescript
 bash build.sh
+cd ../python
+bash build.sh
