@@ -1,4 +1,4 @@
-FROM node:18.7.0-buster-slim as debugging_image
+FROM node:18.12-buster-slim as debugging_image
 
 RUN apt update && apt install -y parallel unzip tree nano wget
 
