@@ -1,6 +1,13 @@
 # Release History
 
 *****************
+## Release ONDEWO Proto Compiler 4.2.0
+
+### Improvements
+
+* Upgraded to newest nodejs, python and compiler versions
+
+*****************
 ## Release ONDEWO Proto Compiler 4.1.2
 
 ### Improvements
