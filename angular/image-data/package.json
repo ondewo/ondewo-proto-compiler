@@ -4,7 +4,7 @@
   "description": "ondewo-angular-proto-compiler",
   "main": "index.js",
   "scripts": {
-    "build": "ng build --configuration production",
+    "build": "ng build --configuration production --optimization",
     "clean": "rm -rf node_modules",
     "reinstall": "npm run clean && npm install -g npm@latest && npm install"
   },

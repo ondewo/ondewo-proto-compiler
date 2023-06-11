@@ -1,4 +1,10 @@
 # Release History
+*****************
+## Release ONDEWO Proto Compiler 4.3.0
+
+### Improvements
+
+* Angular optimization flag added in ng build 
 
 *****************
 ## Release ONDEWO Proto Compiler 4.2.0
