@@ -37,17 +37,17 @@ CURRENT_DIR=$(pwd)
 shopt -s extglob # needed to allow pattern matching on rm
 cd $OUTPUT_VOLUME_FS
 # rm -r !(".*"|"src")
-rm -r bundles
-rm -r esm2015
-rm -r fesm2015
-rm -r node_modules
-rm -r npm
-rm -r src/node_modules
-rm -r ondewo-vtsi-client-angular.d.ts
-rm -r ondewo-vtsi-client-angular.metadata.json
-rm -r ondewo-vtsi-client-angular.d.ts.map
-rm -r package.json
-rm -r public-api.d.ts
+rm -rf bundles
+rm -rf esm2015
+rm -rf fesm2015
+rm -rf node_modules
+rm -rf npm
+rm -rf src/node_modules
+rm -rf ondewo-vtsi-client-angular.d.ts
+rm -rf ondewo-vtsi-client-angular.metadata.json
+rm -rf ondewo-vtsi-client-angular.d.ts.map
+rm -rf package.json
+rm -rf public-api.d.ts
 cd $CURRENT_DIR
 
 #Create lib dir for output if no output specified

@@ -10,14 +10,6 @@
         "root": "./src",
         "sourceRoot": "./src",
         "prefix": "lib",
-        "optimization": {
-          "scripts": true,
-          "styles": {
-            "minify": true,
-            "inlineCritical": true
-          },
-          "fonts": true
-        },
         "architect": {
           "build": {
             "builder": "@angular-devkit/build-angular:ng-packagr",
