@@ -1,12 +1,23 @@
 # Release History
+
 *****************
+
+## Release ONDEWO Proto Compiler 4.4.0
+
+### Improvements
+
+* Angular generation updated with new grpc library and es2022 generation
+
+*****************
+
 ## Release ONDEWO Proto Compiler 4.3.0
 
 ### Improvements
 
-* Angular optimization flag added in ng build 
+* Angular optimization flag added in ng build
 
 *****************
+
 ## Release ONDEWO Proto Compiler 4.2.0
 
 ### Improvements
@@ -14,6 +25,7 @@
 * Upgraded to newest nodejs, python and compiler versions
 
 *****************
+
 ## Release ONDEWO Proto Compiler 4.1.2
 
 ### Improvements
@@ -21,6 +33,7 @@
 * Commented out creations of .github-folder for Angular Compiler
 
 *****************
+
 ## Release ONDEWO Proto Compiler 4.1.1
 
 ### Bug fixes
@@ -28,6 +41,7 @@
 * Removed end-limit on cut commands in google-proto-dependency-automation for nodejs and typescript
 
 *****************
+
 ## Release ONDEWO Proto Compiler 4.1.0
 
 ### Bug fixes
