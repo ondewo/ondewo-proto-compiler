@@ -2,6 +2,14 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 4.6.0
+
+### Bug fixes
+
+* Angular generation without proto label "optional"
+
+*****************
+
 ## Release ONDEWO Proto Compiler 4.5.0
 
 ### Improvements
@@ -13,6 +21,7 @@
 ## Release ONDEWO Proto Compiler 4.4.0
 
 ### Improvements
+
 Angular generation updated with new grpc library and es2022 generation
 
 *****************
