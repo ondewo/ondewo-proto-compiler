@@ -8,8 +8,8 @@ PROTO_GEN_NG=./node_modules/.bin/protoc-gen-ng
 echo "Checking $PROTOS_SRC_DIR for .proto files"
 PROTO_FILES_CNT=$(tree $PROTOS_SRC_DIR | fgrep .proto | wc -l)
 if [[ $PROTO_FILES_CNT -lt 1 ]]; then
-    echo "ERROR: No proto files were found in the '$PROTOS_SRC_DIR' directory, but are required to build a library from - exitting"
-    exit 1
+  echo "ERROR: No proto files were found in the '$PROTOS_SRC_DIR' directory, but are required to build a library from - exitting"
+  exit 1
 fi
 echo "Found $PROTO_FILES_CNT .proto files in directory: $PROTO_FILES_CNT"
 echo "Source verified."
@@ -19,13 +19,21 @@ echo "Starting .proto to grpc client stubs compilation ..."
 ALL_PROTO_FILES=$(find $PROTOS_SRC_DIR -iname "*.proto")
 echo "Consuming .proto files: $ALL_PROTO_FILES: "
 
+# -------------- remove optional keyword from proto files - Note: note needed anymore
+#SEARCH_TEXT="optional "
+## Find all *.proto files and loop through them
+#find "$PROTOS_SRC_DIR" -iname "*.proto" -print0 | while IFS= read -r -d '' file; do
+#    # Replace "optional " with an empty string using sed
+#    sed -i "s/$SEARCH_TEXT//g" "$file"
+#done
+
 mkdir -p $STUBS_TARGET_DIR
 
 protoc \
---plugin=protoc-gen-ng=$PROTO_GEN_NG \
---ng_out=$STUBS_TARGET_DIR \
--I $PROTOS_ROOT_DIR \
-$ALL_PROTO_FILES
+  --plugin=protoc-gen-ng=$PROTO_GEN_NG \
+  --ng_out=$STUBS_TARGET_DIR \
+  -I $PROTOS_ROOT_DIR \
+  $ALL_PROTO_FILES
 
 echo ".proto compilation finished."
 

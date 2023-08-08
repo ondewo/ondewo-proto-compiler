@@ -40,6 +40,8 @@ cd $OUTPUT_VOLUME_FS
 rm -rf bundles
 rm -rf esm2015
 rm -rf fesm2015
+rm -rf esm2022
+rm -rf fesm2022
 rm -rf node_modules
 rm -rf npm
 rm -rf src/node_modules

@@ -11,7 +11,7 @@
   "peerDependencies": {
     "@angular/common": ">=8.0.0",
     "@angular/core": ">=8.0.0",
-    "@ngx-grpc/common": "^2.1.0",
-    "@ngx-grpc/core": "^2.1.0"
+    "@ngx-grpc/common": ">=3.1.1",
+    "@ngx-grpc/core": ">=3.1.1"
   }
 }

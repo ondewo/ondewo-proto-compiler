@@ -1,32 +1,34 @@
 {
-  "name": "ondewo-angular-proto-compiler",
-  "version": "1.0.0",
-  "description": "ondewo-angular-proto-compiler",
-  "main": "index.js",
-  "scripts": {
-    "build": "ng build --configuration production",
-    "clean": "rm -rf node_modules",
-    "reinstall": "npm run clean && npm install -y -g npm@latest && npm install"
-  },
-  "author": "ONDEWO GmbH <office@ondewo.com>",
-  "homepage": "https://ondewo.com/",
-  "license": "Apache-2.0",
-  "devDependencies": {
-    "@angular-devkit/build-angular": "~14.2.12",
-    "@angular/cli": "~14.2.12",
-    "@angular/common": "~14.3.0",
-    "@angular/compiler": "~14.3.0",
-    "@angular/compiler-cli": "~14.3.0",
-    "@angular/core": "~14.3.0",
-    "@ngx-grpc/common": ">=3.0.2",
-    "@ngx-grpc/core": ">=3.0.2",
-    "@ngx-grpc/protoc-gen-ng": ">=3.0.2",
-    "@ngx-grpc/well-known-types": ">=3.0.2",
-    "@babel/plugin-transform-unicode-regex": ">=7.18.6",
-    "google-protobuf": ">=3.21.0",
-    "ng-packagr": "~14.2.2",
-    "tslib": ">=2.4.0",
-    "typescript": ">=4.7.4",
-    "zone.js": ">=0.11.8"
-  }
+    "name": "ondewo-angular-proto-compiler",
+    "version": "1.1.0",
+    "description": "ondewo-angular-proto-compiler",
+    "main": "index.js",
+    "scripts": {
+        "build": "ng build --configuration production",
+        "clean": "rm -rf node_modules",
+        "reinstall": "npm run clean && npm install -y -g npm@latest && npm install"
+    },
+    "author": "ONDEWO GmbH <office@ondewo.com>",
+    "homepage": "https://ondewo.com/",
+    "license": "Apache-2.0",
+    "devDependencies": {
+        "@angular-devkit/build-angular": "~14.2.12",
+        "@angular/cli": "~14.2.12",
+        "@angular/common": "~14.3.0",
+        "@angular/compiler": "~14.3.0",
+        "@angular/compiler-cli": "~14.3.0",
+        "@angular/core": "~14.3.0",
+        "@babel/plugin-transform-unicode-regex": ">=7.18.6",
+        "@ngx-grpc/common": ">=3.1.1",
+        "@ngx-grpc/core": ">=3.1.1",
+        "@ngx-grpc/grpc-web-client": ">=3.1.1",
+        "@ngx-grpc/protoc-gen-ng": ">=3.1.1",
+        "@ngx-grpc/well-known-types": ">=3.1.1",
+        "google-protobuf": ">=3.21.0",
+        "grpc-web": "^1.4.2",
+        "ng-packagr": "~14.2.2",
+        "tslib": ">=2.4.0",
+        "typescript": ">=4.7.4",
+        "zone.js": ">=0.11.8"
+    }
 }

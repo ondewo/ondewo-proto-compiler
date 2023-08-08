@@ -13,6 +13,8 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v23.4/pro
 WORKDIR /image-data
 ADD image-data /image-data
 
+RUN npm install -g npm@9.8.1
+
 # --------------- Install npm modules required for compilation with angular
 RUN npm run reinstall
 
