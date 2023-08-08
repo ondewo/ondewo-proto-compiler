@@ -1,0 +1,5 @@
+mypy-protobuf
+pytest
+mypy
+flake8
+setuptools>=59.5.0

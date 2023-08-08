@@ -1,0 +1,37 @@
+FROM python:3.8-slim
+
+ENV LANG=C.UTF-8
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe/Vienna
+
+ENV GITHUB_GH_TOKEN=<GITHUB_GH_TOKEN>
+
+RUN apt-get update -qq  \
+  && apt-get dist-upgrade -qq -y --no-install-recommends --fix-missing make tmux vim sed tree tk-dev curl sudo tzdata \
+  && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime  \
+  && echo $TZ > /etc/timezone \
+  && dpkg-reconfigure --frontend noninteractive tzdata \
+  && apt-get clean \
+  && apt-get purge -y --auto-remove \
+  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+    && sudo apt update \
+    && sudo apt install -y gh
+
+WORKDIR /home/ondewo/
+
+COPY Makefile .
+
+COPY LICENSE .
+
+COPY README.md .
+
+COPY CONTRIBUTING.md .
+
+COPY RELEASE.md .
+
+# run the container forever
+CMD tail -f /dev/null
