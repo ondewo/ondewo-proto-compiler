@@ -2,6 +2,14 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 4.5.0
+
+### Improvements
+
+* Angular generation updated with new grpc libraries
+
+*****************
+
 ## Release ONDEWO Proto Compiler 4.4.0
 
 ### Improvements
