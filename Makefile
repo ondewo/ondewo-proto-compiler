@@ -106,24 +106,6 @@ login_to_gh: ## Login to Github CLI with Access Token
 build_gh_release: ## Generate Github Release with CLI
 	gh release create --repo $(GH_REPO) "$(ONDEWO_PROTO_COMPILER_VERSION)" -n "$(CURRENT_RELEASE_NOTES)" -t "Release ${ONDEWO_PROTO_COMPILER_VERSION}"
 
-GENERIC_CLIENT?=
-RELEASEMD?=
-GENERIC_RELEASE_NOTES="\n***************** \n\\\#\\\# Release ONDEWO Proto Compiler REPONAME Client ${ONDEWO_PROTO_COMPILER_VERSION} \n \
-	\n\\\#\\\#\\\# Improvements \n \
-	* Tracking API Version [${ONDEWO_PROTO_COMPILER_VERSION}](https://github.com/ondewo/ondewo-proto-compiler/releases/tag/${ONDEWO_PROTO_COMPILER_VERSION}) ( [Documentation](https://ondewo.github.io/ondewo-proto-compiler/) ) \n"
-
-# Change Version Number and RELEASE NOTES
-	cd ${REPO_DIR} && sed -i -e '/Release History/r ../temp-notes' ${RELEASEMD}
-	cd ${REPO_DIR} && head -20 ${RELEASEMD}
-	cd ${REPO_DIR} && sed -i -e 's/ONDEWO_PROTO_COMPILER_VERSION.*=.*[0-9]*.[0-9]*.[0-9]/ONDEWO_PROTO_COMPILER_VERSION = ${ONDEWO_PROTO_COMPILER_VERSION}/' Makefile
-
-# Build new code
-	make -C ${REPO_DIR} ondewo_release | tee build_log_${REPO_NAME}.txt
-	make -C ${REPO_DIR} TEST
-# Remove everything from Release
-	sudo rm -rf ${REPO_DIR}
-	rm -f temp-notes
-
 ########################################################
 #		GITHUB
 
