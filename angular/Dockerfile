@@ -9,6 +9,7 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v23.4/pro
  cp -r /tmp/protoc/include/* /usr/local/include &&\
  chmod a+x /usr/local/bin/protoc
 
+RUN echo "hl"
 # --------------- Copy all files from "image-data" directory to docker container
 WORKDIR /image-data
 ADD image-data /image-data

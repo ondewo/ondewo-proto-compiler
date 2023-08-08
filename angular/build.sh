@@ -1,2 +1,2 @@
 #Build the docker image
-docker build -t ondewo-angular-proto-compiler "$(dirname "$0")"
+docker build --no-cache -t ondewo-angular-proto-compiler:latest "$(dirname "$0")"
