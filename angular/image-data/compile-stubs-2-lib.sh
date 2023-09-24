@@ -1,3 +1,5 @@
+echo "START: execute script compile-stubs-2-lib.sh"
+
 #Root directory of the compilation -> public api file + package.js
 ANGULAR_WORKSPACE_DIR=$1
 cd $ANGULAR_WORKSPACE_DIR
@@ -7,3 +9,5 @@ echo "Starting angular build process of library package ..."
 echo "Executing build (prod)"
 npm run build
 echo "Finished angular build."
+
+echo "DONE: execute script compile-stubs-2-lib.sh"

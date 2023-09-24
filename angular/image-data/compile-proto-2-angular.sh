@@ -2,11 +2,11 @@
 
 #Root path of all the protos to be compiled
 
-echo "HELLLLLOOOOO"
+echo "START: execute script compile-proto-2-angular.sh"
 
 RELATIVE_PROTOS_DIR=$1
 if [ -z "$1" ]; then
-    RELATIVE_PROTOS_DIR="protos"
+  RELATIVE_PROTOS_DIR="protos"
 fi
 echo "$RELATIVE_PROTOS_DIR"
 
@@ -27,7 +27,7 @@ PROTOS_ROOT_PATH=$INPUT_VOLUME_FS/$RELATIVE_PROTOS_DIR
 #Subdir of the protos to be compiled
 COMPILE_SELECTED_PROTOS_DIR=$PROTOS_ROOT_PATH/$2
 if [ -z "$2" ]; then
-    COMPILE_SELECTED_PROTOS_DIR=$PROTOS_ROOT_PATH/
+  COMPILE_SELECTED_PROTOS_DIR=$PROTOS_ROOT_PATH/
 fi
 echo "$COMPILE_SELECTED_PROTOS_DIR"
 
@@ -54,47 +54,47 @@ cd $CURRENT_DIR
 
 #Create lib dir for output if no output specified
 if [ ! -d $OUTPUT_VOLUME_FS ]; then
-    echo "Destination volume not specified/ does not exist -> creating output in sourcevolume/lib directory"
-    OUTPUT_VOLUME_FS=$INPUT_VOLUME_FS/lib
-    mkdir -p $OUTPUT_VOLUME_FS
+  echo "Destination volume not specified/ does not exist -> creating output in sourcevolume/lib directory"
+  OUTPUT_VOLUME_FS=$INPUT_VOLUME_FS/lib
+  mkdir -p $OUTPUT_VOLUME_FS
 fi
 
 # -------------- Check if all the requirements are there and exist if not
 echo "Checking if all the source requirements are fulfilled ..."
 
 if [ ! -f $TEMP_SRC_DIRECTORY/package.json ]; then
-    echo "ERROR: A package.json file was not specified in the mounted directory this is however required - exitting"
-    exit 1
+  echo "ERROR: A package.json file was not specified in the mounted directory this is however required - exitting"
+  exit 1
 fi
 
 if [ ! -f $TEMP_SRC_DIRECTORY/README.md ]; then
-    echo "ERROR: A README.md file (for NPM) was not specified in the mounted directory this is however required - exitting"
-    exit 1
+  echo "ERROR: A README.md file (for NPM) was not specified in the mounted directory this is however required - exitting"
+  exit 1
 fi
 
 if [ ! -f $TEMP_SRC_DIRECTORY/.github/README.md ]; then
-    echo "ERROR: A README.md file (for GitHub) was not specified in the mounted directory this is however required - exitting"
-    exit 1
+  echo "ERROR: A README.md file (for GitHub) was not specified in the mounted directory this is however required - exitting"
+  exit 1
 fi
 
 if [ ! -f $TEMP_SRC_DIRECTORY/RELEASE.md ]; then
-    echo "ERROR: A RELEASE.md file (for GitHub) was not specified in the mounted directory this is however required - exitting"
-    exit 1
+  echo "ERROR: A RELEASE.md file (for GitHub) was not specified in the mounted directory this is however required - exitting"
+  exit 1
 fi
 
 if [ ! -f $TEMP_SRC_DIRECTORY/LICENSE ]; then
-    echo "No LICENSE file specified in source directory -> copying default file"
-    cp $DEFAULT_FILES_DIR/LICENSE $TEMP_SRC_DIRECTORY/LICENSE
+  echo "No LICENSE file specified in source directory -> copying default file"
+  cp $DEFAULT_FILES_DIR/LICENSE $TEMP_SRC_DIRECTORY/LICENSE
 fi
 
 if [ ! -f $TEMP_SRC_DIRECTORY/tsconfig.json ]; then
-    echo "No tsconfig.json specified in source directory -> copying default file"
-    cp $DEFAULT_FILES_DIR/tsconfig.json $TEMP_SRC_DIRECTORY/tsconfig.json
+  echo "No tsconfig.json specified in source directory -> copying default file"
+  cp $DEFAULT_FILES_DIR/tsconfig.json $TEMP_SRC_DIRECTORY/tsconfig.json
 fi
 
 if [ ! -f $TEMP_SRC_DIRECTORY/ng-package.json ]; then
-    echo "No ng-package.json specified in source directory -> copying default file"
-    cp $DEFAULT_FILES_DIR/ng-package.json $TEMP_SRC_DIRECTORY/ng-package.json
+  echo "No ng-package.json specified in source directory -> copying default file"
+  cp $DEFAULT_FILES_DIR/ng-package.json $TEMP_SRC_DIRECTORY/ng-package.json
 fi
 
 # TEMP_LIB_DIRECTORY=$IMAGE_DATA_DIRECTORY/lib
@@ -138,3 +138,5 @@ echo
 echo "Also a npm-folder for publishing to NPM was created."
 echo "For publishing on NPM run: 'npm publish npm --access public' from output directory or run the publish-npm script."
 echo "(Check if versions in package.json and RELEASE.md are correct)"
+
+echo "DONE: execute script compile-proto-2-angular.sh"

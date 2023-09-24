@@ -85,13 +85,16 @@ repos:
                         '--mode=regex_match' ]
 
     -   repo: https://github.com/pre-commit/mirrors-eslint
-        rev: 'v8.37.0'
+        rev: 'v8.50.0'
         hooks:
             -   id: eslint
                 name: ESLint
                 entry: bash -c 'export NODE_OPTIONS=--max_old_space_size=8192 && eslint --fix -c .eslintrc.json --ignore-pattern "**/node_modules/**" "client/**/*.ts"'
                 language: script
                 types: [ typescript ]
+                additional_dependencies:
+                    - eslint@8.50.0
+                    - eslint-plugin-import@2.22.1
 
     -   repo: https://github.com/prettier/prettier
         rev: "2.8.7"
