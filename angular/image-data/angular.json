@@ -2,29 +2,29 @@
     "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
     "version": 1,
     "cli": {
-    "analytics": false
+        "analytics": false
     },
     "projects": {
-      "ondewo-proto-client-angular": {
-        "projectType": "library",
-        "root": "./src",
-        "sourceRoot": "./src",
-        "prefix": "lib",
-        "architect": {
-          "build": {
-            "builder": "@angular-devkit/build-angular:ng-packagr",
-            "options": {
-              "tsConfig": "./src/tsconfig.json",
-              "project": "./src"
-            },
-            "configurations": {
-              "production": {
-                "tsConfig": "./src/tsconfig.json"
-              }
+        "ondewo-proto-client-angular": {
+            "projectType": "library",
+            "root": "./src",
+            "sourceRoot": "./src",
+            "prefix": "lib",
+            "architect": {
+                "build": {
+                    "builder": "@angular-devkit/build-angular:ng-packagr",
+                    "options": {
+                        "tsConfig": "./src/tsconfig.json",
+                        "project": "./src"
+                    },
+                    "configurations": {
+                        "production": {
+                            "tsConfig": "./src/tsconfig.json"
+                        }
+                    }
+                }
             }
-          }
         }
-      }
     },
     "defaultProject": "ondewo-proto-client-angular"
-  }
+}
