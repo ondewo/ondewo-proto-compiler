@@ -2,6 +2,14 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 4.7.0
+
+### Bug fixes
+
+* Angular 16 upgrade of angular libraries
+
+*****************
+
 ## Release ONDEWO Proto Compiler 4.6.0
 
 ### Bug fixes
