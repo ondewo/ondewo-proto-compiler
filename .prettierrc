@@ -1,0 +1,13 @@
+{
+	"ignore": ["**/.git/**", "**/node_modules/**"],
+	"trailingComma": "none",
+	"tabWidth": 2,
+	"semi": true,
+	"singleQuote": true,
+	"useTabs": true,
+	"endOfLine": "lf",
+	"printWidth": 120,
+	"bracketSpacing": true,
+	"arrowParens": "always",
+	"htmlWhitespaceSensitivity": "strict"
+}

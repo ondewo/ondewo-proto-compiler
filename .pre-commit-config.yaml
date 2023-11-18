@@ -15,37 +15,36 @@ fail_fast: false
 # "fail_fast: false" means pre-commit continues to run hooks after the first failure
 
 repos:
-
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
       #      - id: no-commit-to-branch  # Protect specific branches from direct checkins
       #        args: [ --branch, master ]
-      - id: check-added-large-files  # Prevent giant files from being committed
-        args: [ maxkb=1024 ]
-      - id: check-ast  # Check whether files parse as valid python
-      - id: check-json  # Attempt to load json files to verify syntax
-      - id: check-xml  # Attempt to load xml files to verify syntax
-      - id: check-yaml  # Attempt to load yaml files to verify syntax
-      - id: check-merge-conflict  # Check for files that contain merge conflict strings
-      - id: check-symlinks  # Check for broken symlinks
-      - id: debug-statements  # Check for debugger imports and py37+ breakpoint() calls
-      - id: detect-private-key  # Check for the existence of private keys
+      - id: check-added-large-files # Prevent giant files from being committed
+        args: [maxkb=1024]
+      - id: check-ast # Check whether files parse as valid python
+      - id: check-json # Attempt to load json files to verify syntax
+      - id: check-xml # Attempt to load xml files to verify syntax
+      - id: check-yaml # Attempt to load yaml files to verify syntax
+      - id: check-merge-conflict # Check for files that contain merge conflict strings
+      - id: check-symlinks # Check for broken symlinks
+      - id: debug-statements # Check for debugger imports and py37+ breakpoint() calls
+      - id: detect-private-key # Check for the existence of private keys
       - id: check-executables-have-shebangs
-      - id: trailing-whitespace  # Trim trailing whitespace.
+      - id: trailing-whitespace # Trim trailing whitespace.
       - id: end-of-file-fixer # makes sure files end in a newline and only a newline
       - id: pretty-format-json # autoformat json files (e.g. sorting keys)
-        args: [ --autofix, --indent=4 ]
+        args: [--autofix, --indent=4]
       - id: name-tests-test # name pytest files correctly
-        args: [ --pytest-test-first ]
-      - id: requirements-txt-fixer  # Sorts the requirement.txt files' content
+        args: [--pytest-test-first]
+      - id: requirements-txt-fixer # Sorts the requirement.txt files' content
         files: 'requirements.*\.txt$'
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.7.0
     hooks:
       - id: mypy
-        args: [ '--config-file=dockerfiles/code_checks/mypy.ini' ]
+        args: ['--config-file=dockerfiles/code_checks/mypy.ini']
         exclude: (^ondewo-utils|^notebooks|^tests_old|^tests/pytest_utils)
         # Use language: system to run Mypy git repo's existing virtual environment
         # instead of mypy's own virtual environment. Necessary to find types-.* packages
@@ -60,48 +59,47 @@ repos:
         require_serial: true
         # Print the number of files as sanity-check
         verbose: true
-        types: [ python ]
+        types: [python]
 
   - repo: https://github.com/pycqa/flake8
     rev: 6.1.0
     hooks:
       - id: flake8
-        args: [ '--config=dockerfiles/code_checks/.flake8' ]
+        args: ['--config=dockerfiles/code_checks/.flake8']
         exclude: (^ondewo-utils|^notebooks)
 
   - repo: https://github.com/pre-commit/mirrors-autopep8
     rev: v2.0.4
     hooks:
-      - id: autopep8  # Perform pep8 auto-formatting
-        args: [ --max-line-length=120, --in-place ]
+      - id: autopep8 # Perform pep8 auto-formatting
+        args: [--max-line-length=120, --in-place]
         exclude: (^ondewo-utils|^notebooks)
 
   - repo: https://github.com/milin/giticket
     rev: v1.4
     hooks:
-      - id: giticket  # Prepend the commit message with the JIRA ticket
-        args: [ '--regex=(?:(?:feature|bugfix|support|hotfix)/)?(OND[0-9]{3}-[0-9]{1,5})[_-][\w-]+',
-                '--format=[{ticket}] {commit_msg}',
-                '--mode=regex_match' ]
+      - id: giticket # Prepend the commit message with the JIRA ticket
+        args:
+          [
+            '--regex=(?:(?:feature|bugfix|support|hotfix)/)?(OND[0-9]{3}-[0-9]{1,5})[_-][\w-]+',
+            '--format=[{ticket}] {commit_msg}',
+            '--mode=regex_match'
+          ]
 
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        exclude: '^\.git/|^node_modules/'
+#        args: ["--write", "client/**/*.{js,jsx,ts,tsx,md,html,css,json,scss}"]
 #  - repo: https://github.com/pre-commit/mirrors-eslint
-#    rev: 'v8.53.0'
+#    rev: 'v8.37.0'
 #    hooks:
 #      - id: eslint
 #        name: ESLint
-#        #        entry: bash -c 'export NODE_OPTIONS=--max_old_space_size=8192 && eslint --fix -c .eslintrc.json --ignore-pattern "**/node_modules/**" "client/**/*.ts"'
-#        #        language: script
-#        files: \.[jt]sx?$
-#        types: [ file ]
-#        additional_dependencies:
-#          - eslint@8.54.0
-#          - eslint-plugin-import@2.29.0
-
-#  - repo: https://github.com/prettier/prettier
-#    rev: "3.1.0"
-#    hooks:
-#      - id: prettier
-#        args: [ --write, 'client/**/*.{js,jsx,ts,tsx,md,html,css,json,scss}' ]
+#        entry: bash -c 'export NODE_OPTIONS=--max_old_space_size=8192 && eslint --fix -c .eslintrc.json --ignore-pattern "**/node_modules/**" "client/**/*.ts"'
+#        language: script
+##        types: [ typescript ]
 
 #  - repo: https://github.com/typicode/husky
 #    rev: v8.0.3
