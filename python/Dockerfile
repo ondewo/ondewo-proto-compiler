@@ -1,4 +1,4 @@
-FROM python:3.8.16-slim-buster
+FROM python:3.9.16-buster
 
 WORKDIR /home/ondewo/ondewo-proto-compiler
 

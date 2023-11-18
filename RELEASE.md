@@ -2,6 +2,16 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 4.8.0
+
+### Improvements
+
+* Python:
+    * Upgraded to grpc 1.59.2
+    * Upgraded python 3.9.18
+
+*****************
+
 ## Release ONDEWO Proto Compiler 4.7.0
 
 ### Bug fixes
