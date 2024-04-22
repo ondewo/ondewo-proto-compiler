@@ -1,20 +1,10 @@
 {
-    "name": "ondewo-angular-proto-compiler",
-    "version": "4.7.0",
-    "description": "ondewo-angular-proto-compiler",
-    "main": "index.js",
-    "scripts": {
-        "build": "ng build --configuration production",
-        "clean": "rm -rf node_modules",
-        "reinstall": "npm run clean && npm install -y -g npm@latest && npm install"
-    },
     "author": "ONDEWO GmbH <office@ondewo.com>",
-    "homepage": "https://ondewo.com/",
-    "license": "Apache-2.0",
+    "description": "ondewo-angular-proto-compiler",
     "devDependencies": {
         "@angular-devkit/build-angular": "^16.2.3",
-        "@angular/common": "^16.2.6",
         "@angular/cli": "^16.2.3",
+        "@angular/common": "^16.2.6",
         "@angular/compiler": "^16.2.6",
         "@angular/compiler-cli": "^16.2.6",
         "@angular/core": "^16.2.6",
@@ -33,5 +23,15 @@
         "tslib": ">=2.4.1",
         "typescript": ">=4.9.3",
         "zone.js": ">=0.13.1"
-    }
+    },
+    "homepage": "https://ondewo.com/",
+    "license": "Apache-2.0",
+    "main": "index.js",
+    "name": "ondewo-angular-proto-compiler",
+    "scripts": {
+        "build": "ng build --configuration production",
+        "clean": "rm -rf node_modules",
+        "reinstall": "npm run clean && npm install -y -g npm@latest && npm install"
+    },
+    "version": "4.8.0"
 }

@@ -8,7 +8,7 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v24.3/pro
  cp -r /tmp/protoc/include/* /usr/local/include &&\
  chmod a+x /usr/local/bin/protoc
 
-RUN wget https://github.com/grpc/grpc-web/releases/download/1.3.1/protoc-gen-grpc-web-1.3.1-linux-x86_64 -O /usr/local/bin/protoc-gen-grpc-web &&\
+RUN wget https://github.com/grpc/grpc-web/releases/download/1.5.0/protoc-gen-grpc-web-1.5.0-linux-x86_64 -O /usr/local/bin/protoc-gen-grpc-web &&\
   chmod a+x /usr/local/bin/protoc-gen-grpc-web
 
 # --------------- Copy all files from "image-data" directory to docker container
