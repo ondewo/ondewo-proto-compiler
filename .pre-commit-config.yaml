@@ -90,7 +90,7 @@ repos:
     rev: v3.1.0
     hooks:
       - id: prettier
-        exclude: '^\.git/|^node_modules/|^typescript/image-data/'
+        exclude: '^\.git/|^node_modules/|^typescript/image-data|^nodejs/image-data/|^js/image-data/'
 #        args: ['--write', 'client/**/*.{js,jsx,ts,tsx,md,html,css,json,scss}']
 #  - repo: https://github.com/pre-commit/mirrors-eslint
 #    rev: 'v8.37.0'
