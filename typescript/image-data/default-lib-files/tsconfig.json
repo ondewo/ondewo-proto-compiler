@@ -1,20 +1,20 @@
 {
-  "compileOnSave": false,
-  "compilerOptions": {
-    "baseUrl": "./",
-    "outDir": "./lib/out-tsc",
-    "declarationMap": false,
-    "sourceMap": false,
-    "declaration": false,
-    "downlevelIteration": true,
-    "experimentalDecorators": true,
-    "moduleResolution": "node",
-    "importHelpers": true,
-    "target": "es2015",
-    "module": "es2020",
-    "lib": [
-      "es2018",
-      "dom"
-    ]
-  }
+    "compileOnSave": false,
+    "compilerOptions": {
+        "baseUrl": "./",
+        "declaration": false,
+        "declarationMap": false,
+        "downlevelIteration": true,
+        "experimentalDecorators": true,
+        "importHelpers": true,
+        "lib": [
+            "ES2022",
+            "dom"
+        ],
+        "module": "ES2022",
+        "moduleResolution": "node",
+        "outDir": "./lib/out-tsc",
+        "sourceMap": true,
+        "target": "ES2022"
+    }
 }

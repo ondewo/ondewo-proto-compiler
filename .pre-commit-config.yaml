@@ -41,7 +41,7 @@ repos:
         files: 'requirements.*\.txt$'
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.7.0
+    rev: v1.9.0
     hooks:
       - id: mypy
         args: ['--config-file=dockerfiles/code_checks/mypy.ini']
@@ -62,7 +62,7 @@ repos:
         types: [python]
 
   - repo: https://github.com/pycqa/flake8
-    rev: 6.1.0
+    rev: 7.0.0
     hooks:
       - id: flake8
         args: ['--config=dockerfiles/code_checks/.flake8']
@@ -90,7 +90,7 @@ repos:
     rev: v3.1.0
     hooks:
       - id: prettier
-        exclude: '^\.git/|^node_modules/'
+        exclude: '^\.git/|^node_modules/|^typescript/image-data/'
 #        args: ['--write', 'client/**/*.{js,jsx,ts,tsx,md,html,css,json,scss}']
 #  - repo: https://github.com/pre-commit/mirrors-eslint
 #    rev: 'v8.37.0'
