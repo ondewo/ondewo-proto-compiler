@@ -8,7 +8,7 @@ fi
 IMAGE_DATA_DIRECTORY=/image-data
 DEFAULT_FILES_DIR=$IMAGE_DATA_DIRECTORY/default-lib-files
 
-#Input volumes mouted at root
+#Input volumes module at root
 INPUT_VOLUME_FS=/input-volume
 OUTPUT_VOLUME_FS=/output-volume
 
@@ -22,7 +22,9 @@ PROTOS_ROOT_PATH=$INPUT_VOLUME_FS/$RELATIVE_PROTOS_DIR
 #If not specified take all protos in the protos root path (otherwise a relative directory)
 #Subdir of the protos to be compiled
 COMPILE_SELECTED_PROTOS_DIR=$PROTOS_ROOT_PATH/$2
+echo "COMPILE_SELECTED_PROTOS_DIR=$COMPILE_SELECTED_PROTOS_DIR"
 if [ -z "$2" ]; then
+    echo "Adjusted: COMPILE_SELECTED_PROTOS_DIR=$COMPILE_SELECTED_PROTOS_DIR"
     COMPILE_SELECTED_PROTOS_DIR=$PROTOS_ROOT_PATH/
 fi
 
@@ -50,8 +52,53 @@ fi
 
 for protofile in $(find $COMPILE_SELECTED_PROTOS_DIR -iname "*.proto")
 do
+    echo "ONDEWO: For loop: $protofile"
+    # FIXME: this does not work since it might be that the proto which is referenced references again another proto
     cat $protofile | grep import | grep "google/" >> $TEMP_SRC_DIRECTORY/proto-deps.txt
 done
+
+for protofile in $(find $COMPILE_SELECTED_PROTOS_DIR/../google -iname "*.proto" | grep -E "api|rpc|type" | grep -vE "streetview|storagetransfer|spanner|vision|monitoring|automl|bigquery|dataproc|dialogflow|appengine|bigtable|datastore|firestore|genomics|home|googleads|experimental|devtools|experimental|servicecontrol|servicemanagement")
+do
+    echo "Google: For loop: $protofile"
+    # workaround: since it might be that the proto which is referenced references again another proto
+    cat $protofile | grep import | grep "google/" >> $TEMP_SRC_DIRECTORY/proto-deps.txt
+done
+
+
+#for protofile in $(find $COMPILE_SELECTED_PROTOS_DIR -iname "*.proto")
+#do
+#    echo "For loop: $protofile"
+#    # FIXME: this does not work since it might be that the proto which is referenced references again another proto
+#    cat $protofile | grep import | grep "google/" >> $TEMP_SRC_DIRECTORY/proto-deps.txt
+#
+#    cat $protofile | grep import | grep "google/" >> $TEMP_SRC_DIRECTORY/tmp_rec_1.txt
+#
+#    echo "$TEMP_SRC_DIRECTORY/tmp_rec_1.txt: $TEMP_SRC_DIRECTORY/tmp_rec_1.txt"
+#    cat $TEMP_SRC_DIRECTORY/tmp_rec_1.txt
+#
+#    for dep_file_rec_1 in $TEMP_SRC_DIRECTORY/tmp_rec_1.txt
+#    do
+#        cat $dep_file_rec_1 | grep import | grep "google/" >> $TEMP_SRC_DIRECTORY/proto-deps.txt
+#        cat $dep_file_rec_1 | grep import | grep "google/" >> $TEMP_SRC_DIRECTORY/tmp_rec_2.txt
+#
+#        echo "$TEMP_SRC_DIRECTORY/tmp_rec_2.txt:"
+#        cat $TEMP_SRC_DIRECTORY/tmp_rec_2.txt
+#
+#        for dep_file_rec_2 in $TEMP_SRC_DIRECTORY/tmp_rec_2.txt
+#        do
+#          echo "dep_file_rec_2: $dep_file_rec_2"
+#          cat $dep_file_rec_2 | grep import | grep "google/" >> $TEMP_SRC_DIRECTORY/proto-deps.txt
+#        done
+#        rm $TEMP_SRC_DIRECTORY/tmp_rec_2.txt
+#    done
+#    rm $TEMP_SRC_DIRECTORY/tmp_rec_1.txt
+#done
+
+echo "Google Protos Dependencies:"
+sort "$TEMP_SRC_DIRECTORY/proto-deps.txt" | uniq > "$TEMP_SRC_DIRECTORY/proto-deps-unique.txt"
+mv "$TEMP_SRC_DIRECTORY/proto-deps-unique.txt" "$TEMP_SRC_DIRECTORY/proto-deps.txt"
+cat "$TEMP_SRC_DIRECTORY/proto-deps.txt"
+
 
 REMOVE_LINES=""
 for import in $(cat $TEMP_SRC_DIRECTORY/proto-deps.txt | grep "\"" | cut -c 7- )
@@ -74,7 +121,7 @@ echo "$REMOVE_IMPORT" > $TEMP_SRC_DIRECTORY/proto-deps.txt
 REMOVE_DUPLICATES=$(sort $TEMP_SRC_DIRECTORY/proto-deps.txt | uniq -u)
 echo "$REMOVE_DUPLICATES" > $TEMP_SRC_DIRECTORY/proto-deps.txt
 
-echo "Gooogle Protos Dependencies:"
+echo "Google Protos Dependencies:"
 cat $TEMP_SRC_DIRECTORY/proto-deps.txt
 
 # -------------- Running compilation steps
