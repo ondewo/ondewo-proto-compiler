@@ -1,4 +1,4 @@
-IMAGE_NAME=ondewo-proto-compiler-python
+IMAGE_NAME=ondewo-python-proto-compiler
 INTERNAL_OUTPUT_DIR=/home/ondewo/ondewo-proto-compiler/output
 INTERNAL_PROTO_DIR=/home/ondewo/ondewo-proto-compiler/protos
 
