@@ -1,9 +1,12 @@
-FROM node:18.18-buster-slim
+FROM node:20.12-buster-slim
+
+# protobuf version for compiling proto files
+ARG PROTOC_VERSION=27.3
 
 RUN apt update && apt install -y parallel gnupg gnupg2 wget sed vim tmux curl unzip tree
 
 # --------------- Installing protoc (Protobuf compiler binary)
-RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v24.3/protoc-24.3-linux-x86_64.zip -O /tmp/protoc.zip &&\
+RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip -O /tmp/protoc.zip &&\
  unzip -o /tmp/protoc.zip  -d /tmp/protoc/ &&\
  cp /tmp/protoc/bin/protoc /usr/local/bin/protoc &&\
  cp -r /tmp/protoc/include/* /usr/local/include &&\
