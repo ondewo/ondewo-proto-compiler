@@ -20,7 +20,7 @@ ADD image-data/default-lib-files/package.json /image-data/default-lib-files/pack
 
 # --------------- Install npm modules required for compilation with webpack
 #RUN npm install
-RUN npm install -g webpack@5.91.0
+RUN npm install -g webpack@5.95.0
 RUN npm install -g webpack-cli
 
 ADD image-data/default-lib-files/* /image-data/default-lib-files/
