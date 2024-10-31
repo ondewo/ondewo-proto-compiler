@@ -1,4 +1,4 @@
-FROM node:18.18-buster-slim as debugging_image
+FROM node:18.18-buster-slim
 
 RUN apt update && apt install -y parallel unzip tree wget
 

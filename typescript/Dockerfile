@@ -1,4 +1,4 @@
-FROM node:20.12-buster-slim as debugging_image
+FROM node:20.12-buster-slim
 
 # protobuf version for compiling proto files
 ARG PROTOC_VERSION=27.3
