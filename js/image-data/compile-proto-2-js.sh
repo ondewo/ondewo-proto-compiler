@@ -47,6 +47,9 @@ cp -r "$INPUT_VOLUME_FS"/* "$TEMP_SRC_DIRECTORY"
 # -------------- Check if all the requirements are there and exist if not
 echo "Checking if all the source requirements are fulfilled ..."
 
+ls -l $DEFAULT_FILES_DIR
+ls -l $TEMP_SRC_DIRECTORY
+
 if [ ! -f $TEMP_SRC_DIRECTORY/webpack.js ]; then
     echo "No webpack.js specified in source directory -> copying default files"
     cp "$DEFAULT_FILES_DIR/webpack.js" "$TEMP_SRC_DIRECTORY/webpack.js"
@@ -64,8 +67,9 @@ fi
 bash ./compile-proto-2-stubs.sh "$TEMP_SRC_DIRECTORY" "$PROTOS_ROOT_PATH" "$COMPILE_SELECTED_PROTOS_DIR"
 bash ./generate-client-wrappers.sh "$TEMP_SRC_DIRECTORY/$3"
 bash ./make-lib-entry-point.sh "$TEMP_SRC_DIRECTORY"
+
 bash ./compile-stubs-2-lib.sh "$TEMP_SRC_DIRECTORY" "$LIB_ENTRY_NAME.min" "webpack.js" "$LIB_ENTRY_NAME"
-bash ./compile-stubs-2-lib.sh "$TEMP_SRC_DIRECTORY" "$LIB_ENTRY_NAME" "webpack.dev.js"
+# bash ./compile-stubs-2-lib.sh "$TEMP_SRC_DIRECTORY" "$LIB_ENTRY_NAME" "webpack.dev.js"
 
 # -------------- Copy results back to mounted directory
 

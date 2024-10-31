@@ -20,18 +20,20 @@ const webpack = require('webpack');
  *
  * https://github.com/webpack-contrib/terser-webpack-plugin
  *
- * 
+ *
  * https://webpack.js.org/guides/author-libraries/
  */
 
 const TerserPlugin = require('terser-webpack-plugin');
- 
+
 const name = 'ondewo_javascript_lib';
-const entryPoint = './public-api.js';
- 
+
+// entryPoint not needed since passed as parameter for webpack in "compile-stubs-2-lib.sh"
+// const entryPoint = './public-api.js';
+
 module.exports = {
 	mode: 'development',
-	entry: entryPoint,
+	// entry: entryPoint,
 	plugins: [new webpack.ProgressPlugin()],
 
 	output: {
