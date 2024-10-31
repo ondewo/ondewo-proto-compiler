@@ -19,19 +19,19 @@ echo "Found $PROTO_FILES_CNT .proto files in directory: $PROTO_FILES_CNT"
 echo "Source verified."
 
 # -------------- remove optional keyword from proto files - Note: note needed anymore
-echo "---------------------------------------------------------------"
-echo "Starting .proto remove optional keyword from proto files  ..."
-echo "---------------------------------------------------------------"
-ALL_PROTO_FILES=$(find $PROTOS_SRC_DIR -iname "*.proto")
-SEARCH_TEXT="optional "
-for file in $ALL_PROTO_FILES; do
-    # Check if any files match the pattern
-    if [ -f "$file" ]; then
-      echo "Removing 'optional ' from file: $file"
-      sed -i "s/$SEARCH_TEXT//g" "$file"
-    fi
-done
-echo "Done .proto remove optional keyword from proto files."
+#echo "---------------------------------------------------------------"
+#echo "Starting .proto remove optional keyword from proto files  ..."
+#echo "---------------------------------------------------------------"
+#ALL_PROTO_FILES=$(find $PROTOS_SRC_DIR -iname "*.proto")
+#SEARCH_TEXT="optional "
+#for file in $ALL_PROTO_FILES; do
+#    # Check if any files match the pattern
+#    if [ -f "$file" ]; then
+#      echo "Removing 'optional ' from file: $file"
+#      sed -i "s/$SEARCH_TEXT//g" "$file"
+#    fi
+#done
+#echo "Done .proto remove optional keyword from proto files."
 
 # -------------- Generate the proto client library stubs
 echo "---------------------------------------------------------------"
