@@ -69,7 +69,7 @@ bash ./generate-client-wrappers.sh "$TEMP_SRC_DIRECTORY/$3"
 bash ./make-lib-entry-point.sh "$TEMP_SRC_DIRECTORY"
 
 bash ./compile-stubs-2-lib.sh "$TEMP_SRC_DIRECTORY" "$LIB_ENTRY_NAME.min" "webpack.js" "$LIB_ENTRY_NAME"
-# bash ./compile-stubs-2-lib.sh "$TEMP_SRC_DIRECTORY" "$LIB_ENTRY_NAME" "webpack.dev.js"
+bash ./compile-stubs-2-lib.sh "$TEMP_SRC_DIRECTORY" "$LIB_ENTRY_NAME" "webpack.dev.js"
 
 # -------------- Copy results back to mounted directory
 
