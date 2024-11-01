@@ -1,9 +1,17 @@
 google-api-core>=2.22.0
-googleapis-common-protos>=1.65
+googleapis-common-protos>=1.65.0
 grpc-stubs>=1.53.0.5
-grpcio>=1.66.2
-grpcio-reflection>=1.66.2
-grpcio-tools>=1.66.2
+grpcio>=1.67.1
+grpcio-reflection>=1.67.1
+grpcio-status>=1.67.1
+grpcio-tools>=1.67.1
 mypy-protobuf>=3.6.0
 protobuf==5.27.5
-types-protobuf>=4.24
+python-protobuf
+
+# NOTE: always test if libraries included here are compatible with tritonclient version used
+# https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/index.html
+# https://docs.nvidia.com/deeplearning/triton-inference-server/release-notes/index.html
+tritonclient==2.50.0
+types-protobuf>=5.28
+#tritonclient[grpc]==2.51.0
