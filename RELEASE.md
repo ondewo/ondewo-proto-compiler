@@ -14,7 +14,8 @@
 - Node.js:
   - Upgraded to protoc v27.3
 - Python:
-  - Upgraded to grpc 1.66.3
+  - Upgraded to grpc 1.67.1
+  - Upgraded to protobuf==5.27.5
 
 ---
 
