@@ -2,7 +2,7 @@
 
 ---
 
-## Release ONDEWO Proto Compiler 4.9.0
+## Release ONDEWO Proto Compiler 5.0.0
 
 ### Improvements
 
