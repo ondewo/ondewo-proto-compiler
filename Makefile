@@ -62,7 +62,9 @@ makefile_chapters: ## Shows all sections of Makefile
 
 TEST:
 	@echo ${GITHUB_GH_TOKEN}
-	@echo ${CURRENT_RELEASE_NOTES}
+	@echo ${PYPI_USERNAME}
+	@echo ${PYPI_PASSWORD}
+	@echo "\n${CURRENT_RELEASE_NOTES}"
 
 ########################################################
 #       Repo Specific Make Targets
