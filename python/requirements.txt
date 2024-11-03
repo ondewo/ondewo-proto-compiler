@@ -14,4 +14,3 @@ types-protobuf>=5.28
 # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/index.html
 # https://docs.nvidia.com/deeplearning/triton-inference-server/release-notes/index.html
 # tritonclient==2.50.0
-#tritonclient[grpc]==2.51.0
