@@ -8,10 +8,10 @@ grpcio-tools>=1.67.1
 mypy-protobuf>=3.6.0
 protobuf==5.27.5
 python-protobuf
+types-protobuf>=5.28
 
 # NOTE: always test if libraries included here are compatible with tritonclient version used
 # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/index.html
 # https://docs.nvidia.com/deeplearning/triton-inference-server/release-notes/index.html
-tritonclient==2.50.0
-types-protobuf>=5.28
+# tritonclient==2.50.0
 #tritonclient[grpc]==2.51.0
