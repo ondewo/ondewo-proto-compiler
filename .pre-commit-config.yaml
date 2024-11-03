@@ -91,17 +91,3 @@ repos:
     hooks:
       - id: prettier
         exclude: '^(\.git/|node_modules/|typescript/image-data|nodejs/image-data|js/image-data|angular/image-data|.*\.md$)'
-        # args: ['--write', 'client/**/*.{js,jsx,ts,tsx,html,css,json,scss}']
-#  - repo: https://github.com/pre-commit/mirrors-eslint
-#    rev: 'v8.37.0'
-#    hooks:
-#      - id: eslint
-#        name: ESLint
-#        entry: bash -c 'export NODE_OPTIONS=--max_old_space_size=8192 && eslint --fix -c .eslintrc.json --ignore-pattern "**/node_modules/**" "client/**/*.ts"'
-#        language: script
-##        types: [ typescript ]
-
-#  - repo: https://github.com/typicode/husky
-#    rev: v8.0.3
-#    hooks:
-#      - id: husky
