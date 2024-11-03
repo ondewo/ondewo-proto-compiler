@@ -16,7 +16,7 @@ fail_fast: false
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v5.0.0
     hooks:
       #      - id: no-commit-to-branch  # Protect specific branches from direct checkins
       #        args: [ --branch, master ]
@@ -41,7 +41,7 @@ repos:
         files: 'requirements.*\.txt$'
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.9.0
+    rev: v1.13.0
     hooks:
       - id: mypy
         args: ['--config-file=dockerfiles/code_checks/mypy.ini']
@@ -62,14 +62,14 @@ repos:
         types: [python]
 
   - repo: https://github.com/pycqa/flake8
-    rev: 7.0.0
+    rev: 7.1.1
     hooks:
       - id: flake8
         args: ['--config=dockerfiles/code_checks/.flake8']
         exclude: (^ondewo-utils|^notebooks)
 
-  - repo: https://github.com/pre-commit/mirrors-autopep8
-    rev: v2.0.4
+  - repo: https://github.com/hhatto/autopep8
+    rev: v2.3.1
     hooks:
       - id: autopep8 # Perform pep8 auto-formatting
         args: [--max-line-length=120, --in-place]
@@ -90,8 +90,8 @@ repos:
     rev: v3.1.0
     hooks:
       - id: prettier
-        exclude: '^\.git/|^node_modules/|^typescript/image-data|^nodejs/image-data|^js/image-data|^angular/image-data'
-#        args: ['--write', 'client/**/*.{js,jsx,ts,tsx,md,html,css,json,scss}']
+        exclude: '^(\.git/|node_modules/|typescript/image-data|nodejs/image-data|js/image-data|angular/image-data|.*\.md$)'
+        # args: ['--write', 'client/**/*.{js,jsx,ts,tsx,html,css,json,scss}']
 #  - repo: https://github.com/pre-commit/mirrors-eslint
 #    rev: 'v8.37.0'
 #    hooks:
