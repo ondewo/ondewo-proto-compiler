@@ -74,7 +74,7 @@ echo "$REMOVE_IMPORT" > $TEMP_SRC_DIRECTORY/proto-deps.txt
 REMOVE_DUPLICATES=$(sort $TEMP_SRC_DIRECTORY/proto-deps.txt | uniq -u)
 echo "$REMOVE_DUPLICATES" > $TEMP_SRC_DIRECTORY/proto-deps.txt
 
-echo "Gooogle Protos Dependencies:"
+echo "Google Protos Dependencies:"
 cat $TEMP_SRC_DIRECTORY/proto-deps.txt
 
 

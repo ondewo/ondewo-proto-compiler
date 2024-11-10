@@ -16,6 +16,10 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_
 RUN wget https://github.com/grpc/grpc-web/releases/download/1.5.0/protoc-gen-grpc-web-1.5.0-linux-x86_64 -O /usr/local/bin/protoc-gen-grpc-web &&\
   chmod a+x /usr/local/bin/protoc-gen-grpc-web
 
+
+# --------------- Install npm modules required for compilation
+RUN npm install -g protoc-gen-js
+
 # --------------- Copy all files from "image-data" directory to docker container
 WORKDIR /image-data
 ADD image-data /image-data
