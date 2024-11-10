@@ -2,6 +2,20 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.1.0
+
+### Improvements
+
+* Typescript:
+    * Upgraded to protoc v27.3
+
+### Bug Fixes
+
+* Typescript:
+    * Added installation of protoc-gen-js to fix error "protoc-gen-js: program not found or is not executable"
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.0.0
 
 ### Improvements
