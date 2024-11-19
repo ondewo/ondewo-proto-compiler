@@ -1,10 +1,10 @@
 google-api-core>=2.22.0
 googleapis-common-protos>=1.65.0
 grpc-stubs>=1.53.0.5
-grpcio>=1.67.1
-grpcio-reflection>=1.67.1
-grpcio-status>=1.67.1
-grpcio-tools>=1.67.1
+grpcio>=1.67.1,<1.68.0
+grpcio-reflection>=1.67.1,<1.68.0
+grpcio-status>=1.67.1,<1.68.0
+grpcio-tools>=1.67.1,<1.68.0
 mypy-protobuf>=3.6.0
 protobuf==5.27.5
 python-protobuf

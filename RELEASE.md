@@ -2,6 +2,15 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.2.0
+
+### Bug Fixes
+
+* Python:
+    * Added condition for <1.68.0 for grpcio libraries
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.1.0
 
 ### Improvements
