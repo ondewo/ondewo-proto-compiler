@@ -42,11 +42,37 @@ echo "Consuming .proto files: $ALL_PROTO_FILES: "
 
 mkdir -p $STUBS_TARGET_DIR
 
-protoc \
-  --plugin=protoc-gen-ng=$PROTO_GEN_NG \
-  --ng_out=$STUBS_TARGET_DIR \
-  -I $PROTOS_ROOT_DIR \
+# https://github.com/timostamm/protobuf-ts/blob/main/MANUAL.md#the-protoc-plugin
+# https://github.com/timostamm/protobuf-ts/blob/main/MANUAL.md#bigint-support
+npx protoc \
+  --ts_opt generate_dependencies \
+  --ts_opt long_type_string \
+  --ts_out $STUBS_TARGET_DIR \
+  --proto_path $PROTOS_ROOT_DIR \
+  --experimental_allow_proto3_optional \
   $ALL_PROTO_FILES
+
+# TS generation
+#protoc \
+#  --plugin=protoc-gen-ts=./node_modules/.bin/protoc-gen-ts \
+#  --ts_out=$STUBS_TARGET_DIR \
+#  -I $PROTOS_ROOT_DIR \
+#  $ALL_PROTO_FILES
+
+# TS and JS generation
+#protoc \
+#  --plugin=protoc-gen-ts=./node_modules/.bin/protoc-gen-ts \
+#  --ts_out=$STUBS_TARGET_DIR \
+#  --plugin=protoc-gen-js=./node_modules/.bin/protoc-gen-js \
+#  --js_out=import_style=commonjs,binary:$STUBS_TARGET_DIR \
+#  -I $PROTOS_ROOT_DIR \
+#  $ALL_PROTO_FILES
+
+# old: ngx-grpc library
+# protoc \
+#  --plugin=protoc-gen-ng=$PROTO_GEN_NG \
+#  --ng_out=$STUBS_TARGET_DIR \
+#  $ALL_PROTO_FILES
 
 echo ".proto compilation finished."
 
