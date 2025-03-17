@@ -2,6 +2,15 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.3.0
+
+### Improvements
+
+* Angular:
+    * Updated to Angular 19 libraries
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.2.0
 
 ### Bug Fixes
