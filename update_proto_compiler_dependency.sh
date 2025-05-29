@@ -2,7 +2,6 @@
 
 # This script updates the ondewo-nlu-client-python dependency in the REPO_DIR project
 VERSION=$1
-VERSION=5.3.0
 REPO_DIR=$2
 
 # =============================================
