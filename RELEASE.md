@@ -2,6 +2,22 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.4.0
+
+### Improvements
+
+* Angular:
+    * Updated to Angular 19 libraries
+    * Upgraded to node:22.16.0-bookworm-slim
+* Javascript:
+    * Upgraded to node:22.16.0-bookworm-slim
+* Nodejs:
+    * Upgraded to node:22.16.0-bookworm-slim
+* Typescript:
+    * Upgraded to node:22.16.0-bookworm-slim
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.3.0
 
 ### Improvements
