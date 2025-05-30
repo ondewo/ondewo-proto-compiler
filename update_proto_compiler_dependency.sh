@@ -61,11 +61,33 @@ else
   cd ..
 fi
 
+
 # --- Checkout the desired version ---
 cd "$REPO_DIR" || {
   echo "${RED}[ERROR]${NC} Cannot enter repository directory: $REPO_DIR"
   exit 1
 }
+
+# --- Set NODE_VERSION in Dockerfile.utils from environment variable ---
+if [ -f "Dockerfile.utils" ]; then
+  if [ -z "${NODE_VERSION:-}" ]; then
+    echo "${RED}[ERROR]${NC} NODE_VERSION environment variable is not set"
+    exit 1
+  fi
+  sed -i "s/^ENV NODE_VERSION=.*/ENV NODE_VERSION=${NODE_VERSION}/" Dockerfile.utils
+  git add Dockerfile.utils
+  if ! git diff --cached --quiet; then
+    git commit -m "Set NODE_VERSION to ${NODE_VERSION} in Dockerfile.utils"
+    git push
+    echo "${BLUE}[INFO]${NC} Set NODE_VERSION in Dockerfile.utils to ${NODE_VERSION}"
+  else
+    echo "${YELLOW}[NOOP]${NC} No changes to commit for Dockerfile.utils."
+  fi
+else
+  echo "${RED}[ERROR]${NC} Dockerfile.utils not found in ondewo-proto-compiler directory"
+  exit 1
+fi
+
 echo "${BLUE}[INFO]${NC} Updating submodules..."
 git submodule update --init --recursive
 
@@ -77,22 +99,6 @@ echo "${BLUE}[INFO]${NC} Checking out version: ${GREEN}${VERSION}${NC}"
 git checkout "$VERSION"
 
 cd ..
-
-# --- Set NODE_VERSION in Dockerfile.utils from environment variable ---
-if [ -f "Dockerfile.utils" ]; then
-  if [ -z "${NODE_VERSION:-}" ]; then
-    echo "${RED}[ERROR]${NC} NODE_VERSION environment variable is not set"
-    exit 1
-  fi
-  sed -i "s/^ENV NODE_VERSION=.*/ENV NODE_VERSION=${NODE_VERSION}/" Dockerfile.utils
-  git add Dockerfile.utils
-  git commit -m "Set NODE_VERSION to ${NODE_VERSION} in Dockerfile.utils"
-  git push
-  echo "${BLUE}[INFO]${NC} Set NODE_VERSION in Dockerfile.utils to ${NODE_VERSION}"
-else
-  echo "${RED}[ERROR]${NC} Dockerfile.utils not found in ondewo-proto-compiler directory"
-  exit 1
-fi
 
 # --- Update the dependency in the project ---
 if [ "$PROGRAMMING_LANGUAGE" = "angular" ] || \

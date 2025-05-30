@@ -2,6 +2,15 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.5.1
+
+### Bug Fixes
+
+* Fixed for automated update of Dockerfile.utils versions algorithm
+  in [update_proto_compiler_dependency.sh](update_proto_compiler_dependency.sh)
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.5.0
 
 ### Improvements
@@ -17,7 +26,7 @@
 
 ### Bug Fixes
 
-* Fix for automated update of library versions script for python since there is no `package.json` to
+* Fixed for automated update of library versions script for python since there is no `package.json` to
   `git add` [update_proto_compiler_dependency.sh](update_proto_compiler_dependency.sh)
 
 *****************
