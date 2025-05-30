@@ -2,6 +2,17 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.5.0
+
+### Improvements
+
+* Improved automated update of library versions script to also update NODE_VERSION in
+  `Dockerfile.utils` in [update_proto_compiler_dependency.sh](update_proto_compiler_dependency.sh)
+* Improved `Makefile` to also update all `Dockerfile` files to the version set for `PYTHON_VERSION`, `NODE_VERSION`,
+  `PROTOC_VERSION`, and `GRPC_WEB_VERSION`
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.4.1
 
 ### Bug Fixes
