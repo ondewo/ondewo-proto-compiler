@@ -82,7 +82,6 @@ repos:
         files: \.(js|jsx|ts|tsx|css|scss|html|vue|json|md)$
         exclude: '^(typescript|nodejs|js|angular)/image-data/|.*\.md$'
 
-
   - repo: https://github.com/milin/giticket
     rev: v1.4
     hooks:
