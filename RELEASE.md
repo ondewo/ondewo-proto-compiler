@@ -4,8 +4,14 @@
 
 ## Release ONDEWO Proto Compiler 5.4.0
 
+### New Features
+
+* Automated update of library versions for Angular, Javascript, Nodejs, and Typescript with
+  script [update_proto_compiler_dependency.sh](update_proto_compiler_dependency.sh)
+
 ### Improvements
 
+* Updated to node:22.16.0-bookworm-slim for Angular, Javascript, Nodejs, and Typescript
 * Angular:
     * Updated to Angular 19 libraries
     * Upgraded to node:22.16.0-bookworm-slim
