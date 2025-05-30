@@ -20,5 +20,5 @@
     "build": "webpack --config ./webpack.js --entry ./public-api.js --output-path ./lib/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "version": "5.4.0"
+  "version": "5.4.0-pre-1"
 }
