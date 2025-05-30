@@ -3,12 +3,13 @@
 # This script updates the ondewo-nlu-client-python dependency in the REPO_DIR project
 VERSION=$1
 PROGRAMMING_LANGUAGE=$2
-REPO=$3
+NODE_VERSION=$3
+REPO=$4
 
 # =============================================
 # Script to update ondewo-proto-compiler version
 # =============================================
-CLEAN_UP="true"
+CLEAN_UP="false"
 REPO_DIR=$REPO-$PROGRAMMING_LANGUAGE
 
 set -eu  # Exit on error and treat unset variables as an error
@@ -76,6 +77,22 @@ echo "${BLUE}[INFO]${NC} Checking out version: ${GREEN}${VERSION}${NC}"
 git checkout "$VERSION"
 
 cd ..
+
+# --- Set NODE_VERSION in Dockerfile.utils from environment variable ---
+if [ -f "Dockerfile.utils" ]; then
+  if [ -z "${NODE_VERSION:-}" ]; then
+    echo "${RED}[ERROR]${NC} NODE_VERSION environment variable is not set"
+    exit 1
+  fi
+  sed -i "s/^ENV NODE_VERSION=.*/ENV NODE_VERSION=${NODE_VERSION}/" Dockerfile.utils
+  git add Dockerfile.utils
+  git commit -m "Set NODE_VERSION to ${NODE_VERSION} in Dockerfile.utils"
+  git push
+  echo "${BLUE}[INFO]${NC} Set NODE_VERSION in Dockerfile.utils to ${NODE_VERSION}"
+else
+  echo "${RED}[ERROR]${NC} Dockerfile.utils not found in ondewo-proto-compiler directory"
+  exit 1
+fi
 
 # --- Update the dependency in the project ---
 if [ "$PROGRAMMING_LANGUAGE" = "angular" ] || \
