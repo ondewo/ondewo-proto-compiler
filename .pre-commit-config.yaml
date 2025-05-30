@@ -34,14 +34,14 @@ repos:
       - id: trailing-whitespace # Trim trailing whitespace.
       - id: end-of-file-fixer # makes sure files end in a newline and only a newline
       - id: pretty-format-json # autoformat json files (e.g. sorting keys)
-        args: [--autofix, --indent=4]
+        args: [--autofix, --indent=2]
       - id: name-tests-test # name pytest files correctly
         args: [--pytest-test-first]
       - id: requirements-txt-fixer # Sorts the requirement.txt files' content
         files: 'requirements.*\.txt$'
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
+    rev: v1.16.0
     hooks:
       - id: mypy
         args: ['--config-file=dockerfiles/code_checks/mypy.ini']
@@ -62,14 +62,14 @@ repos:
         types: [python]
 
   - repo: https://github.com/pycqa/flake8
-    rev: 7.1.1
+    rev: 7.2.0
     hooks:
       - id: flake8
         args: ['--config=dockerfiles/code_checks/.flake8']
         exclude: (^ondewo-utils|^notebooks)
 
   - repo: https://github.com/hhatto/autopep8
-    rev: v2.3.1
+    rev: v2.3.2
     hooks:
       - id: autopep8 # Perform pep8 auto-formatting
         args: [--max-line-length=120, --in-place]
