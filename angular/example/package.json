@@ -1,17 +1,17 @@
 {
-  "name": "@ondewo/angular-proto-compiler-example",
-  "version": "2.0.0",
+  "author": "ONDEWO GmbH <office@ondewo.com>",
   "description": "Example for how to use the ONDEWO proto angular compiler",
+  "license": "Apache-2.0",
+  "name": "@ondewo/angular-proto-compiler-example",
+  "peerDependencies": {
+    "@angular/common": ">=19.2.12 <20.0.0",
+    "@angular/core": ">=19.2.11 <20.0.0",
+    "@ngx-grpc/common": ">=3.1.2",
+    "@ngx-grpc/core": ">=3.1.2"
+  },
   "scripts": {
     "build": "docker run -it -v ${PWD}:/input-volume -v ${PWD}/lib:/output-volume ondewo-angular-proto-compiler protos",
     "debug": "docker run -it --entrypoint /bin/bash -v ${PWD}:/input-volume -v ${PWD}/lib:/output-volume ondewo-angular-proto-compiler"
   },
-  "author": "",
-  "license": "Apache-2.0",
-  "peerDependencies": {
-    "@angular/common": ">=8.0.0",
-    "@angular/core": ">=8.0.0",
-    "@ngx-grpc/common": ">=3.1.1",
-    "@ngx-grpc/core": ">=3.1.1"
-  }
+  "version": "5.4.0"
 }

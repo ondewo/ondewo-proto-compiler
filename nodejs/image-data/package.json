@@ -1,13 +1,12 @@
 {
-    "author": "ONDEWO GmbH",
-    "dependencies": {},
-    "description": "",
-    "devDependencies": {
-        "@types/node": "^20.12.0",
-        "grpc_tools_node_protoc_ts": "^5.3.3"
-    },
-    "license": "Apache-2.0",
-    "main": "index.js",
-    "name": "ondewo-nodejs-proto-compiler",
-    "version": "5.0.0"
+  "author": "ONDEWO GmbH <office@ondewo.com>",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^22.15.27",
+    "grpc_tools_node_protoc_ts": "^5.3.3"
+  },
+  "license": "Apache-2.0",
+  "main": "index.js",
+  "name": "ondewo-nodejs-proto-compiler",
+  "version": "5.4.0"
 }

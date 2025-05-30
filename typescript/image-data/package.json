@@ -1,18 +1,17 @@
 {
-    "author": "ONDEWO GmbH",
-    "dependencies": {},
-    "description": "",
-    "devDependencies": {
-        "@types/node": "^20.12.0",
-        "ts-node": "^10.9.2",
-        "typescript": ">=4.9.3"
-    },
-    "license": "Apache-2.0",
-    "main": "index.js",
-    "name": "ondewo-typescript-proto-compiler",
-    "scripts": {
-        "build": "tsc",
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "version": "5.0.0"
+  "author": "ONDEWO GmbH <office@ondewo.com>",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^22.15.27",
+    "ts-node": "^10.9.2",
+    "typescript": ">=5.8.3"
+  },
+  "license": "Apache-2.0",
+  "main": "index.js",
+  "name": "ondewo-typescript-proto-compiler",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "version": "5.4.0"
 }
