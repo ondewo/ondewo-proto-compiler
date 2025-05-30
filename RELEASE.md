@@ -2,6 +2,15 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.4.1
+
+### Bug Fixes
+
+* Fix for automated update of library versions script for python since there is no `package.json` to
+  `git add` [update_proto_compiler_dependency.sh](update_proto_compiler_dependency.sh)
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.4.0
 
 ### New Features

@@ -131,14 +131,19 @@ if [ "$PROGRAMMING_LANGUAGE" = "angular" ] || \
     update_existing("peerDependencies")
   ' "$TARGET_PKG" > "$TMP_PKG" && mv "$TMP_PKG" "$TARGET_PKG"
 
+  if [ -n "$TARGET_PKG" ]; then
+    echo "${BLUE}[INFO]${NC} Adding updated package.json to staging area: ${TARGET_PKG} ..."
+    git add "${TARGET_PKG}"
+  fi
+
+else
+  echo "${YELLOW}[WARN]${NC} Programming language '$PROGRAMMING_LANGUAGE' does not require package.json update."
 fi
 
 echo "${BLUE}[INFO]${NC} Diff of updated git repo ${REPO_DIR}:"
 git --no-pager diff .
 
-# --- Add, commit and push changes if any ---
-echo "${BLUE}[INFO]${NC} Adding updated package.json to staging area: ${TARGET_PKG} ..."
-git add "${TARGET_PKG}"
+
 echo "${BLUE}[INFO]${NC} Adding ondewo-proto-compiler submodule..."
 git add ondewo-proto-compiler
 
@@ -154,9 +159,9 @@ else
 fi
 
 # --- Cleanup ---
-if [ "$CLEAN_UP" = "true" ]; then
+if [ "${CLEAN_UP:-true}" = "true" ]; then
   echo "${BLUE}[INFO]${NC} Cleaning up temporary files for ${TMP_DIR} ..."
-  rm -rf ${TMP_DIR}
+  rm -rf "${TMP_DIR}"
   echo "${GREEN}[DONE]${NC} Update process completed successfully for ${TMP_DIR}."
 else
   echo "${YELLOW}[SKIP]${NC} Skipping cleanup as per user request."
