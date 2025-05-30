@@ -12,5 +12,5 @@
   "main": "public-api.js",
   "name": "@ondewo/angular-proto-compiler-example",
   "typings": "public-api.d.ts",
-  "version": "5.4.0-pre-1"
+  "version": "5.4.0"
 }
