@@ -1,4 +1,6 @@
-FROM node:22.16.0-bookworm-slim
+ARG NODE_VERSION=22.16.0
+
+FROM node:${NODE_VERSION}-bookworm-slim
 
 # protobuf version for compiling proto files
 ARG PROTOC_VERSION=27.3
@@ -11,7 +13,8 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_
  cp -r /tmp/protoc/include/* /usr/local/include &&\
  chmod a+x /usr/local/bin/protoc
 
-RUN wget https://github.com/grpc/grpc-web/releases/download/1.5.0/protoc-gen-grpc-web-1.5.0-linux-x86_64 -O /usr/local/bin/protoc-gen-grpc-web &&\
+ARG GRPC_WEB_VERSION=1.5.0
+RUN wget https://github.com/grpc/grpc-web/releases/download/${GRPC_WEB_VERSION}/protoc-gen-grpc-web-${GRPC_WEB_VERSION}-linux-x86_64 -O /usr/local/bin/protoc-gen-grpc-web &&\
   chmod a+x /usr/local/bin/protoc-gen-grpc-web
 
 # --------------- Copy all files from "image-data" directory to docker container

@@ -1,4 +1,6 @@
-FROM node:22.16.0-bookworm-slim
+ARG NODE_VERSION=22.16.0
+
+FROM node:${NODE_VERSION}-bookworm-slim
 
 # protobuf version for compiling proto files
 ARG PROTOC_VERSION=27.3
