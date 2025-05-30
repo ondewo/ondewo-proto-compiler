@@ -1,8 +1,7 @@
 #!/usr/bin/env sh
 
 # This script updates the ondewo-nlu-client-python dependency in the REPO_DIR project
-# VERSION=$1
-VERSION=master
+VERSION=$1
 REPO=$2
 PROGRAMMING_LANGUAGE=$3
 
@@ -103,32 +102,42 @@ if [ "$PROGRAMMING_LANGUAGE" = "angular" ] || \
     exit 1
   fi
 
-  TMP_PKG=$(mktemp)
+  IMAGE_DEPS=$(jq -c '[
+    .dependencies // {},
+    .devDependencies // {},
+    .peerDependencies // {}
+  ] | add' "$IMAGE_DATA_PKG") || IMAGE_DEPS="{}"
 
+  TMP_PKG=$(mktemp)
   echo "${BLUE}[INFO]${NC} Updating only existing dependency versions..."
 
   jq --argjson imageDeps "$IMAGE_DEPS" '
-    def update_and_clean(section):
-      if has(section) then
-        # Update existing keys only, ignoring new keys
-        .[section] |= (
-          reduce (to_entries[]) as $item (
-            {};
-            if ($imageDeps[$item.key] != null) then .[$item.key] = $imageDeps[$item.key]
-            else .[$item.key] = $item.value
-            end
-          )
+    def update_existing(section):
+      if .[section] then
+        .[section] |= with_entries(
+          if $imageDeps[.key] then
+            .value = $imageDeps[.key]
+          else
+            .
+          end
         )
-        | if (.[section] | length) == 0 then del(.[section]) else . end
-      else .
+        | if (.[section] | length == 0) then del(.[section]) else . end
+      else
+        .
       end;
 
-    update_and_clean("dependencies") |
-    update_and_clean("devDependencies") |
-    update_and_clean("peerDependencies")
+    update_existing("dependencies") |
+    update_existing("devDependencies") |
+    update_existing("peerDependencies")
   ' "$TARGET_PKG" > "$TMP_PKG" && mv "$TMP_PKG" "$TARGET_PKG"
 
+  echo "${BLUE}[INFO]${NC} Diff of updated package.json:"
+  git --no-pager diff "$TARGET_PKG"
+
 fi
+
+# git add "$TARGET_PKG"
+# git add ondewo-proto-compiler
 
 # --- Commit and push changes if any ---
 # git add "ondewo-proto-compiler"
@@ -143,8 +152,6 @@ else
 fi
 
 # --- Cleanup ---
-
-CLEAN_UP="false"
 if [ "$CLEAN_UP" = "true" ]; then
   echo "${BLUE}[INFO]${NC} Cleaning up temporary files for ${REPO_DIR} ..."
   rm -rf /tmp/${REPO_DIR}
