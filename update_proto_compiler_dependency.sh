@@ -9,7 +9,7 @@ REPO=$4
 # =============================================
 # Script to update ondewo-proto-compiler version
 # =============================================
-CLEAN_UP="false"
+CLEAN_UP="true"
 REPO_DIR=$REPO-$PROGRAMMING_LANGUAGE
 
 set -eu  # Exit on error and treat unset variables as an error
