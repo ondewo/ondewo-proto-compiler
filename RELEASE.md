@@ -2,6 +2,14 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.5.2
+
+### Bug Fixes
+
+* Fix version in angular.json
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.5.1
 
 ### Bug Fixes
