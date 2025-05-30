@@ -85,10 +85,7 @@ repos:
   - repo: https://github.com/milin/giticket
     rev: v1.4
     hooks:
-      - id: giticket # Prepend the commit message with the JIRA ticket
-        args:
-          [
-            '--regex=(?:(?:feature|bugfix|support|hotfix)/)?(OND[0-9]{3}-[0-9]{1,5})[_-][\w-]+',
-            '--format=[{ticket}] {commit_msg}',
-            '--mode=regex_match'
-          ]
+      - id: giticket  # Prepend the commit message with the JIRA ticket
+        args: [ '--regex=(?:(?:feature|bugfix|support|hotfix)/)?([A-Z][A-Z][A-Z][0-9]{3}-[0-9]{1,5})[_-][\w-]+',
+                '--format=[{ticket}] {commit_msg}',
+                '--mode=regex_match' ]
