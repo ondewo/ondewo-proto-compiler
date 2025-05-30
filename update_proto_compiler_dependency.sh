@@ -2,8 +2,8 @@
 
 # This script updates the ondewo-nlu-client-python dependency in the REPO_DIR project
 VERSION=$1
-REPO=$2
-PROGRAMMING_LANGUAGE=$3
+PROGRAMMING_LANGUAGE=$2
+REPO=$3
 
 # =============================================
 # Script to update ondewo-proto-compiler version
