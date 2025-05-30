@@ -33,5 +33,5 @@
     "clean": "rm -rf node_modules",
     "reinstall": "npm run clean && npm install -y -g npm@latest && npm install"
   },
-  "version": "5.5.1"
+  "version": "5.5.2"
 }
