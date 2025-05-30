@@ -8,7 +8,7 @@ PROGRAMMING_LANGUAGE=$3
 # =============================================
 # Script to update ondewo-proto-compiler version
 # =============================================
-CLEAN_UP="false"
+CLEAN_UP="true"
 REPO_DIR=$REPO-$PROGRAMMING_LANGUAGE
 
 set -eu  # Exit on error and treat unset variables as an error
@@ -131,21 +131,23 @@ if [ "$PROGRAMMING_LANGUAGE" = "angular" ] || \
     update_existing("peerDependencies")
   ' "$TARGET_PKG" > "$TMP_PKG" && mv "$TMP_PKG" "$TARGET_PKG"
 
-  echo "${BLUE}[INFO]${NC} Diff of updated package.json:"
-  git --no-pager diff "$TARGET_PKG"
-
 fi
 
-# git add "$TARGET_PKG"
-# git add ondewo-proto-compiler
+echo "${BLUE}[INFO]${NC} Diff of updated git repo ${REPO_DIR}:"
+git --no-pager diff .
 
-# --- Commit and push changes if any ---
-# git add "ondewo-proto-compiler"
+# --- Add, commit and push changes if any ---
+echo "${BLUE}[INFO]${NC} Adding updated package.json to staging area: ${TARGET_PKG} ..."
+git add "${TARGET_PKG}"
+echo "${BLUE}[INFO]${NC} Adding ondewo-proto-compiler submodule..."
+git add ondewo-proto-compiler
+
 if ! git diff --cached --quiet; then
+  echo "${BLUE}[INFO]${NC} Changes detected, preparing to commit..."
   echo "${BLUE}[INFO]${NC} Committing version update..."
-  # git commit -m "Update proto compiler dependency to version $VERSION"
+  git commit -m "Update proto compiler dependency to version $VERSION"
   echo "${BLUE}[INFO]${NC} Pushing to remote..."
-  # git push
+  git push
   echo "${GREEN}[SUCCESS]${NC} Updated $REPO_DIR dependency to ondewo-proto-compiler to version $VERSION."
 else
   echo "${YELLOW}[NOOP]${NC} No changes to commit."
@@ -153,9 +155,9 @@ fi
 
 # --- Cleanup ---
 if [ "$CLEAN_UP" = "true" ]; then
-  echo "${BLUE}[INFO]${NC} Cleaning up temporary files for ${REPO_DIR} ..."
-  rm -rf /tmp/${REPO_DIR}
-  echo "${GREEN}[DONE]${NC} Update process completed successfully for ${REPO_DIR}."
+  echo "${BLUE}[INFO]${NC} Cleaning up temporary files for ${TMP_DIR} ..."
+  rm -rf ${TMP_DIR}
+  echo "${GREEN}[DONE]${NC} Update process completed successfully for ${TMP_DIR}."
 else
   echo "${YELLOW}[SKIP]${NC} Skipping cleanup as per user request."
 fi
