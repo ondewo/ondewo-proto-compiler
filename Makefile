@@ -16,7 +16,13 @@ export
 ########################################################
 
 # MUST BE THE SAME AS API in Mayor and Minor Version Number
-ONDEWO_PROTO_COMPILER_VERSION=5.4.1
+ONDEWO_PROTO_COMPILER_VERSION=5.5.0
+
+# Version setup for the different programming languages
+PYTHON_VERSION=3.9.16
+NODE_VERSION=22.16.0
+PROTOC_VERSION=27.3
+GRPC_WEB_VERSION=1.5.0
 
 # You need to setup an access token at https://github.com/settings/tokens - permissions are important
 GITHUB_GH_TOKEN?=ENTER_YOUR_TOKEN_HERE
@@ -30,12 +36,13 @@ DEVOPS_ACCOUNT_DIR="./${DEVOPS_ACCOUNT_GIT}"
 IMAGE_UTILS_NAME=ondewo-proto-compiler-utils:${ONDEWO_PROTO_COMPILER_VERSION}
 .DEFAULT_GOAL := help
 
+
 # Define colors globally
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[1;34m'
-NC='\033[0m' # No Color
+BLUE   := \033[1;34m
+GREEN  := \033[0;32m
+YELLOW := \033[1;33m
+RED    := \033[0;31m
+NC     := \033[0m
 
 ########################################################
 #       ONDEWO Standard Make Targets
@@ -100,79 +107,103 @@ update_proto_compiler_dependency: update_proto_compiler_dependency_angular updat
 
 update_proto_compiler_dependency_angular: export PROGRAMMING_LANGUAGE=angular
 update_proto_compiler_dependency_angular:
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-nlu-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-s2t-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-t2s-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-sip-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-csi-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-vtsi-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-survey-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-nlu-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-s2t-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-t2s-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-sip-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-csi-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-vtsi-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-survey-client
 
 update_proto_compiler_dependency_python: export PROGRAMMING_LANGUAGE=python
 update_proto_compiler_dependency_python:
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-nlu-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-s2t-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-t2s-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-sip-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-csi-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-vtsi-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-survey-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-nlu-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-s2t-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-t2s-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-sip-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-csi-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-vtsi-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-survey-client
 
 update_proto_compiler_dependency_js: export PROGRAMMING_LANGUAGE=js
 update_proto_compiler_dependency_js:
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-nlu-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-s2t-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-t2s-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-sip-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-csi-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-vtsi-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-survey-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-nlu-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-s2t-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-t2s-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-sip-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-csi-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-vtsi-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-survey-client
 
 update_proto_compiler_dependency_nodejs: export PROGRAMMING_LANGUAGE=nodejs
 update_proto_compiler_dependency_nodejs:
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-nlu-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-s2t-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-t2s-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-sip-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-csi-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-vtsi-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-survey-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-nlu-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-s2t-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-t2s-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-sip-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-csi-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-vtsi-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-survey-client
 
 update_proto_compiler_dependency_typescript: export PROGRAMMING_LANGUAGE=typescript
 update_proto_compiler_dependency_typescript:
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-nlu-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-s2t-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-t2s-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-sip-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-csi-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-vtsi-client
-	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) ondewo-survey-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-nlu-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-s2t-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-t2s-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-sip-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-csi-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-vtsi-client
+	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-survey-client
 
 ########################################################
 #		Release
 
-release: release_version_update_in_packages_json_files create_release_branch create_release_tag build_and_release_to_github_via_docker  ## Automate the entire release process
+release: release_version_update_in_dockerfiles release_version_update_in_packages_json_files create_release_branch create_release_tag build_and_release_to_github_via_docker  ## Automate the entire release process
 	@echo "Release Finished"
 
-release_version_update_in_packages_json_files: ## Update version in package.json files
-	@for file in typescript/image-data/package.json \
-				typescript/example/package.json \
-				nodejs/image-data/package.json \
-				nodejs/example/package.json \
-				js/image-data/default-lib-files/package.json \
-				angular/image-data/package.json \
-				angular/example/package.json; do \
-	  echo "$(BLUE)[INFO] Updating version in $$file to ${ONDEWO_PROTO_COMPILER_VERSION}...$(NC)"; \
-	  jq --arg version "${ONDEWO_PROTO_COMPILER_VERSION}" '.version = $$version' "$$file" > tmp.json && mv tmp.json "$$file"; \
-	  git add "$$file"; \
+release_version_update_in_packages_json_files:
+	@for file in \
+		angular/example/package.json \
+		angular/image-data/package.json \
+		js/image-data/default-lib-files/package.json \
+		nodejs/example/package.json \
+		nodejs/image-data/package.json \
+		typescript/example/package.json \
+		typescript/image-data/package.json ; do \
+		echo "$(BLUE)[INFO]$(NC) Updating version in $$file to ${ONDEWO_PROTO_COMPILER_VERSION}"; \
+		jq --arg version "${ONDEWO_PROTO_COMPILER_VERSION}" '.version = $$version' "$$file" > tmp.json && mv tmp.json "$$file"; \
+		git add "$$file"; \
 	done; \
 	if ! git diff --cached --quiet; then \
-	  echo "$(BLUE)[INFO] Changes detected. Committing and pushing...$(NC)"; \
-	  git commit -m "Prepare release and update version in packages.json files to ${ONDEWO_PROTO_COMPILER_VERSION}"; \
-	  git push; \
-	  echo "$(GREEN)[SUCCESS] Version updated and pushed successfully.$(NC)"; \
+		echo "$(BLUE)[INFO]$(NC) Committing and pushing changes..."; \
+		git commit -m "Prepare release ${ONDEWO_PROTO_COMPILER_VERSION} and update version in package.json files"; \
+		git push; \
+		echo "$(GREEN)[SUCCESS]$(NC) Version updated and pushed successfully."; \
 	else \
-	  echo "$(YELLOW)[NOOP] No changes to commit.$(NC)"; \
+		echo "$(YELLOW)[NOOP]$(NC) No changes to commit."; \
+	fi
+
+release_version_update_in_dockerfiles: ## Update ARG versions in Dockerfiles
+	@for file in \
+		typescript/Dockerfile \
+		nodejs/Dockerfile \
+		python/Dockerfile \
+		js/Dockerfile \
+		angular/Dockerfile ; do \
+		sed -i "s/^ARG PYTHON_VERSION=.*/ARG PYTHON_VERSION=${PYTHON_VERSION}/" $$file; \
+		sed -i "s/^ARG NODE_VERSION=.*/ARG NODE_VERSION=${NODE_VERSION}/" $$file; \
+		sed -i "s/^ARG PROTOC_VERSION=.*/ARG PROTOC_VERSION=${PROTOC_VERSION}/" $$file; \
+		sed -i "s/^ARG GRPC_WEB_VERSION=.*/ARG GRPC_WEB_VERSION=${GRPC_WEB_VERSION}/" $$file; \
+		echo "$(BLUE)[INFO]$(NC) Set versions in $$file"; \
+		git add "$$file"; \
+	done; \
+	if ! git diff --cached --quiet; then \
+		echo "$(BLUE)[INFO]$(NC) Committing and pushing Dockerfile updates..."; \
+		git commit -m "Prepare release ${ONDEWO_PROTO_COMPILER_VERSION} and update Dockerfile ARGs"; \
+		git push; \
+		echo "$(GREEN)[SUCCESS]$(NC) Version updated and pushed successfully."; \
+	else \
+		echo "$(YELLOW)[NOOP]$(NC) No changes to commit."; \
 	fi
 
 create_release_branch: ## Create Release Branch and push it to origin
