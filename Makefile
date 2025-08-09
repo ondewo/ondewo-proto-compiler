@@ -16,10 +16,10 @@ export
 ########################################################
 
 # MUST BE THE SAME AS API in Mayor and Minor Version Number
-ONDEWO_PROTO_COMPILER_VERSION=5.5.2
+ONDEWO_PROTO_COMPILER_VERSION=5.5.3
 
 # Version setup for the different programming languages
-PYTHON_VERSION=3.9.16
+PYTHON_VERSION=3.9.23
 NODE_VERSION=22.16.0
 PROTOC_VERSION=27.3
 GRPC_WEB_VERSION=1.5.0

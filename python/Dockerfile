@@ -1,6 +1,6 @@
-ARG PYTHON_VERSION=3.9.16
+ARG PYTHON_VERSION=3.9.23
 
-FROM python:${PYTHON_VERSION}-buster
+FROM python:${PYTHON_VERSION}-bookworm
 
 WORKDIR /home/ondewo/ondewo-proto-compiler
 

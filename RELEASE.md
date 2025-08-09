@@ -2,6 +2,14 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.5.3
+
+### Bug Fixes
+
+* python: upgrade to bookworm
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.5.2
 
 ### Bug Fixes
