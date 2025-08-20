@@ -16,12 +16,12 @@ export
 ########################################################
 
 # MUST BE THE SAME AS API in Mayor and Minor Version Number
-ONDEWO_PROTO_COMPILER_VERSION=5.5.3
+ONDEWO_PROTO_COMPILER_VERSION=5.6.0
 
 # Version setup for the different programming languages
 PYTHON_VERSION=3.9
-NODE_VERSION=22.16.0
-PROTOC_VERSION=27.3
+NODE_VERSION=22.18.0
+PROTOC_VERSION=32.0
 GRPC_WEB_VERSION=1.5.0
 
 # You need to setup an access token at https://github.com/settings/tokens - permissions are important
