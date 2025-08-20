@@ -2,6 +2,16 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.6.0
+
+### Improvements
+
+* [OND221-2523] angular: upgrade to angular 20
+* [OND221-2523] angular, node, js, typescript: upgraded node version to 22.18.0 LTS
+* [OND221-2523] angular, node, js, typescript: protoc compiler to PROTOC_VERSION=32.0
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.5.3
 
 ### Bug Fixes
