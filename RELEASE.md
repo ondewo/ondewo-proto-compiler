@@ -6,9 +6,9 @@
 
 ### Improvements
 
-* [OND221-2523] angular: upgrade to angular 20
-* [OND221-2523] angular, node, js, typescript: upgraded node version to 22.18.0 LTS
-* [OND221-2523] angular, node, js, typescript: protoc compiler to PROTOC_VERSION=32.0
+* [OND221-2523] Angular: upgrade to angular 20
+* [OND221-2523] Angular, Nodejs, Javascript, Typescript: upgraded Nodejs version to 22.18.0 LTS
+* [OND221-2523] Angular, Nodejs, Javascript, Typescript: protoc compiler to PROTOC_VERSION=32.0
 
 *****************
 
