@@ -29,7 +29,7 @@
   "main": "index.js",
   "name": "ondewo-angular-proto-compiler",
   "scripts": {
-    "build": "ng build --configuration production",
+    "build": "ng analytics off && CI=true ng build --configuration production",
     "clean": "rm -rf node_modules",
     "reinstall": "npm run clean && npm install -y -g npm@latest && npm install"
   },
