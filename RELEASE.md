@@ -1,4 +1,12 @@
 # Release History
+*****************
+
+## Release ONDEWO Proto Compiler 5.7.0
+
+### Bug Fixes
+
+* Angular: stabilized angular build via turning ng analytics off and setting CI to true:
+  `ng analytics off && CI=true ng build --configuration production`
 
 *****************
 
@@ -8,7 +16,7 @@
 
 * [OND221-2523] Angular: upgrade to angular 20
 * [OND221-2523] Angular, Nodejs, Javascript, Typescript: upgraded Nodejs version to 22.18.0 LTS
-* [OND221-2523] Angular, Nodejs, Javascript, Typescript: protoc compiler to PROTOC_VERSION=32.0
+* [OND221-2523] Angular, Nodejs, Javascript, Typescript: protoc compiler to `PROTOC_VERSION=32.0`
 
 *****************
 

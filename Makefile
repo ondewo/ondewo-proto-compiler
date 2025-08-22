@@ -16,7 +16,7 @@ export
 ########################################################
 
 # MUST BE THE SAME AS API in Mayor and Minor Version Number
-ONDEWO_PROTO_COMPILER_VERSION=5.6.0
+ONDEWO_PROTO_COMPILER_VERSION=5.7.0
 
 # Version setup for the different programming languages
 PYTHON_VERSION=3.9
