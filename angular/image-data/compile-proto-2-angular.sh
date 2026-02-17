@@ -116,6 +116,11 @@ echo "Copying output files to mounted directory"
 cp -r $TEMP_SRC_DIRECTORY/lib/* $OUTPUT_VOLUME_FS
 echo "Finished copying"
 
+# -------------- Copy api stubs to mounted directory
+echo "Copying api stubs to mounted directory"
+cp -r $TEMP_SRC_DIRECTORY/api $OUTPUT_VOLUME_FS/api
+echo "Finished copying api stubs"
+
 # -------------- Copy GitHub README and RELEASE
 # echo "Copying GitHub README $TEMP_SRC_DIRECTORY/RELEASE.md and RELEASE files"
 # cp -r $TEMP_SRC_DIRECTORY/.github $OUTPUT_VOLUME_FS

@@ -2,6 +2,14 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.9.0
+
+### Bug Fixes
+
+* Angular: copy generated api stubs directory to output volume so proto-generated TypeScript files (*.pb.ts, *.pbsc.ts, *.pbconf.ts) are available on the host after build
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.8.0
 
 ### Bug Fixes
