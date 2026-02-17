@@ -1,6 +1,6 @@
 ARG NODE_VERSION=22.18.0
 
-FROM node:${NODE_VERSION}-bookworm-slim
+FROM node:${NODE_VERSION}-slim
 
 # protobuf version for compiling proto files
 ARG PROTOC_VERSION=32.0
