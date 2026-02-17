@@ -23,12 +23,13 @@ echo "---------------------------------------------------------------"
 echo "Starting .proto remove optional keyword from proto files  ..."
 echo "---------------------------------------------------------------"
 ALL_PROTO_FILES=$(find $PROTOS_SRC_DIR -iname "*.proto")
-SEARCH_TEXT="optional "
 for file in $ALL_PROTO_FILES; do
     # Check if any files match the pattern
     if [ -f "$file" ]; then
       echo "Removing 'optional ' from file: $file"
-      sed -i "s/$SEARCH_TEXT//g" "$file"
+      # Only remove 'optional' keyword at the start of a field declaration (after leading whitespace),
+      # not when 'optional' is used as a field name (e.g. "optional bool optional = 2;")
+      sed -i 's/^\(\s*\)optional /\1/' "$file"
     fi
 done
 echo "Done .proto remove optional keyword from proto files."
