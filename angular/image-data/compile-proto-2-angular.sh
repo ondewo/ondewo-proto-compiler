@@ -133,6 +133,7 @@ echo "Copying files for NPM publish to NPM folder"
 rm -rf $OUTPUT_VOLUME_FS/npm
 mkdir $OUTPUT_VOLUME_FS/npm
 cp -r $TEMP_SRC_DIRECTORY/lib/* $OUTPUT_VOLUME_FS/npm
+cp -r $TEMP_SRC_DIRECTORY/api $OUTPUT_VOLUME_FS/npm/api
 echo "Finished copying"
 
 # -------------- END
