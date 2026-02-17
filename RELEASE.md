@@ -7,6 +7,8 @@
 ### Bug Fixes
 
 * Angular: copy generated api stubs directory to output volume so proto-generated TypeScript files (*.pb.ts, *.pbsc.ts, *.pbconf.ts) are available on the host after build
+* Angular: generate public-api.d.ts from api stubs and include it along with api/ directory in the npm package folder
+* Angular: fix api path nesting issue (api/api/) when copying stubs to output volume
 
 *****************
 
