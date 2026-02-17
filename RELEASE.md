@@ -4,9 +4,14 @@
 
 ## Release ONDEWO Proto Compiler 5.9.0
 
+### Improvements
+
+* Angular, Nodejs, Javascript, Typescript: added wget retry mechanism (3 attempts with 5s delay using --tries and --waitretry flags) when downloading protoc binary to improve build reliability
+
 ### Bug Fixes
 
-* Angular: copy generated api stubs directory to output volume so proto-generated TypeScript files (*.pb.ts, *.pbsc.ts, *.pbconf.ts) are available on the host after build
+* Angular, Nodejs, Javascript, Typescript: added ca-certificates package to fix SSL certificate validation errors when downloading protoc binary
+* Angular: copy generated api stubs directory to output volume so proto-generated TypeScript files (*.pb.ts,*.pbsc.ts, *.pbconf.ts) are available on the host after build
 * Angular: generate public-api.d.ts from api stubs and include it along with api/ directory in the npm package folder
 * Angular: fix api path nesting issue (api/api/) when copying stubs to output volume
 

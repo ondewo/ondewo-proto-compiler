@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #Excute the example compilation (by runnning the image with mounting this directory in the image)
 FILEDIRECTORY=$(pwd)/`dirname $0`
 

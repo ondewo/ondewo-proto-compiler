@@ -41,7 +41,7 @@ echoDependencies(){
             if [ -z "$EXCLUDE_REGEX" ]; then
                 IS_EXCLUDED=""
             fi
-            
+
             if [ -n "$IS_EXCLUDED" ]; then
                 #echo "EXCLUDE: $IMPORT_PATH"
                 #echo "MATCH: $IS_EXCLUDED"
@@ -50,7 +50,7 @@ echoDependencies(){
                 #echo "$ABS_PATH"
                 #RELATIVE=$(realpath --relative-to="$ROOT_DIR" "$ABS_PATH")
                 #echo "$RELATIVE"
-                
+
                 echoDependencies "$ROOT_DIR" "$ABS_PATH" "$EXCLUDE_REGEX"
             elif [ -f "$REL_PATH" ]; then
                 #echo "$REL_PATH"
@@ -72,6 +72,3 @@ echoProtoDependencies(){
 }
 
 #echoProtoDependencies "$1" "$2"
-
-
-

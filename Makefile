@@ -56,8 +56,8 @@ install_nvm: ## Install NVM, node and npm !! Forcefully closes current terminal
 	$(eval PID:=$(shell ps -ft $(ps | tail -1 | cut -c 8-13) | head -2 | tail -1 | cut -c 1-8))
 	@node --version & npm --version || (kill -KILL ${PID})
 
-install_python_requirements: ## Installs python requirements flak8 and mypy
-	pip install -r requirements.txt
+install_python_requirements: ## Installs python requirements flake8 and mypy
+	pip install --no-cache-dir -r requirements.txt
 
 install_precommit_hooks: ## Installs pre-commit hooks and sets them up for the ondewo-proto-compiler repo
 	pip install pre-commit
@@ -65,7 +65,7 @@ install_precommit_hooks: ## Installs pre-commit hooks and sets them up for the o
 	pre-commit install --hook-type commit-msg
 
 precommit_hooks_run_all_files: ## Runs all pre-commit hooks on all files and not just the changed ones
-	pre-commit run --all-file
+	pre-commit run --all-files
 
 help: ## Print usage info about help targets
 	# (first comment after target starting with double hashes ##)
@@ -75,9 +75,9 @@ makefile_chapters: ## Shows all sections of Makefile
 	@echo `cat Makefile| grep "########################################################" -A 1 | grep -v "########################################################"`
 
 TEST:
-	@echo ${GITHUB_GH_TOKEN}
-	@echo ${PYPI_USERNAME}
-	@echo ${PYPI_PASSWORD}
+	@echo "GITHUB_GH_TOKEN is set: $(if $(GITHUB_GH_TOKEN),yes,no)"
+	@echo "PYPI_USERNAME is set: $(if $(PYPI_USERNAME),yes,no)"
+	@echo "PYPI_PASSWORD is set: $(if $(PYPI_PASSWORD),yes,no)"
 	@echo "\n${CURRENT_RELEASE_NOTES}"
 
 ########################################################
@@ -253,5 +253,5 @@ run_release_with_devops:
 spc: ## Checks if the Release Branch and Tag already exist
 	$(eval filtered_branches:= $(shell git branch --all | grep "release/${ONDEWO_PROTO_COMPILER_VERSION}"))
 	$(eval filtered_tags:= $(shell git tag --list | grep "${ONDEWO_PROTO_COMPILER_VERSION}"))
-	@if test "$(filtered_branches)" != ""; then echo "-- Test 1: Branch exists!!" & exit 1; else echo "-- Test 1: Branch is fine";fi
-	@if test "$(filtered_tags)" != ""; then echo "-- Test 2: Tag exists!!" & exit 1; else echo "-- Test 2: Tag is fine";fi
+	@if test "$(filtered_branches)" != ""; then echo "-- Test 1: Branch exists!!" && exit 1; else echo "-- Test 1: Branch is fine";fi
+	@if test "$(filtered_tags)" != ""; then echo "-- Test 2: Tag exists!!" && exit 1; else echo "-- Test 2: Tag is fine";fi
