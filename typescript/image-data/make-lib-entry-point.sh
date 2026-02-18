@@ -1,4 +1,4 @@
-# -------------- Create pulbic-api.js from the commonjs output of the proto compilation step
+# -------------- Create public-api.js from the commonjs output of the proto compilation step
 # to pass a single file to webpack as an entry point
 
 #Root directory of the compilation ( -> public api file in this directory + proto commonjs stubs are in this/api )

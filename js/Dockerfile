@@ -5,13 +5,19 @@ FROM node:${NODE_VERSION}-bookworm-slim
 # protobuf version for compiling proto files
 ARG PROTOC_VERSION=32.0
 
-RUN apt update && apt install -y parallel unzip tree nano wget
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates parallel unzip tree nano wget \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
 
-RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip -O /tmp/protoc.zip &&\
- unzip -o /tmp/protoc.zip  -d /tmp/protoc/ &&\
- cp /tmp/protoc/bin/protoc /usr/local/bin/protoc &&\
- cp -r /tmp/protoc/include/* /usr/local/include &&\
- chmod a+x /usr/local/bin/protoc
+RUN wget --tries=3 --waitretry=5 --retry-connrefused \
+      https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip \
+      -O /tmp/protoc.zip && \
+    unzip -o /tmp/protoc.zip -d /tmp/protoc/ && \
+    cp /tmp/protoc/bin/protoc /usr/local/bin/protoc && \
+    cp -r /tmp/protoc/include/* /usr/local/include && \
+    chmod a+x /usr/local/bin/protoc && \
+    rm -rf /tmp/protoc.zip /tmp/protoc/
 
 ARG GRPC_WEB_VERSION=1.5.0
 RUN wget https://github.com/grpc/grpc-web/releases/download/${GRPC_WEB_VERSION}/protoc-gen-grpc-web-${GRPC_WEB_VERSION}-linux-x86_64 -O /usr/local/bin/protoc-gen-grpc-web &&\

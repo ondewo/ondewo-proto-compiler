@@ -50,6 +50,7 @@ rm -rf ondewo-vtsi-client-angular.metadata.json
 rm -rf ondewo-vtsi-client-angular.d.ts.map
 rm -rf package.json
 rm -rf public-api.d.ts
+rm -rf public-api.ts
 cd $CURRENT_DIR
 
 #Create lib dir for output if no output specified
@@ -116,6 +117,22 @@ echo "Copying output files to mounted directory"
 cp -r $TEMP_SRC_DIRECTORY/lib/* $OUTPUT_VOLUME_FS
 echo "Finished copying"
 
+# -------------- Copy api stubs to mounted directory
+echo "Copying api stubs to mounted directory"
+rm -rf $OUTPUT_VOLUME_FS/api
+cp -r $TEMP_SRC_DIRECTORY/api $OUTPUT_VOLUME_FS/api
+echo "Finished copying api stubs"
+
+# -------------- Copy public-api.ts to output volume (re-export from api stubs)
+echo "Generating public-api.ts from api stubs"
+PUBLIC_API_TS=$OUTPUT_VOLUME_FS/public-api.ts
+rm -f $PUBLIC_API_TS
+find $TEMP_SRC_DIRECTORY/api -iname "*.ts" | sort | while read tsfile; do
+  relpath=$(echo "$tsfile" | sed "s|^$TEMP_SRC_DIRECTORY/||" | sed 's|\.ts$||')
+  echo "export * from './$relpath';" >> $PUBLIC_API_TS
+done
+echo "Finished generating public-api.ts"
+
 # -------------- Copy GitHub README and RELEASE
 # echo "Copying GitHub README $TEMP_SRC_DIRECTORY/RELEASE.md and RELEASE files"
 # cp -r $TEMP_SRC_DIRECTORY/.github $OUTPUT_VOLUME_FS
@@ -128,6 +145,9 @@ echo "Copying files for NPM publish to NPM folder"
 rm -rf $OUTPUT_VOLUME_FS/npm
 mkdir $OUTPUT_VOLUME_FS/npm
 cp -r $TEMP_SRC_DIRECTORY/lib/* $OUTPUT_VOLUME_FS/npm
+rm -rf $OUTPUT_VOLUME_FS/npm/api
+cp -r $TEMP_SRC_DIRECTORY/api $OUTPUT_VOLUME_FS/npm/api
+cp $OUTPUT_VOLUME_FS/public-api.ts $OUTPUT_VOLUME_FS/npm/public-api.ts
 echo "Finished copying"
 
 # -------------- END

@@ -92,4 +92,4 @@ cp -r $TEMP_SRC_DIRECTORY/lib/* $OUTPUT_VOLUME_FS
 echo "Finished copying"
 
 # -------------- END
-echo ".proto to angular libary compilation finished successfully and ouput files are located in 'lib' directory of the mounted volume"
+echo ".proto to typescript library compilation finished successfully and output files are located in 'lib' directory of the mounted volume"

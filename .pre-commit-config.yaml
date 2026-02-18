@@ -16,7 +16,7 @@ fail_fast: false
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       #      - id: no-commit-to-branch  # Protect specific branches from direct checkins
       #        args: [ --branch, master ]
@@ -41,7 +41,7 @@ repos:
         files: 'requirements.*\.txt$'
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.16.0
+    rev: v1.19.1
     hooks:
       - id: mypy
         args: [ '--config-file=dockerfiles/code_checks/mypy.ini' ]
@@ -62,7 +62,7 @@ repos:
         types: [ python ]
 
   - repo: https://github.com/pycqa/flake8
-    rev: 7.2.0
+    rev: 7.3.0
     hooks:
       - id: flake8
         args: [ '--config=dockerfiles/code_checks/.flake8' ]
@@ -83,7 +83,7 @@ repos:
         exclude: '^(typescript|nodejs|js|angular)/image-data/|.*\.md$'
 
   - repo: https://github.com/milin/giticket
-    rev: v1.4
+    rev: v1.5
     hooks:
       - id: giticket  # Prepend the commit message with the JIRA ticket
         args: [ '--regex=(?:(?:feature|bugfix|support|hotfix)/)?([A-Z][A-Z][A-Z][0-9]{3}-[0-9]{1,5})[_-][\w-]+',

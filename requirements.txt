@@ -1,5 +1,5 @@
-flake8
-mypy
-mypy-protobuf
-pytest
+flake8>=7.0.0
+mypy>=1.10.0
+mypy-protobuf>=3.6.0
+pytest>=8.0.0
 setuptools>=70.0.0

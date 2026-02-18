@@ -1,4 +1,28 @@
 # Release History
+
+*****************
+
+## Release ONDEWO Proto Compiler 5.9.0
+
+### Improvements
+
+* Angular, Nodejs, Javascript, Typescript: added wget retry mechanism (3 attempts with 5s delay using --tries and --waitretry flags) when downloading protoc binary to improve build reliability
+
+### Bug Fixes
+
+* Angular, Nodejs, Javascript, Typescript: added ca-certificates package to fix SSL certificate validation errors when downloading protoc binary
+* Angular: copy generated api stubs directory to output volume so proto-generated TypeScript files (*.pb.ts,*.pbsc.ts, *.pbconf.ts) are available on the host after build
+* Angular: generate public-api.d.ts from api stubs and include it along with api/ directory in the npm package folder
+* Angular: fix api path nesting issue (api/api/) when copying stubs to output volume
+
+*****************
+
+## Release ONDEWO Proto Compiler 5.8.0
+
+### Bug Fixes
+
+* Angular: fixed if a variable in proto files is named optional `optional bool optional = 1`
+
 *****************
 
 ## Release ONDEWO Proto Compiler 5.7.0
@@ -76,14 +100,14 @@
 
 * Updated to node:22.16.0-bookworm-slim for Angular, Javascript, Nodejs, and Typescript
 * Angular:
-    * Updated to Angular 19 libraries
-    * Upgraded to node:22.16.0-bookworm-slim
+  * Updated to Angular 19 libraries
+  * Upgraded to node:22.16.0-bookworm-slim
 * Javascript:
-    * Upgraded to node:22.16.0-bookworm-slim
+  * Upgraded to node:22.16.0-bookworm-slim
 * Nodejs:
-    * Upgraded to node:22.16.0-bookworm-slim
+  * Upgraded to node:22.16.0-bookworm-slim
 * Typescript:
-    * Upgraded to node:22.16.0-bookworm-slim
+  * Upgraded to node:22.16.0-bookworm-slim
 
 *****************
 
@@ -92,7 +116,7 @@
 ### Improvements
 
 * Angular:
-    * Updated to Angular 19 libraries
+  * Updated to Angular 19 libraries
 
 *****************
 
@@ -101,7 +125,7 @@
 ### Bug Fixes
 
 * Python:
-    * Added condition for <1.68.0 for grpcio libraries
+  * Added condition for <1.68.0 for grpcio libraries
 
 *****************
 
@@ -110,12 +134,12 @@
 ### Improvements
 
 * Typescript:
-    * Upgraded to protoc v27.3
+  * Upgraded to protoc v27.3
 
 ### Bug Fixes
 
 * Typescript:
-    * Added installation of protoc-gen-js to fix error "protoc-gen-js: program not found or is not executable"
+  * Added installation of protoc-gen-js to fix error "protoc-gen-js: program not found or is not executable"
 
 *****************
 
@@ -124,15 +148,15 @@
 ### Improvements
 
 * Angular:
-    * Upgraded to protoc v27.3
-    * Upgraded to Angular >=18.2.8
+  * Upgraded to protoc v27.3
+  * Upgraded to Angular >=18.2.8
 * Javascript:
-    * Upgraded to protoc v27.3
+  * Upgraded to protoc v27.3
 * Node.js:
-    * Upgraded to protoc v27.3
+  * Upgraded to protoc v27.3
 * Python:
-    * Upgraded to grpc 1.67.1
-    * Upgraded to protobuf==5.27.5
+  * Upgraded to grpc 1.67.1
+  * Upgraded to protobuf==5.27.5
 
 *****************
 
@@ -141,8 +165,8 @@
 ### Improvements
 
 * Python:
-    * Upgraded to grpc 1.59.2
-    * Upgraded python 3.9.18
+  * Upgraded to grpc 1.59.2
+  * Upgraded python 3.9.18
 
 *****************
 

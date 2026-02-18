@@ -1,9 +1,9 @@
-NAMESPACE.ClientWrapper = function(config) 
+NAMESPACE.ClientWrapper = function(config)
 {
     this.w_host = config['grpc_host'];
     this.w_port = config['grpc_port'];
     this.w_certificate = config['grpc_certificate'];
-    
+
     this.w_secure = config['grpc_secure'];
 
     if(this.w_certificate){
