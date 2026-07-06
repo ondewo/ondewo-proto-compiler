@@ -1,5 +1,28 @@
 export
 
+# =====================================================================================
+# ondewo-proto-compiler - Makefile
+#
+# Single entry point for building the per-language proto-compiler docker images and for
+# cutting a release. There is no long-running app here: each target either builds one of
+# the language images (see `build*`) or drives a step of the release automation.
+#
+# Quick start:
+#   make help                 # list every documented target
+#   make makefile_chapters    # list the section headers below
+#   make build                # build all five compiler images
+#   make build_<lang>         # build a single image: angular | python | js | nodejs | typescript
+#   make test                 # shellcheck gate + bats suite (no Docker required)
+#
+# Versioning: ONDEWO_PROTO_COMPILER_VERSION (below) is the single source of truth and MUST
+# match the ONDEWO API in major and minor version. The release targets propagate it into
+# every package.json and into the ARG lines of each Dockerfile - never edit those by hand.
+#
+# Overriding variables: pass on the command line, e.g. `make build NODE_VERSION=24.14.0`,
+# or export in the environment. Credentials (GITHUB_GH_TOKEN, PYPI_*) are only ever read at
+# runtime and must not be committed.
+# =====================================================================================
+
 # ---------------- BEFORE RELEASE ----------------
 # 1 - Update Version Number
 # 2 - Update RELEASE.md
@@ -15,29 +38,36 @@ export
 # 		Variables
 ########################################################
 
-# MUST BE THE SAME AS API in Mayor and Minor Version Number
+# Single source of truth for the release version. MUST match the ONDEWO API in major and
+# minor version. Propagated into all package.json + Dockerfile ARGs by the release targets.
 ONDEWO_PROTO_COMPILER_VERSION=5.9.0
 
-# Version setup for the different programming languages
+# Toolchain versions baked into the docker images via each Dockerfile's ARG lines.
+# Change here and run the release targets so every image stays in sync.
 PYTHON_VERSION=3.9
 NODE_VERSION=24.14.0
 PROTOC_VERSION=32.0
 GRPC_WEB_VERSION=1.5.0
 
-# You need to setup an access token at https://github.com/settings/tokens - permissions are important
+# GitHub token for the release automation. Create one at https://github.com/settings/tokens
+# (permissions matter). Passed at runtime only - never commit a real value.
 GITHUB_GH_TOKEN?=ENTER_YOUR_TOKEN_HERE
 
+# Release notes for the current version, sliced out of RELEASE.md for the GitHub release body.
 CURRENT_RELEASE_NOTES=`cat RELEASE.md \
 	| sed -n '/Release ONDEWO Proto Compiler ${ONDEWO_PROTO_COMPILER_VERSION}/,/\*\*/p'`
 
+# GitHub repo, the devops-accounts credentials repo, and the utils image tag used by the release flow.
 GH_REPO="https://github.com/ondewo/ondewo-proto-compiler"
 DEVOPS_ACCOUNT_GIT="ondewo-devops-accounts"
 DEVOPS_ACCOUNT_DIR="./${DEVOPS_ACCOUNT_GIT}"
 IMAGE_UTILS_NAME=ondewo-proto-compiler-utils:${ONDEWO_PROTO_COMPILER_VERSION}
+
+# `make` with no target prints the help listing.
 .DEFAULT_GOAL := help
 
 
-# Define colors globally
+# Define colors globally (reused for [INFO]/[SUCCESS]/[WARN]/[ERROR] log lines in recipes)
 BLUE   := \033[1;34m
 GREEN  := \033[0;32m
 YELLOW := \033[1;33m
@@ -74,7 +104,7 @@ help: ## Print usage info about help targets
 makefile_chapters: ## Shows all sections of Makefile
 	@echo `cat Makefile| grep "########################################################" -A 1 | grep -v "########################################################"`
 
-TEST:
+TEST: ## Diagnostics - report whether release credentials are set and print the current release notes
 	@echo "GITHUB_GH_TOKEN is set: $(if $(GITHUB_GH_TOKEN),yes,no)"
 	@echo "PYPI_USERNAME is set: $(if $(PYPI_USERNAME),yes,no)"
 	@echo "PYPI_PASSWORD is set: $(if $(PYPI_PASSWORD),yes,no)"
@@ -118,7 +148,7 @@ test: lint ## Run the shellcheck gate and the bats test suite (no Docker require
 release: release_version_update_in_dockerfiles release_version_update_in_packages_json_files create_release_branch create_release_tag build_and_release_to_github_via_docker release_update_proto_compiler_dependency ## Automate the entire release process
 	@echo "Release Finished"
 
-release_version_update_in_packages_json_files:
+release_version_update_in_packages_json_files: ## Set ONDEWO_PROTO_COMPILER_VERSION in every package.json, then commit and push
 	@for file in \
 		angular/example/package.json \
 		angular/image-data/package.json \
@@ -164,11 +194,14 @@ release_version_update_in_dockerfiles: ## Update ARG versions in Dockerfiles
 		echo "$(YELLOW)[NOOP]$(NC) No changes to commit."; \
 	fi
 
+# Fans out to one sub-target per language; each runs update_proto_compiler_dependency.sh
+# for every ONDEWO client repo (nlu, s2t, t2s, sip, csi, vtsi, survey) to bump the pinned
+# compiler dependency there. Invoke a single language directly for a targeted update.
 release_update_proto_compiler_dependency: release_update_proto_compiler_dependency_angular release_update_proto_compiler_dependency_python release_update_proto_compiler_dependency_js release_update_proto_compiler_dependency_nodejs release_update_proto_compiler_dependency_typescript  ## Updates the proto compiler dependency in all submodules
 	echo "$(GREEN)[SUCCESS]$(NC) Updating proto compiler dependency for all programming languages completed"
 
 release_update_proto_compiler_dependency_angular: export PROGRAMMING_LANGUAGE=angular
-release_update_proto_compiler_dependency_angular:
+release_update_proto_compiler_dependency_angular: ## Bump the compiler dependency in every angular client repo
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-nlu-client
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-s2t-client
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-t2s-client
@@ -178,7 +211,7 @@ release_update_proto_compiler_dependency_angular:
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-survey-client
 
 release_update_proto_compiler_dependency_python: export PROGRAMMING_LANGUAGE=python
-release_update_proto_compiler_dependency_python:
+release_update_proto_compiler_dependency_python: ## Bump the compiler dependency in every python client repo
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-nlu-client
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-s2t-client
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-t2s-client
@@ -188,7 +221,7 @@ release_update_proto_compiler_dependency_python:
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-survey-client
 
 release_update_proto_compiler_dependency_js: export PROGRAMMING_LANGUAGE=js
-release_update_proto_compiler_dependency_js:
+release_update_proto_compiler_dependency_js: ## Bump the compiler dependency in every js client repo
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-nlu-client
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-s2t-client
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-t2s-client
@@ -198,7 +231,7 @@ release_update_proto_compiler_dependency_js:
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-survey-client
 
 release_update_proto_compiler_dependency_nodejs: export PROGRAMMING_LANGUAGE=nodejs
-release_update_proto_compiler_dependency_nodejs:
+release_update_proto_compiler_dependency_nodejs: ## Bump the compiler dependency in every nodejs client repo
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-nlu-client
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-s2t-client
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-t2s-client
@@ -208,7 +241,7 @@ release_update_proto_compiler_dependency_nodejs:
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-survey-client
 
 release_update_proto_compiler_dependency_typescript: export PROGRAMMING_LANGUAGE=typescript
-release_update_proto_compiler_dependency_typescript:
+release_update_proto_compiler_dependency_typescript: ## Bump the compiler dependency in every typescript client repo
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-nlu-client
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-s2t-client
 	sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) ondewo-t2s-client
@@ -243,7 +276,7 @@ build_and_release_to_github_via_docker: build_utils_docker_image release_to_gith
 build_utils_docker_image:  ## Build utils docker image
 	docker build -f Dockerfile.utils -t ${IMAGE_UTILS_NAME} .
 
-push_to_gh: login_to_gh build_gh_release
+push_to_gh: login_to_gh build_gh_release ## Login to GitHub and publish the release (runs inside the utils image)
 	@echo 'Released to Github'
 
 release_to_github_via_docker_image:  ## Release to Github via docker
@@ -262,7 +295,7 @@ clone_devops_accounts: ## Clones devops-accounts repo
 	if [ -d $(DEVOPS_ACCOUNT_GIT) ]; then rm -Rf $(DEVOPS_ACCOUNT_GIT); fi
 	git clone git@bitbucket.org:ondewo/${DEVOPS_ACCOUNT_GIT}.git
 
-run_release_with_devops:
+run_release_with_devops: ## Read credentials from the cloned devops-accounts repo and run the full release
 	$(eval info:= $(shell cat ${DEVOPS_ACCOUNT_DIR}/account_github.env | grep GITHUB_GH & cat ${DEVOPS_ACCOUNT_DIR}/account_pypi.env | grep PYPI_USERNAME & cat ${DEVOPS_ACCOUNT_DIR}/account_pypi.env | grep PYPI_PASSWORD))
 	@make release $(info)
 
