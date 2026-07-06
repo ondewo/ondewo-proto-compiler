@@ -131,7 +131,9 @@ if [ "$PROGRAMMING_LANGUAGE" = "angular" ] || \
     .peerDependencies // {}
   ] | add' "$IMAGE_DATA_PKG") || { log "${RED}[ERROR]${NC} Failed to parse $IMAGE_DATA_PKG" >&2; exit 1; }
 
-  TMP_PKG=$(mktemp)
+  # Explicit template: BSD/macOS mktemp requires a trailing run of X's (bare
+  # `mktemp` with no operand errors there); GNU accepts the same template.
+  TMP_PKG=$(mktemp "${TMPDIR:-/tmp}/proto-compiler.XXXXXX")
   trap 'rm -f "$TMP_PKG"' EXIT
   log "${BLUE}[INFO]${NC} Updating only existing dependency versions..."
 

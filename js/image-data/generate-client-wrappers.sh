@@ -27,12 +27,17 @@ while IFS= read -r JAVASCRIPT_FILE; do
     CLIENT_NAMES=$(echo "$CLIENT_CLASS_LINES" | sed -n 's|.*\.\([a-zA-Z0-9_-]*\)[[:space:]].*|\1|p')
 
     if [ -n "$CLIENT_NAMES" ] && [ -n "$NAME_SPACE" ]; then
-        echo "$CLIENT_NAMES" | \
-        xargs -I % bash -c \
-        "echo \"$TEMPLATE_CONTENTS\" | \
-        sed \"s/Client/%/\" | \
-        sed \"s/NAMESPACE/$NAME_SPACE/\" \
-        >> \"$JAVASCRIPT_FILE\""
+        # Plain shell loop instead of `xargs -I % bash -c "<template>"`: BSD/macOS
+        # xargs caps an -I-constructed argument containing the replstr at 255 bytes,
+        # so cramming the ~900-byte template into one bash -c arg fails there. The
+        # loop keeps the original substitution order (Client first, then NAMESPACE).
+        echo "$CLIENT_NAMES" | while IFS= read -r CLIENT_NAME; do
+            [ -n "$CLIENT_NAME" ] || continue
+            echo "$TEMPLATE_CONTENTS" \
+                | sed "s/Client/$CLIENT_NAME/" \
+                | sed "s/NAMESPACE/$NAME_SPACE/" \
+                >> "$JAVASCRIPT_FILE"
+        done
 
         # -i.bak (not bare -i) keeps this working with both GNU and BSD/macOS sed
         sed -i.bak "s/module.exports = $NAME_SPACE;//" "$JAVASCRIPT_FILE"

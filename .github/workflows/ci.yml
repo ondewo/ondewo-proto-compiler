@@ -20,7 +20,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck
-          npm install -g bats
+          # sudo: npm's global prefix is /usr/local, not writable by the runner user
+          sudo npm install -g bats
 
       - name: Install shellcheck and bats (macOS)
         if: runner.os == 'macOS'
