@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# BSD/macOS realpath has no --relative-to: canonicalise both paths with cd+pwd
+# and strip the root prefix (resolved files are always under the proto root)
+relativeToRoot(){
+    _rtr_root=$(cd "$1" && pwd) || return 1
+    _rtr_dir=$(cd "$(dirname "$2")" && pwd) || return 1
+    _rtr_abs="$_rtr_dir/$(basename "$2")"
+    printf '%s\n' "${_rtr_abs#"$_rtr_root"/}"
+}
+
 echoDependencies(){
 
     ROOT_DIR="$1"
@@ -9,23 +18,20 @@ echoDependencies(){
     #echo "ROOT_DIR: $ROOT_DIR"
     #echo "FILE_PATHS: $FILE_PATHS"
 
-    while IFS2= read -r FILE_PATH; do
+    while IFS= read -r FILE_PATH; do
         #echo "Consuming: $FILE_PATH"
 
         if [ ! -f "$FILE_PATH" ]; then
             FILE_PATH="$ROOT_DIR/$FILE_PATH"
         fi
-        RELATIVE=$(realpath --relative-to="$ROOT_DIR" "$FILE_PATH")
+        RELATIVE=$(relativeToRoot "$ROOT_DIR" "$FILE_PATH")
         echo "$RELATIVE"
 
         #echo "Print dependencies for $FILE_PATH"
 
-        #-E, --extended-regexp
-        IMPORT_LINES=$(cat "$FILE_PATH" | grep -E -o "import[ ]+\"[a-zA-Z0-9\./_-]+\"")
-        #echo "$FILE_PATH --> IMPORT_LINES: $IMPORT_LINES"
-        #echo $IMPORT_LINES
-        #-P, --perl-regexp  --  -o, --only-matching
-        IMPORT_PATHS=$(echo "$IMPORT_LINES" | grep -o -P "(?<=\")[a-zA-Z0-9\./_-]+(?=\")")
+        # extract the quoted path of every `import "x/y.proto";` line
+        # (portable sed instead of grep -P, which BSD/macOS grep lacks)
+        IMPORT_PATHS=$(sed -n 's|.*import[[:space:]][[:space:]]*"\([a-zA-Z0-9./_-]*\)".*|\1|p' "$FILE_PATH")
         #echo "$FILE_PATH --> IMPORT_PATHS: $IMPORT_PATHS"
 
         while IFS= read -r IMPORT_PATH; do
@@ -58,13 +64,13 @@ echoDependencies(){
                 #echo "$RELATIVE"
                 echoDependencies "$ROOT_DIR" "$REL_PATH" "$EXCLUDE_REGEX"
             elif [ -n "$IMPORT_PATH" ]; then
-                echo "$FILE_PATH --> Failed to resolve dependency with root: '$ROOT_DIR' and import path: '$IMPORT_PATH'"
+                echo "$FILE_PATH --> Failed to resolve dependency with root: '$ROOT_DIR' and import path: '$IMPORT_PATH'" >&2
                 exit 1
             fi
 
-        done <<< $IMPORT_PATHS
+        done <<< "$IMPORT_PATHS"
 
-    done <<< $FILE_PATHS
+    done <<< "$FILE_PATHS"
 }
 
 echoProtoDependencies(){

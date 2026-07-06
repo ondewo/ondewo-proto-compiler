@@ -4,9 +4,7 @@ ENV LANG=C.UTF-8
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Vienna
 
-# Token passed at runtime via -e, not baked into the image
-ARG GITHUB_GH_TOKEN
-ENV GITHUB_GH_TOKEN=${GITHUB_GH_TOKEN}
+# GITHUB_GH_TOKEN is passed at runtime via -e only; never bake it into the image
 
 RUN apt-get update -qq  \
   && apt-get dist-upgrade -qq -y --no-install-recommends --fix-missing make tmux vim sed tree tk-dev curl sudo tzdata gnupg \

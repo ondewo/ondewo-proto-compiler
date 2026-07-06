@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Mock protoc: log argv, mimic the real "Missing input file." failure when no
+# .proto positional argument is supplied (this is what makes the empty-deps
+# regression observable), and materialise a dummy stub file per *_out flag so
+# downstream steps (entry-point generation, lib packaging) see generated output.
+# Understands both "--x_out=DIR" and "--x_out=opts:DIR".
+: "${PROTOC_MOCK_LOG:=/dev/null}"
+printf 'protoc %s\n' "$*" >> "$PROTOC_MOCK_LOG"
+
+has_proto=0
+for a in "$@"; do
+  case "$a" in *.proto) has_proto=1 ;; esac
+done
+if [ "$has_proto" -eq 0 ]; then
+  echo "Missing input file." >&2
+  exit 1
+fi
+
+for a in "$@"; do
+  case "$a" in
+    --*_out=*)
+      dir="${a#*=}"
+      dir="${dir##*:}"           # strip generator options ("opts:DIR" -> "DIR")
+      [ -n "$dir" ] || continue
+      mkdir -p "$dir"
+      case "$a" in
+        --ng_out=*)       : > "$dir/mock_pb.ts" ;;
+        --ts_out=*)       : > "$dir/mock_pb.d.ts" ;;
+        --grpc-web_out=*) : > "$dir/mock_grpc_web_pb.js"; : > "$dir/mock_grpc_web_pb.d.ts" ;;
+        *)                : > "$dir/mock_pb.js" ;;
+      esac
+      ;;
+  esac
+done
+exit 0

@@ -98,6 +98,9 @@ bash <lang>/build.sh    # equivalent single-image build (docker build)
 make setup_developer_environment_locally   # python reqs + nvm + pre-commit hooks
 make install_precommit_hooks               # pre-commit install (+ commit-msg hook)
 make precommit_hooks_run_all_files         # run all hooks on all files
+
+make lint    # shellcheck over all tracked shell scripts
+make test    # shellcheck gate + the bats test suite (no Docker required)
 ```
 
 Compiling `.proto` files with a built image (see `README.md` and the `<lang>/example/run-compile.sh` scripts):
@@ -113,6 +116,11 @@ The scripts here are POSIX `sh` (`#!/bin/sh`), invoked with `bash`/`sh` from the
 
 - **Resolve paths relative to the script, not the caller's CWD:** use `"$(dirname "$0")"` /
   `SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"` rather than assuming the working directory.
+- **Stay portable across GNU (Linux) and BSD (macOS) userlands** — CI runs the suite on both. Concretely:
+  `sed -i.bak '…' file && rm -f file.bak` instead of bare `sed -i`; no `grep -P` (use `sed -n 's|…|\1|p'` to extract);
+  `[[:space:]]` instead of `\s`; always give `find` an explicit start path; count with `… | grep -c . || true` rather
+  than `wc -l` (BSD `wc` pads with spaces); no bash-4-only syntax (macOS ships bash 3.2, e.g. no `${*: -1}`, no
+  associative arrays).
 - **Banner-style progress output.** Bracket a notable operation with an opening and a closing `echo` separated by a
   ruled line, and mark completion with a ✅. Keep the separator characters consistent with the surrounding file:
 
@@ -133,6 +141,23 @@ The scripts here are POSIX `sh` (`#!/bin/sh`), invoked with `bash`/`sh` from the
   `[SUCCESS]` messages instead of hard-coding escape codes.
 - **`Dockerfile` versions** are set through `ARG` lines (`PYTHON_VERSION`, `NODE_VERSION`, `PROTOC_VERSION`,
   `GRPC_WEB_VERSION`). Change them via the `Makefile` release targets, not by hand, so all images stay in sync.
+
+## Testing
+
+`make test` runs two layers, neither of which needs a Docker build (see `tests/README.md`):
+
+- **`shellcheck` gate** (`make lint`) over every tracked shell script, wired as a `.pre-commit-config.yaml` hook and a
+  GitHub Actions job (`.github/workflows/ci.yml`, a Linux **and** macOS matrix). Keep it clean at `-S warning`. Where a
+  variable holds a space-separated **list** meant to word-split (e.g. proto files passed to `protoc`), leave it
+  unquoted and annotate with `# shellcheck disable=SC2086  # intentional word splitting …` rather than quoting it.
+- **`bats` suite** under `tests/`, which drives the scripts' logic with PATH-mock
+  `docker`/`git`/`python`/`npm`/`protoc`/`grpc_tools_node_protoc` (in `tests/helpers/bin/`) and fixtures, so
+  error-propagation, argument handling, the full orchestrator pipelines (via the `IMAGE_DATA_DIRECTORY` /
+  `INPUT_VOLUME_FS` / `OUTPUT_VOLUME_FS` env overrides), and the release version-bumps are all exercised without
+  images. When you change a script's behaviour, update or add the matching `*.bats` case.
+
+Anything that needs real `protoc`/`ng`/`webpack` code generation is an integration concern — run it with an end-to-end
+`make build_<lang>`, not the fast unit gate.
 
 ## Git Commits
 

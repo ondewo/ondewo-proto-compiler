@@ -12,13 +12,14 @@ if [ -z "$2" ]; then
     RELATIVE_PROTOS_DIR="protos"
 fi
 
-IMAGE_DATA_DIRECTORY=/image-data
+#Container defaults; env-overridable so the script can run (and be tested) outside the image
+IMAGE_DATA_DIRECTORY="${IMAGE_DATA_DIRECTORY:-/image-data}"
 DEFAULT_FILES_DIR="$IMAGE_DATA_DIRECTORY/default-lib-files"
-TEMP_SRC_DIRECTORY=/temp_src
+TEMP_SRC_DIRECTORY="${TEMP_SRC_DIRECTORY:-/temp_src}"
 
 #Input volumes mouted at root
-INPUT_VOLUME_FS=/input-volume
-OUTPUT_VOLUME_FS=/output-volume
+INPUT_VOLUME_FS="${INPUT_VOLUME_FS:-/input-volume}"
+OUTPUT_VOLUME_FS="${OUTPUT_VOLUME_FS:-/output-volume}"
 
 PROTOS_ROOT_PATH="$INPUT_VOLUME_FS/$RELATIVE_PROTOS_DIR"
 
@@ -38,6 +39,10 @@ if [ ! -d $OUTPUT_VOLUME_FS ]; then
     OUTPUT_VOLUME_FS="$INPUT_VOLUME_FS/lib"
     mkdir -p "$OUTPUT_VOLUME_FS"
 fi
+# NOTE: intentionally NOT wiping the output volume — js copies its generated files
+# directly into the output root (no separable generated subdir like the other
+# targets' api/), so a blanket `rm -rf $OUTPUT_VOLUME_FS/*` would also delete any
+# user files mounted there. Left disabled to preserve the shipped behaviour.
 #rm -r $OUTPUT_VOLUME_FS/*
 
 #Copy source-volume contents to new directory (to not modify the original files during compilation)

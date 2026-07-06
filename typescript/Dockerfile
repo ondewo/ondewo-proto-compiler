@@ -31,7 +31,7 @@ RUN npm install -g protoc-gen-js
 
 # --------------- Copy all files from "image-data" directory to docker container
 WORKDIR /image-data
-ADD image-data /image-data
+COPY image-data/ /image-data/
 
 # --------------- Entrypoint when the docker container is executed
 ENTRYPOINT ["bash","compile-proto-2-typescript.sh"]

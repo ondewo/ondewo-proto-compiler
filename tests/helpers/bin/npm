@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Mock npm: log argv and no-op. `npm run build` emulates the ng-packagr build
+# by creating a ./lib output dir in the CWD so orchestrator scripts have build
+# results to copy back to the output volume.
+: "${NPM_MOCK_LOG:=/dev/null}"
+printf 'npm %s\n' "$*" >> "$NPM_MOCK_LOG"
+if [ "${1:-}" = "run" ] && [ "${2:-}" = "build" ]; then
+  # emulate ng-packagr: with the angular workspace layout the library lands in
+  # src/lib (the dest of src/ng-package.json); otherwise fall back to ./lib
+  if [ -f src/ng-package.json ]; then
+    mkdir -p src/lib
+    : > src/lib/mock-ng-build.js
+  else
+    mkdir -p lib
+    : > lib/mock-ng-build.js
+  fi
+fi
+exit "${NPM_MOCK_RC:-0}"

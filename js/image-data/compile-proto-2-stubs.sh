@@ -15,12 +15,16 @@ echo "Protos src dir: $PROTOS_SRC_DIR"
 #Find .protos in directory and count the occurances
 echo "Checking $PROTOS_SRC_DIR for .proto files"
 
-ENTRY_PROTO_FILES=$(find "$PROTOS_SRC_DIR" -iname "*.proto")
-PROTO_FILES_CNT=$(echo "$ENTRY_PROTO_FILES" | wc -l)
-if [[ $PROTO_FILES_CNT -lt 1 ]]; then
-    echo "ERROR: No proto files were found in the '/protos' directory, but are required to build a library from - exitting"
+if [ ! -d "$PROTOS_SRC_DIR" ]; then
+    echo "ERROR: No proto files were found - the protos source directory '$PROTOS_SRC_DIR' does not exist - exitting" >&2
     exit 1
 fi
+ENTRY_PROTO_FILES=$(find "$PROTOS_SRC_DIR" -iname "*.proto")
+if [ -z "$ENTRY_PROTO_FILES" ]; then
+    echo "ERROR: No proto files were found in the '/protos' directory, but are required to build a library from - exitting" >&2
+    exit 1
+fi
+PROTO_FILES_CNT=$(printf '%s\n' "$ENTRY_PROTO_FILES" | grep -c .)
 echo "Found $PROTO_FILES_CNT .proto files in directory: $PROTOS_SRC_DIR"
 echo "Source verified."
 
@@ -32,9 +36,13 @@ export -f echoProtoDependencies
 #echo "$ENTRY_PROTO_FILES" | xargs -I % bash -c "$(echoProtoDependencies "$PROTOS_ROOT_DIR" "%")"
 #ALL_PROTO_FILES=$(echo "$ENTRY_PROTO_FILES" | xargs -I % bash -c "echoProtoDependencies \"$PROTOS_ROOT_DIR\" %" | tac | tr "\n" " ")
 #ALL_PROTO_FILES=$(echoProtoDependencies "$ENTRY_PROTO_FILES" "$PROTOS_ROOT_DIR" | tac | tr "\n" " ")
-ALL_PROTO_FILES=$(echoProtoDependencies "$PROTOS_ROOT_DIR" "$ENTRY_PROTO_FILES" | sort | uniq | tr "\n" " ")
+if ! ALL_PROTO_FILES=$(echoProtoDependencies "$PROTOS_ROOT_DIR" "$ENTRY_PROTO_FILES"); then
+    echo "Dependency resolution failed" >&2
+    exit 1
+fi
+ALL_PROTO_FILES=$(printf '%s\n' "$ALL_PROTO_FILES" | sort -u | tr "\n" " ")
 #ALL_PROTO_FILES=$(printf "%s\n%s" "$ENTRY_PROTO_FILES" "$ALL_PROTO_FILES")
-ALL_PROTO_FILES_CNT=$(echo "$ALL_PROTO_FILES" | wc -l)
+ALL_PROTO_FILES_CNT=$(echo "$ALL_PROTO_FILES" | wc -w)
 
 # -------------- Generate the proto client library stubs
 echo "Starting .proto to grpc client stubs compilation ..."
@@ -51,13 +59,12 @@ CWD=$(pwd)
 cd "$PROTOS_ROOT_DIR"
 
 #mode=grpcwebtext mode=grpcweb
-COMMAND="protoc \
---js_out=import_style=commonjs,binary:\"$STUBS_TARGET_DIR\" \
---grpc-web_out=import_style=commonjs,mode=grpcwebtext:\"$STUBS_TARGET_DIR\" \
--I \"$PROTOS_ROOT_DIR\" $ALL_PROTO_FILES"
-
-echo "$COMMAND"
-eval "$COMMAND"
+# shellcheck disable=SC2086  # intentional word splitting of proto file list
+protoc \
+--js_out=import_style=commonjs,binary:"$STUBS_TARGET_DIR" \
+--grpc-web_out=import_style=commonjs,mode=grpcwebtext:"$STUBS_TARGET_DIR" \
+-I "$PROTOS_ROOT_DIR" \
+$ALL_PROTO_FILES
 
 echo ""
 

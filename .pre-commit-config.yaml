@@ -21,7 +21,7 @@ repos:
       #      - id: no-commit-to-branch  # Protect specific branches from direct checkins
       #        args: [ --branch, master ]
       - id: check-added-large-files # Prevent giant files from being committed
-        args: [ maxkb=1024 ]
+        args: [ --maxkb=1024 ]
       - id: check-ast # Check whether files parse as valid python
       - id: check-json # Attempt to load json files to verify syntax
       - id: check-xml # Attempt to load xml files to verify syntax
@@ -81,6 +81,17 @@ repos:
       - id: prettier
         files: \.(js|jsx|ts|tsx|css|scss|html|vue|json|md)$
         exclude: '^(typescript|nodejs|js|angular)/image-data/|.*\.md$'
+
+  - repo: local
+    hooks:
+      - id: shellcheck # Static analysis of shell scripts (uses the system shellcheck)
+        name: shellcheck
+        entry: shellcheck
+        language: system
+        args: [ -x, -S, warning ]
+        # Select by extension (types: [shell] relies on shebang detection and can miss files)
+        types: [ file ]
+        files: '\.(sh|bash)$'
 
   - repo: https://github.com/milin/giticket
     rev: v1.5

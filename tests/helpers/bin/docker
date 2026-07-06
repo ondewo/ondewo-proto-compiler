@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Mock docker: log argv and return a controllable exit code.
+#   FAIL_BUILD_MATCH  -> if set and the argv contains it, `docker build` exits FAIL_BUILD_RC (default 1)
+#   DOCKER_MOCK_RC    -> default exit code for non-build subcommands (default 0)
+: "${DOCKER_MOCK_LOG:=/dev/null}"
+printf 'docker %s\n' "$*" >> "$DOCKER_MOCK_LOG"
+
+sub=""
+for a in "$@"; do
+  case "$a" in -*) ;; *) sub="$a"; break ;; esac
+done
+
+if [ "$sub" = "build" ]; then
+  if [ -n "${FAIL_BUILD_MATCH:-}" ] && printf '%s' "$*" | grep -q -- "$FAIL_BUILD_MATCH"; then
+    echo "mock docker: build FAILED (matched '$FAIL_BUILD_MATCH')" >&2
+    exit "${FAIL_BUILD_RC:-1}"
+  fi
+  exit 0
+fi
+
+exit "${DOCKER_MOCK_RC:-0}"

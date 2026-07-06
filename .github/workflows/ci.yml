@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-and-test:
+    name: shellcheck + bats (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck and bats (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          npm install -g bats
+
+      - name: Install shellcheck and bats (macOS)
+        if: runner.os == 'macOS'
+        run: brew install shellcheck bats-core
+
+      - name: Lint shell scripts (shellcheck gate)
+        run: make lint
+
+      - name: Run bats test suite
+        run: bats tests/

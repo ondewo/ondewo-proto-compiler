@@ -28,7 +28,10 @@ if [ ! -f "$PUBLIC_API_FILE" ]; then
     export POSTFIX="';"
 
     #find api -iname "*.ts" -printf "$PREFIX%p$POSTFIX\n" >> $PUBLIC_API_FILE
-    find -iname "*$FILE_EXT" -exec bash -c 'printf "$PREFIX./%s$POSTFIX\n" "${@%.*}"' _ {} + >> "$PUBLIC_API_FILE"
-    sed -i '/\/node_modules\//d' "$PUBLIC_API_FILE"
-    sed -i '/\/webpack/d' "$PUBLIC_API_FILE"
+    # explicit "." start path: BSD/macOS find has no GNU-style implicit path
+    find . -iname "*$FILE_EXT" -exec bash -c 'printf "$PREFIX./%s$POSTFIX\n" "${@%.*}"' _ {} + >> "$PUBLIC_API_FILE"
+    # -i.bak (not bare -i) keeps this working with both GNU and BSD/macOS sed
+    sed -i.bak '/\/node_modules\//d' "$PUBLIC_API_FILE"
+    sed -i.bak '/\/webpack/d' "$PUBLIC_API_FILE"
+    rm -f "$PUBLIC_API_FILE.bak"
 fi

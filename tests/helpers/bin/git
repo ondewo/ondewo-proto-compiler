@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Mock git for update_proto_compiler_dependency.sh tests.
+#   clone <url>        -> create <basename> dir populated from $REPO_FIXTURE
+#   add <path>         -> snapshot staged file into $CAPTURE_DIR (survives the
+#                         script's end-of-run `rm -rf` of the temp clone)
+#   diff --cached --quiet -> exit $GIT_DIFF_RC (default 1 = "there are changes")
+#   everything else    -> log + no-op, exit 0
+: "${GIT_MOCK_LOG:=/dev/null}"
+printf 'git %s\n' "$*" >> "$GIT_MOCK_LOG"
+
+# Skip git global options to find the subcommand.
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --no-pager|--paginate) shift ;;
+    -C|-c) shift 2 ;;
+    -*) shift ;;
+    *) break ;;
+  esac
+done
+
+sub="${1:-}"
+[ $# -gt 0 ] && shift
+
+case "$sub" in
+  clone)
+    # last argument (bash-3.2 compatible: no "${*: -1}" on macOS's stock bash)
+    url=""
+    for a in "$@"; do url="$a"; done
+    dest="$(basename "$url" .git)"
+    mkdir -p "$dest"
+    if [ -n "${REPO_FIXTURE:-}" ] && [ -d "$REPO_FIXTURE" ]; then
+      cp -r "$REPO_FIXTURE"/. "$dest"/
+    fi
+    ;;
+  add)
+    if [ -n "${CAPTURE_DIR:-}" ]; then
+      for p in "$@"; do
+        [ "$p" = "." ] && continue
+        if [ -f "$p" ]; then
+          mkdir -p "$CAPTURE_DIR/$(dirname "$p")"
+          cp "$p" "$CAPTURE_DIR/$p"
+        fi
+      done
+    fi
+    ;;
+  diff)
+    case " $* " in
+      *" --cached "*|*" --quiet "*) exit "${GIT_DIFF_RC:-1}" ;;
+      *) : ;;
+    esac
+    ;;
+  *) : ;;
+esac
+exit 0

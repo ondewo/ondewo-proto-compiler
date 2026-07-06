@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 #Root path of all the protos to be compiled
 
@@ -10,18 +11,19 @@ if [ -z "$1" ]; then
 fi
 echo "$RELATIVE_PROTOS_DIR"
 
-IMAGE_DATA_DIRECTORY=/image-data
+#Container defaults; env-overridable so the script can run (and be tested) outside the image
+IMAGE_DATA_DIRECTORY="${IMAGE_DATA_DIRECTORY:-/image-data}"
 DEFAULT_FILES_DIR=$IMAGE_DATA_DIRECTORY/default-lib-files
 
 #Input volumes mouted at root
-INPUT_VOLUME_FS=/input-volume
-OUTPUT_VOLUME_FS=/output-volume
+INPUT_VOLUME_FS="${INPUT_VOLUME_FS:-/input-volume}"
+OUTPUT_VOLUME_FS="${OUTPUT_VOLUME_FS:-/output-volume}"
 
 TEMP_SRC_DIRECTORY=$IMAGE_DATA_DIRECTORY/src
 #Copy source-volume contents to new directory (to not modify the original files during compilation)
-cp -r $INPUT_VOLUME_FS $TEMP_SRC_DIRECTORY
+cp -r "$INPUT_VOLUME_FS" "$TEMP_SRC_DIRECTORY"
 
-PROTOS_ROOT_PATH=$INPUT_VOLUME_FS/$RELATIVE_PROTOS_DIR
+PROTOS_ROOT_PATH=$TEMP_SRC_DIRECTORY/$RELATIVE_PROTOS_DIR
 
 #If not specified take all protos in the protos root path (otherwise a relative directory)
 #Subdir of the protos to be compiled
@@ -31,11 +33,18 @@ if [ -z "$2" ]; then
 fi
 echo "$COMPILE_SELECTED_PROTOS_DIR"
 
+#Create lib dir for output if no output specified
+if [ ! -d "$OUTPUT_VOLUME_FS" ]; then
+  echo "Destination volume not specified/ does not exist -> creating output in sourcevolume/lib directory"
+  OUTPUT_VOLUME_FS=$INPUT_VOLUME_FS/lib
+  mkdir -p "$OUTPUT_VOLUME_FS"
+fi
+
 #Clean output volume if exists
 echo "Clean output volume (remove everything except src-folder and dot prefixed files/dirs)"
 CURRENT_DIR=$(pwd)
 shopt -s extglob # needed to allow pattern matching on rm
-cd $OUTPUT_VOLUME_FS
+cd "$OUTPUT_VOLUME_FS" || exit 1
 # rm -r !(".*"|"src")
 rm -rf bundles
 rm -rf esm2015
@@ -51,85 +60,78 @@ rm -rf ondewo-vtsi-client-angular.d.ts.map
 rm -rf package.json
 rm -rf public-api.d.ts
 rm -rf public-api.ts
-cd $CURRENT_DIR
-
-#Create lib dir for output if no output specified
-if [ ! -d $OUTPUT_VOLUME_FS ]; then
-  echo "Destination volume not specified/ does not exist -> creating output in sourcevolume/lib directory"
-  OUTPUT_VOLUME_FS=$INPUT_VOLUME_FS/lib
-  mkdir -p $OUTPUT_VOLUME_FS
-fi
+cd "$CURRENT_DIR" || exit 1
 
 # -------------- Check if all the requirements are there and exist if not
 echo "Checking if all the source requirements are fulfilled ..."
 
-if [ ! -f $TEMP_SRC_DIRECTORY/package.json ]; then
+if [ ! -f "$TEMP_SRC_DIRECTORY/package.json" ]; then
   echo "ERROR: A package.json file was not specified in the mounted directory this is however required - exitting"
   exit 1
 fi
 
-if [ ! -f $TEMP_SRC_DIRECTORY/README.md ]; then
+if [ ! -f "$TEMP_SRC_DIRECTORY/README.md" ]; then
   echo "ERROR: A README.md file (for NPM) was not specified in the mounted directory this is however required - exitting"
   exit 1
 fi
 
-if [ ! -f $TEMP_SRC_DIRECTORY/.github/README.md ]; then
+if [ ! -f "$TEMP_SRC_DIRECTORY/.github/README.md" ]; then
   echo "ERROR: A README.md file (for GitHub) was not specified in the mounted directory this is however required - exitting"
   exit 1
 fi
 
-if [ ! -f $TEMP_SRC_DIRECTORY/RELEASE.md ]; then
+if [ ! -f "$TEMP_SRC_DIRECTORY/RELEASE.md" ]; then
   echo "ERROR: A RELEASE.md file (for GitHub) was not specified in the mounted directory this is however required - exitting"
   exit 1
 fi
 
-if [ ! -f $TEMP_SRC_DIRECTORY/LICENSE ]; then
+if [ ! -f "$TEMP_SRC_DIRECTORY/LICENSE" ]; then
   echo "No LICENSE file specified in source directory -> copying default file"
-  cp $DEFAULT_FILES_DIR/LICENSE $TEMP_SRC_DIRECTORY/LICENSE
+  cp "$DEFAULT_FILES_DIR/LICENSE" "$TEMP_SRC_DIRECTORY/LICENSE"
 fi
 
-if [ ! -f $TEMP_SRC_DIRECTORY/tsconfig.json ]; then
+if [ ! -f "$TEMP_SRC_DIRECTORY/tsconfig.json" ]; then
   echo "No tsconfig.json specified in source directory -> copying default file"
-  cp $DEFAULT_FILES_DIR/tsconfig.json $TEMP_SRC_DIRECTORY/tsconfig.json
+  cp "$DEFAULT_FILES_DIR/tsconfig.json" "$TEMP_SRC_DIRECTORY/tsconfig.json"
 fi
 
-if [ ! -f $TEMP_SRC_DIRECTORY/ng-package.json ]; then
+if [ ! -f "$TEMP_SRC_DIRECTORY/ng-package.json" ]; then
   echo "No ng-package.json specified in source directory -> copying default file"
-  cp $DEFAULT_FILES_DIR/ng-package.json $TEMP_SRC_DIRECTORY/ng-package.json
+  cp "$DEFAULT_FILES_DIR/ng-package.json" "$TEMP_SRC_DIRECTORY/ng-package.json"
 fi
 
 # TEMP_LIB_DIRECTORY=$IMAGE_DATA_DIRECTORY/lib
 
 # -------------- Running compilation steps
 echo "START: Executing \"compile-proto-2-stubs.sh\"..."
-bash ./compile-proto-2-stubs.sh $TEMP_SRC_DIRECTORY/api $PROTOS_ROOT_PATH $COMPILE_SELECTED_PROTOS_DIR
+bash ./compile-proto-2-stubs.sh "$TEMP_SRC_DIRECTORY/api" "$PROTOS_ROOT_PATH" "$COMPILE_SELECTED_PROTOS_DIR"
 echo "DONE: Executing \"compile-proto-2-stubs.sh\"..."
 echo "START: Executing \"make-lib-entry-point.sh\"..."
-bash ./make-lib-entry-point.sh $TEMP_SRC_DIRECTORY
+bash ./make-lib-entry-point.sh "$TEMP_SRC_DIRECTORY"
 echo "DONE: Executing \"make-lib-entry-point.sh\"..."
 echo "START: Executing \"compile-stubs-2-lib.sh\"..."
-bash ./compile-stubs-2-lib.sh $IMAGE_DATA_DIRECTORY $TEMP_SRC_DIRECTORY
+bash ./compile-stubs-2-lib.sh "$IMAGE_DATA_DIRECTORY" "$TEMP_SRC_DIRECTORY"
 echo "DONE: Executing \"compile-stubs-2-lib.sh\"..."
 
 # -------------- Copy results back to mounted directory
 
 echo "Copying output files to mounted directory"
-cp -r $TEMP_SRC_DIRECTORY/lib/* $OUTPUT_VOLUME_FS
+cp -r "$TEMP_SRC_DIRECTORY"/lib/* "$OUTPUT_VOLUME_FS"
 echo "Finished copying"
 
 # -------------- Copy api stubs to mounted directory
 echo "Copying api stubs to mounted directory"
-rm -rf $OUTPUT_VOLUME_FS/api
-cp -r $TEMP_SRC_DIRECTORY/api $OUTPUT_VOLUME_FS/api
+rm -rf "$OUTPUT_VOLUME_FS/api"
+cp -r "$TEMP_SRC_DIRECTORY/api" "$OUTPUT_VOLUME_FS/api"
 echo "Finished copying api stubs"
 
 # -------------- Copy public-api.ts to output volume (re-export from api stubs)
 echo "Generating public-api.ts from api stubs"
 PUBLIC_API_TS=$OUTPUT_VOLUME_FS/public-api.ts
-rm -f $PUBLIC_API_TS
-find $TEMP_SRC_DIRECTORY/api -iname "*.ts" | sort | while read tsfile; do
+rm -f "$PUBLIC_API_TS"
+find "$TEMP_SRC_DIRECTORY/api" -iname "*.ts" | sort | while IFS= read -r tsfile; do
   relpath=$(echo "$tsfile" | sed "s|^$TEMP_SRC_DIRECTORY/||" | sed 's|\.ts$||')
-  echo "export * from './$relpath';" >> $PUBLIC_API_TS
+  echo "export * from './$relpath';" >> "$PUBLIC_API_TS"
 done
 echo "Finished generating public-api.ts"
 
@@ -142,12 +144,12 @@ echo "Finished generating public-api.ts"
 
 # -------------- Creating NPM folder
 echo "Copying files for NPM publish to NPM folder"
-rm -rf $OUTPUT_VOLUME_FS/npm
-mkdir $OUTPUT_VOLUME_FS/npm
-cp -r $TEMP_SRC_DIRECTORY/lib/* $OUTPUT_VOLUME_FS/npm
-rm -rf $OUTPUT_VOLUME_FS/npm/api
-cp -r $TEMP_SRC_DIRECTORY/api $OUTPUT_VOLUME_FS/npm/api
-cp $OUTPUT_VOLUME_FS/public-api.ts $OUTPUT_VOLUME_FS/npm/public-api.ts
+rm -rf "$OUTPUT_VOLUME_FS/npm"
+mkdir "$OUTPUT_VOLUME_FS/npm"
+cp -r "$TEMP_SRC_DIRECTORY"/lib/* "$OUTPUT_VOLUME_FS/npm"
+rm -rf "$OUTPUT_VOLUME_FS/npm/api"
+cp -r "$TEMP_SRC_DIRECTORY/api" "$OUTPUT_VOLUME_FS/npm/api"
+cp "$OUTPUT_VOLUME_FS/public-api.ts" "$OUTPUT_VOLUME_FS/npm/public-api.ts"
 echo "Finished copying"
 
 # -------------- END

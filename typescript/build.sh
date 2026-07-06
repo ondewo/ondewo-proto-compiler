@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 echo "---------------------------------------------------------------"
 echo "Typescript: Starting .proto to grpc client stubs compilation ..."
 echo "---------------------------------------------------------------"

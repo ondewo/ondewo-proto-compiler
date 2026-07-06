@@ -22,7 +22,7 @@ RUN wget --tries=3 --waitretry=5 --retry-connrefused \
 
 # --------------- Copy all files from "image-data" directory to docker container
 WORKDIR /image-data
-ADD image-data /image-data
+COPY image-data/ /image-data/
 
 # --------------- Install npm modules required for compilation with angular
 RUN npm install
