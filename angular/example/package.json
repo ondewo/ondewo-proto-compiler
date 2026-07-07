@@ -10,7 +10,7 @@
     "@ngx-grpc/core": ">=3.1.2"
   },
   "scripts": {
-    "build": "docker run -it -v ${PWD}:/input-volume -v ${PWD}/lib:/output-volume ondewo-angular-proto-compiler protos",
+    "build": "docker run -v ${PWD}:/input-volume -v ${PWD}/lib:/output-volume ondewo-angular-proto-compiler protos",
     "debug": "docker run -it --entrypoint /bin/bash -v ${PWD}:/input-volume -v ${PWD}/lib:/output-volume ondewo-angular-proto-compiler"
   },
   "version": "5.10.0"

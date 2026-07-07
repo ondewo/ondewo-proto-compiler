@@ -106,7 +106,7 @@ make test    # shellcheck gate + the bats test suite (no Docker required)
 Compiling `.proto` files with a built image (see `README.md` and the `<lang>/example/run-compile.sh` scripts):
 
 ```bash
-docker run -it -v $FILEDIRECTORY:/input-volume -v $FILEDIRECTORY/lib:/output-volume \
+docker run -v $FILEDIRECTORY:/input-volume -v $FILEDIRECTORY/lib:/output-volume \
   ondewo-<lang>-proto-compiler protos
 ```
 
@@ -181,11 +181,11 @@ run the client's generate step.
   those vars must be **relative to CWD**. Entry `make generate_protos` runs `python -m grpc_tools.protoc`, emitting
   `_pb2.py` + `_pb2_grpc.py` + `.pyi` (⇒ **3 files per proto**).
 - **angular / typescript / nodejs** — `src/package.json` `build`/`generate` script:
-  `docker run -it -v ${PWD}:/input-volume -v ${PWD}/..:/output-volume ondewo-<lang>-proto-compiler ondewo-nlu-api ondewo`
+  `docker run -v ${PWD}:/input-volume -v ${PWD}/..:/output-volume ondewo-<lang>-proto-compiler ondewo-nlu-api ondewo`
   (args = `<relative_protos_dir> <target_subdir>`; output volume = the client **repo root**). Yields a full library
   (`api/`, `public-api.*`, compiled `.ts`/`.js`, `npm/`, sometimes an installed `node_modules/`).
 - **js** — different arg/volume shape:
-  `docker run -it -v ${PWD}:/input-volume -v ${PWD}/../api:/output-volume ondewo-js-proto-compiler ondewo-nlu-api ondewo-nlu-api ondewo`
+  `docker run -v ${PWD}:/input-volume -v ${PWD}/../api:/output-volume ondewo-js-proto-compiler ondewo-nlu-api ondewo-nlu-api ondewo`
   (args = `<lib_entry_name> <relative_protos_dir> <target_subdir>`). Output is a **single webpack bundle** (`<name>.js`
   + `.min.js` + `.map`) — a low file count is correct here, not a failure.
 

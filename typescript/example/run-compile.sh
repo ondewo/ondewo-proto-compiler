@@ -7,7 +7,7 @@ FILEDIRECTORY="$(cd "$(dirname "$0")" && pwd)"
 # Consume protos and package.json from input volume and write library to output volume
 if [ -z "$1" ]; then
     mkdir -p "$FILEDIRECTORY/lib"
-    docker run -it -v "$FILEDIRECTORY":/input-volume -v "$FILEDIRECTORY/lib":/output-volume ondewo-typescript-proto-compiler protos library
+    docker run -v "$FILEDIRECTORY":/input-volume -v "$FILEDIRECTORY/lib":/output-volume ondewo-typescript-proto-compiler protos library
 else
     #Use bash inside container for debugging container and script issues
     docker run -it --entrypoint /bin/bash -v "$FILEDIRECTORY":/input-volume -v "$FILEDIRECTORY/lib":/output-volume ondewo-typescript-proto-compiler
@@ -15,7 +15,7 @@ fi
 
 
 # No ouput volume -> creates ouput directory "/lib" in mounted input volume
-#docker run -it -v $FILEDIRECTORY:/input-volume ondewo-angular-proto-compiler
+#docker run -v $FILEDIRECTORY:/input-volume ondewo-angular-proto-compiler
 
 #Use bash inside container for debugging container and script issues
 #docker run -it --entrypoint /bin/bash -v $FILEDIRECTORY:/input-volume -v $FILEDIRECTORY/lib:/output-volume ondewo-angular-proto-compiler

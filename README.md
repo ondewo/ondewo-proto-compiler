@@ -82,7 +82,7 @@ Where the script **run-compile.sh** performs the .proto to package compilation.
 To compile a package following format should be followed:
 
 ```bash
-docker run -it -v $FILEDIRECTORY:/input-volume -v $FILEDIRECTORY/lib:/output-volume ondewo-angular-proto-compiler protos
+docker run -v $FILEDIRECTORY:/input-volume -v $FILEDIRECTORY/lib:/output-volume ondewo-angular-proto-compiler protos
 ```
 - **-it** Interactive terminal to show the output of the compilation process in the active terminal
 - **-v** specifies the input directory to mount and consume for the compilation (path after the **:**)

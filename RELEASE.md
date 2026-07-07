@@ -2,6 +2,14 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.11.0
+
+### Improvements
+
+* Angular, Nodejs, Javascript, Typescript: run the proto-compilation codegen non-interactively — dropped the `-it` flag from the `docker run` invocations in the example scripts and docs so they work in CI / non-TTY environments. Interactive `--entrypoint /bin/bash` debug commands keep `-it`.
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.10.0
 
 ### Improvements
