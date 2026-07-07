@@ -55,7 +55,7 @@ GITHUB_GH_TOKEN?=ENTER_YOUR_TOKEN_HERE
 
 # Release notes for the current version, sliced out of RELEASE.md for the GitHub release body.
 CURRENT_RELEASE_NOTES=`cat RELEASE.md \
-	| sed -n '/Release ONDEWO Proto Compiler ${ONDEWO_PROTO_COMPILER_VERSION}/,/\*\*/p'`
+	| perl -ne 'print if /Release ONDEWO Proto Compiler ${ONDEWO_PROTO_COMPILER_VERSION}/../\*\*/'`
 
 # GitHub repo, the devops-accounts credentials repo, and the utils image tag used by the release flow.
 GH_REPO="https://github.com/ondewo/ondewo-proto-compiler"
@@ -178,11 +178,10 @@ release_version_update_in_dockerfiles: ## Update ARG versions in Dockerfiles
 		js/Dockerfile \
 		angular/Dockerfile \
 		Dockerfile.utils ; do \
-		sed -i.bak "s/^ARG PYTHON_VERSION=.*/ARG PYTHON_VERSION=${PYTHON_VERSION}/" $$file; \
-		sed -i.bak "s/^ARG NODE_VERSION=.*/ARG NODE_VERSION=${NODE_VERSION}/" $$file; \
-		sed -i.bak "s/^ARG PROTOC_VERSION=.*/ARG PROTOC_VERSION=${PROTOC_VERSION}/" $$file; \
-		sed -i.bak "s/^ARG GRPC_WEB_VERSION=.*/ARG GRPC_WEB_VERSION=${GRPC_WEB_VERSION}/" $$file; \
-		rm -f $$file.bak; \
+		perl -i -pe "s/^ARG PYTHON_VERSION=.*/ARG PYTHON_VERSION=${PYTHON_VERSION}/" $$file; \
+		perl -i -pe "s/^ARG NODE_VERSION=.*/ARG NODE_VERSION=${NODE_VERSION}/" $$file; \
+		perl -i -pe "s/^ARG PROTOC_VERSION=.*/ARG PROTOC_VERSION=${PROTOC_VERSION}/" $$file; \
+		perl -i -pe "s/^ARG GRPC_WEB_VERSION=.*/ARG GRPC_WEB_VERSION=${GRPC_WEB_VERSION}/" $$file; \
 		echo "$(BLUE)[INFO]$(NC) Set versions in $$file"; \
 		git add "$$file"; \
 	done; \
