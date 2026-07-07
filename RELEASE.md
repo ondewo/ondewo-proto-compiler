@@ -2,6 +2,30 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.10.0
+
+### Improvements
+
+* Angular, Nodejs, Javascript, Typescript, Python: hardened all build and release shell scripts for cross-platform
+  (Linux + macOS) portability — BSD/GNU-safe `sed -i.bak`, `find`, and `mktemp` usage, no `grep -P` /
+  `realpath --relative-to` / `readlink -f`, guarded `cd`, quoted paths, and removal of `eval`
+* Angular, Nodejs, Javascript, Typescript, Python: build and release scripts now fail loudly (`set -e`, explicit
+  propagation) when a required input (protos source directory, `package.json`, README) is missing, instead of silently
+  producing empty output
+* Standardized Dockerfile hygiene: `COPY` instead of `ADD` for `image-data`, exec-form `ENTRYPOINT`, and removal of
+  token baking from `Dockerfile.utils`
+* Angular, Nodejs, Javascript, Typescript: upgraded Nodejs version to `NODE_VERSION=24.14.0`
+* Added a host-side test suite (`shellcheck` gate + `bats`) and a GitHub Actions CI workflow running on an Ubuntu and
+  macOS matrix; exposed locally via `make lint` / `make test`
+
+### Bug Fixes
+
+* Javascript: dropped the `@webpack-cli/init` dev dependency to unbreak the webpack bundling step
+* Javascript: fixed an invalid global `npm install` flag combination in the `Dockerfile`
+* Python: fixed proto discovery/anchoring and removed a dangling empty include-path segment in the `Makefile`
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.9.0
 
 ### Improvements
