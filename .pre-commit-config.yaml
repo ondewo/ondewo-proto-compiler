@@ -8,8 +8,10 @@
 #    pre-commit run autopep8 --files mal_formatted_file.py                                  #
 #############################################################################################
 
-exclude: '^$'
-# "exclude: '^$'" specifies the global file exclude pattern; '^$' excludes
+exclude: '^tests/fixtures/'
+# Global file exclude pattern. tests/fixtures/ holds frozen test data — copies of client
+# repos plus deliberately malformed inputs (e.g. corrupt/**/package.json used by the bats
+# failure-path cases) — that formatters/validators must never rewrite.
 
 fail_fast: false
 # "fail_fast: false" means pre-commit continues to run hooks after the first failure
@@ -41,7 +43,7 @@ repos:
         files: 'requirements.*\.txt$'
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.1
+    rev: v2.1.0
     hooks:
       - id: mypy
         args: [ '--config-file=dockerfiles/code_checks/mypy.ini' ]
@@ -75,10 +77,16 @@ repos:
         args: [ --max-line-length=120, --in-place ]
         exclude: (^ondewo-utils|^notebooks)
 
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v3.1.0
+  # Official prettier (github.com/prettier/prettier) ships no .pre-commit-hooks.yaml, and
+  # pre-commit/mirrors-prettier is archived/deprecated. Consume the official prettier npm
+  # package directly via a pre-commit-managed local node hook, pinned to the latest release.
+  - repo: local
     hooks:
       - id: prettier
+        name: prettier
+        entry: prettier --write --ignore-unknown
+        language: node
+        additional_dependencies: ['prettier@3.9.4']
         files: \.(js|jsx|ts|tsx|css|scss|html|vue|json|md)$
         exclude: '^(typescript|nodejs|js|angular)/image-data/|.*\.md$'
 
@@ -95,7 +103,7 @@ repos:
         files: '(\.(sh|bash)$|^tests/helpers/bin/)'
 
   - repo: https://github.com/milin/giticket
-    rev: v1.5
+    rev: '1.92'
     hooks:
       - id: giticket  # Prepend the commit message with the JIRA ticket
         args: [ '--regex=(?:(?:feature|bugfix|support|hotfix)/)?([A-Z][A-Z][A-Z][0-9]{3}-[0-9]{1,5})[_-][\w-]+',
