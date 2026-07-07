@@ -159,6 +159,65 @@ The scripts here are POSIX `sh` (`#!/bin/sh`), invoked with `bash`/`sh` from the
 Anything that needs real `protoc`/`ng`/`webpack` code generation is an integration concern — run it with an end-to-end
 `make build_<lang>`, not the fast unit gate.
 
+## Downstream Client SDKs & End-to-End Generation
+
+The images built here are consumed by five sibling client-SDK repos at `~/ondewo/ondewo-nlu-client-<lang>` (`python`,
+`angular`, `typescript`, `js`, `nodejs`). Each client **vendors this repo as a git submodule** (`ondewo-proto-compiler/`,
+pinned to a release commit/tag) and vendors the proto source as a second submodule, `ondewo-nlu-api/` (top-level dirs:
+`ondewo/` = the ~19 service protos to compile, `google/` = well-known / API imports). The api submodule sits at
+`ondewo-nlu-api/` for python and at `src/ondewo-nlu-api/` for the node clients.
+
+### How a client generates stubs
+
+Generation always runs the fixed image tag `ondewo-<lang>-proto-compiler:latest`. A client's `build_compiler` rebuilds
+that tag from its submodule, but **the tag is the only contract** — so to test your *working-tree* compiler against a
+client, just `docker build -t ondewo-<lang>-proto-compiler:latest <lang>` from this repo (no submodule bump needed) and
+run the client's generate step.
+
+- **python** — `make generate_ondewo_protos` → `make -f ondewo-proto-compiler/python/Makefile run
+  PROTO_DIR=ondewo-nlu-api/ondewo/ EXTRA_PROTO_DIR=ondewo-nlu-api/google/ TARGET_DIR=ondewo OUTPUT_DIR=.`. The `run`
+  target `docker run`s with `--user $(id -u):$(id -g)` (output is user-owned), mounts each `*_DIR` under the image's
+  `protos/<basename>` + `output`, and passes `INTERNAL_TARGET_PROTO_DIR`. Mounts are built as `${shell pwd}/${VAR}`, so
+  those vars must be **relative to CWD**. Entry `make generate_protos` runs `python -m grpc_tools.protoc`, emitting
+  `_pb2.py` + `_pb2_grpc.py` + `.pyi` (⇒ **3 files per proto**).
+- **angular / typescript / nodejs** — `src/package.json` `build`/`generate` script:
+  `docker run -it -v ${PWD}:/input-volume -v ${PWD}/..:/output-volume ondewo-<lang>-proto-compiler ondewo-nlu-api ondewo`
+  (args = `<relative_protos_dir> <target_subdir>`; output volume = the client **repo root**). Yields a full library
+  (`api/`, `public-api.*`, compiled `.ts`/`.js`, `npm/`, sometimes an installed `node_modules/`).
+- **js** — different arg/volume shape:
+  `docker run -it -v ${PWD}:/input-volume -v ${PWD}/../api:/output-volume ondewo-js-proto-compiler ondewo-nlu-api ondewo-nlu-api ondewo`
+  (args = `<lib_entry_name> <relative_protos_dir> <target_subdir>`). Output is a **single webpack bundle** (`<name>.js`
+  + `.min.js` + `.map`) — a low file count is correct here, not a failure.
+
+### Image / compile-script internals (`<lang>/image-data/compile-proto-2-<lang>.sh`, baked into the image)
+
+- Each script **copies `/input-volume` into an internal temp dir** (`/image-data/src` or `/temp_src`) and compiles
+  there, so the **mounted input is never mutated**; output is written only to `/output-volume`. Paths are env-overridable
+  (`INPUT_VOLUME_FS` / `OUTPUT_VOLUME_FS` / `IMAGE_DATA_DIRECTORY` / `TEMP_SRC_DIRECTORY`) — that is how the bats suite
+  drives them without Docker.
+- Node scripts write under root-owned `/image-data`, so their containers **must run as root** (no `--user`); only the
+  python `run` target uses `--user`. Some node scripts wipe parts of the output volume (e.g. angular `rm -rf npm
+  package.json …`), so pointing `/output-volume` at a real repo root deletes + regenerates files in place.
+
+### Safe end-to-end verification recipe
+
+To confirm a compiler change generates valid client stubs **without dirtying any client repo**:
+
+1. `docker build -t ondewo-<lang>-proto-compiler:latest <lang>` for each target from this repo.
+2. Replay each client's exact `docker run` **but drop `-it`** and **redirect `/output-volume` to a throwaway temp dir**,
+   feeding the real client `src` / `ondewo-nlu-api` as input. Client trees stay pristine (confirm with
+   `git -C <client> status --porcelain`).
+3. Assert on content, not just exit 0: python ⇒ `3 × proto_count` files that also `python -m compileall` inside the
+   image; node ⇒ `api/` + `public-api.*`; js ⇒ webpack "compiled successfully" + the bundle files.
+
+### Handy facts
+
+- Base-image tag suffix order differs: **python = `<v>-slim-bookworm`, node = `<v>-bookworm-slim`** (there is no
+  `node:<v>-slim-bookworm`).
+- Docker does **not** variable-substitute `RUN` lines (only `ADD`/`COPY`/`ENV`/`FROM`/…), so a shell loop var like `$i`
+  in a `RUN` is safe; declared `ARG`/`ENV` values are injected as env vars into the `RUN` shell.
+- Generation needs **no network** once the image is built (node deps are `npm install`-ed at image-build time).
+
 ## Git Commits
 
 - **Never include Claude as author or co-author** in commit messages, PR descriptions, or any other text. Do not add
