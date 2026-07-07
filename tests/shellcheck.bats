@@ -10,14 +10,14 @@ load 'helpers/setup'
 
 @test "shellcheck gate: all tracked shell scripts pass at -S warning" {
   cd "$REPO_ROOT"
-  run shellcheck -x -S warning $(git ls-files '*.sh' '*.bash')
+  run shellcheck -x -S warning $(tracked_shell_scripts)
   echo "$output"
   [ "$status" -eq 0 ]
 }
 
 @test "no script is missing a shebang (SC2148 == 0)" {
   cd "$REPO_ROOT"
-  run shellcheck -x -f gcc $(git ls-files '*.sh')
+  run shellcheck -x -f gcc $(tracked_shell_scripts)
   echo "$output"
   n=$(printf '%s\n' "$output" | grep -c 'SC2148' || true)
   [ "$n" -eq 0 ]
@@ -25,7 +25,7 @@ load 'helpers/setup'
 
 @test "every cd is guarded (SC2164 == 0)" {
   cd "$REPO_ROOT"
-  run shellcheck -x -f gcc $(git ls-files '*.sh')
+  run shellcheck -x -f gcc $(tracked_shell_scripts)
   echo "$output"
   n=$(printf '%s\n' "$output" | grep -c 'SC2164' || true)
   [ "$n" -eq 0 ]

@@ -16,12 +16,12 @@ echo "Protos src dir: $PROTOS_SRC_DIR"
 echo "Checking $PROTOS_SRC_DIR for .proto files"
 
 if [ ! -d "$PROTOS_SRC_DIR" ]; then
-    echo "ERROR: No proto files were found - the protos source directory '$PROTOS_SRC_DIR' does not exist - exitting" >&2
+    echo "ERROR: No proto files were found - the protos source directory '$PROTOS_SRC_DIR' does not exist - exiting" >&2
     exit 1
 fi
 ENTRY_PROTO_FILES=$(find "$PROTOS_SRC_DIR" -iname "*.proto")
 if [ -z "$ENTRY_PROTO_FILES" ]; then
-    echo "ERROR: No proto files were found in the '/protos' directory, but are required to build a library from - exitting" >&2
+    echo "ERROR: No proto files were found in the '/protos' directory, but are required to build a library from - exiting" >&2
     exit 1
 fi
 PROTO_FILES_CNT=$(printf '%s\n' "$ENTRY_PROTO_FILES" | grep -c .)

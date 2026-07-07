@@ -89,9 +89,10 @@ repos:
         entry: shellcheck
         language: system
         args: [ -x, -S, warning ]
-        # Select by extension (types: [shell] relies on shebang detection and can miss files)
+        # Select by extension (types: [shell] relies on shebang detection and can miss files),
+        # plus the extension-less PATH-mock tools under tests/helpers/bin.
         types: [ file ]
-        files: '\.(sh|bash)$'
+        files: '(\.(sh|bash)$|^tests/helpers/bin/)'
 
   - repo: https://github.com/milin/giticket
     rev: v1.5

@@ -12,12 +12,12 @@ mkdir -p "$STUBS_TARGET_DIR"
 #Find .protos in directory and count the occurances
 echo "Checking $PROTOS_SRC_DIR for .proto files"
 if [ ! -d "$PROTOS_SRC_DIR" ]; then
-    echo "ERROR: No proto files were found - the protos source directory '$PROTOS_SRC_DIR' does not exist - exitting" >&2
+    echo "ERROR: No proto files were found - the protos source directory '$PROTOS_SRC_DIR' does not exist - exiting" >&2
     exit 1
 fi
 PROTO_FILES_CNT=$(find "$PROTOS_SRC_DIR" -iname "*.proto" | grep -c . || true)
 if [[ $PROTO_FILES_CNT -lt 1 ]]; then
-    echo "ERROR: No proto files were found in the '$PROTOS_SRC_DIR' directory, but are required to build a library from - exitting"
+    echo "ERROR: No proto files were found in the '$PROTOS_SRC_DIR' directory, but are required to build a library from - exiting"
     exit 1
 fi
 echo "Found $PROTO_FILES_CNT .proto files in directory: $PROTOS_SRC_DIR"

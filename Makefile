@@ -137,7 +137,7 @@ build_typescript: ## Build the typescript proto compiler docker image
 ########################################################
 
 lint: ## Run shellcheck over all tracked shell scripts
-	shellcheck -x -S warning $$(git ls-files '*.sh' '*.bash')
+	shellcheck -x -S warning $$(git ls-files '*.sh' '*.bash' 'tests/helpers/bin/*')
 
 test: lint ## Run the shellcheck gate and the bats test suite (no Docker required)
 	bats tests/

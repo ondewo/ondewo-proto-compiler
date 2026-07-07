@@ -22,3 +22,11 @@ common_teardown() {
   [ -n "${SANDBOX:-}" ] && rm -rf "$SANDBOX"
   return 0
 }
+
+# Every tracked shell script the shellcheck gate must lint: the *.sh/*.bash
+# sources plus the extension-less PATH-mock tools under tests/helpers/bin, which
+# are shell scripts too. Emitted space-separated for intentional word splitting.
+# Must be run from REPO_ROOT so the git globs resolve.
+tracked_shell_scripts() {
+  git ls-files '*.sh' '*.bash' 'tests/helpers/bin/*'
+}
