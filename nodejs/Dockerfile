@@ -25,8 +25,7 @@ WORKDIR /image-data
 COPY image-data/ /image-data/
 
 # --------------- Install npm modules required for compilation with nodejs
-RUN npm install
-RUN npm install -g grpc-tools
+RUN npm install && npm install -g grpc-tools
 
 # --------------- Entrypoint when the docker container is executed
 ENTRYPOINT ["bash","compile-proto-2-nodejs.sh"]

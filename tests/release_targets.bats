@@ -21,6 +21,7 @@ setup() {
     mkdir -p "$REPO/$lang"
     cp "$REPO_ROOT/$lang/Dockerfile" "$REPO/$lang/Dockerfile"
   done
+  cp "$REPO_ROOT/Dockerfile.utils" "$REPO/Dockerfile.utils"
   for f in $PKG_FILES; do
     mkdir -p "$REPO/$(dirname "$f")"
     cp "$REPO_ROOT/$f" "$REPO/$f"
@@ -39,6 +40,8 @@ teardown() { common_teardown; }
     [ "$status" -eq 0 ]
   done
   run grep -Fxq "ARG PYTHON_VERSION=9.9" "$REPO/python/Dockerfile"
+  [ "$status" -eq 0 ]
+  run grep -Fxq "ARG PYTHON_VERSION=9.9" "$REPO/Dockerfile.utils"
   [ "$status" -eq 0 ]
 }
 

@@ -1,6 +1,6 @@
 ARG PYTHON_VERSION=3.12
 
-FROM python:${PYTHON_VERSION}-bookworm
+FROM python:${PYTHON_VERSION}-slim-bookworm
 
 WORKDIR /home/ondewo/ondewo-proto-compiler
 

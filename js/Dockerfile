@@ -24,9 +24,7 @@ RUN wget https://github.com/grpc/grpc-web/releases/download/${GRPC_WEB_VERSION}/
   chmod a+x /usr/local/bin/protoc-gen-grpc-web
 
 # --------------- Install npm modules required for compilation with webpack
-RUN npm install -g protoc-gen-js
-RUN npm install -g webpack
-RUN npm install -g webpack-cli
+RUN npm install -g protoc-gen-js webpack webpack-cli
 
 # --------------- Copy all files from "image-data" directory to docker container
 WORKDIR /image-data
