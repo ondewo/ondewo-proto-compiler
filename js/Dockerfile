@@ -1,6 +1,6 @@
 ARG NODE_VERSION=24.14.0
 
-FROM node:${NODE_VERSION}-bookworm-slim
+FROM node:${NODE_VERSION}-slim
 
 # protobuf version for compiling proto files
 ARG PROTOC_VERSION=32.0
@@ -23,18 +23,18 @@ ARG GRPC_WEB_VERSION=1.5.0
 RUN wget https://github.com/grpc/grpc-web/releases/download/${GRPC_WEB_VERSION}/protoc-gen-grpc-web-${GRPC_WEB_VERSION}-linux-x86_64 -O /usr/local/bin/protoc-gen-grpc-web &&\
   chmod a+x /usr/local/bin/protoc-gen-grpc-web
 
+# --------------- Install npm modules required for compilation with webpack
+# Retry to ride out transient npm registry / network failures (mirrors the wget --tries above).
+RUN for i in 1 2 3 4 5; do \
+      npm install -g protoc-gen-js webpack webpack-cli && exit 0; \
+      echo "npm install failed (attempt $i/5); retrying in 15s ..." >&2; \
+      sleep 15; \
+    done; \
+    echo "npm install failed after 5 attempts" >&2; exit 1
+
 # --------------- Copy all files from "image-data" directory to docker container
 WORKDIR /image-data
-ADD image-data/default-lib-files/package.json /image-data/default-lib-files/package.json
-
-# --------------- Install npm modules required for compilation with webpack
-RUN npm install -g protoc-gen-js
-RUN npm install -g webpack
-RUN npm install -g -D webpack-cli --yes
-
-ADD image-data/default-lib-files/* /image-data/default-lib-files/
-
-ADD image-data/* /image-data/
+COPY image-data/ /image-data/
 
 # --------------- Entrypoint when the docker container is executed
 ENTRYPOINT ["bash","compile-proto-2-js.sh"]

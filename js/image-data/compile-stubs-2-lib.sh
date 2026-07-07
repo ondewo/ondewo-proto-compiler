@@ -10,7 +10,7 @@ if [ -z "$OUT_LIB_NAME" ]; then
     OUT_LIB_NAME="$OUT_FILE_NAME"
 fi
 
-if [ -z "$OUT_LIB_NAME" ]; then
+if [ -z "$WEBPACK_CONFIG" ]; then
     WEBPACK_CONFIG=webpack.js
 fi
 
@@ -41,12 +41,12 @@ echo "---------------------------------------------"
 echo "---------------------------------------------"
 echo "$WEBPACK_CONFIG"
 echo "---------------------------------------------"
-ls -l $WEBPACK_CONFIG
-cat $WEBPACK_CONFIG
+ls -l "$WEBPACK_CONFIG"
+cat "$WEBPACK_CONFIG"
 echo "---------------------------------------------"
 
 # install webpack-cli again here locally
-npm install -D webpack-cli --yes
+npm install -D webpack-cli
 ls -l node_modules/.bin/
 
 node_modules/.bin/webpack --config "$WEBPACK_CONFIG" --output-library "$OUT_LIB_NAME" --output-filename "$OUT_FILE_NAME.js" --output-path "$OUTPUT_DIR" --entry "$ENTRY_POINT_FILE"

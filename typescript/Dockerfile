@@ -1,6 +1,6 @@
 ARG NODE_VERSION=24.14.0
 
-FROM node:${NODE_VERSION}-bookworm-slim
+FROM node:${NODE_VERSION}-slim
 
 # protobuf version for compiling proto files
 ARG PROTOC_VERSION=32.0
@@ -27,11 +27,17 @@ RUN wget https://github.com/grpc/grpc-web/releases/download/${GRPC_WEB_VERSION}/
 
 
 # --------------- Install npm modules required for compilation
-RUN npm install -g protoc-gen-js
+# Retry to ride out transient npm registry / network failures (mirrors the wget --tries above).
+RUN for i in 1 2 3 4 5; do \
+      npm install -g protoc-gen-js && exit 0; \
+      echo "npm install failed (attempt $i/5); retrying in 15s ..." >&2; \
+      sleep 15; \
+    done; \
+    echo "npm install failed after 5 attempts" >&2; exit 1
 
 # --------------- Copy all files from "image-data" directory to docker container
 WORKDIR /image-data
-ADD image-data /image-data
+COPY image-data/ /image-data/
 
 # --------------- Entrypoint when the docker container is executed
 ENTRYPOINT ["bash","compile-proto-2-typescript.sh"]

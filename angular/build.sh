@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 echo "---------------------------------------------------------------"
 echo "Angular: Starting .proto to grpc client stubs compilation ..."
 echo "---------------------------------------------------------------"

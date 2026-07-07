@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Mock grpc_tools_node_protoc: same behaviour as the protoc mock (fails when no
+# .proto input is given, creates a dummy stub per *_out flag). Shares
+# PROTOC_MOCK_LOG so tests can assert on either.
+: "${PROTOC_MOCK_LOG:=/dev/null}"
+printf 'grpc_tools_node_protoc %s\n' "$*" >> "$PROTOC_MOCK_LOG"
+
+has_proto=0
+for a in "$@"; do
+  case "$a" in *.proto) has_proto=1 ;; esac
+done
+if [ "$has_proto" -eq 0 ]; then
+  echo "Missing input file." >&2
+  exit 1
+fi
+
+for a in "$@"; do
+  case "$a" in
+    --*_out=*)
+      dir="${a#*=}"
+      dir="${dir##*:}"           # strip generator options ("opts:DIR" -> "DIR")
+      [ -n "$dir" ] || continue
+      mkdir -p "$dir"
+      case "$a" in
+        --grpc_out=*) : > "$dir/mock_grpc_pb.js" ;;
+        *)            : > "$dir/mock_pb.js" ;;
+      esac
+      ;;
+  esac
+done
+exit 0

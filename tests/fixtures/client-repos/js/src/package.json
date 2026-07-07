@@ -1,0 +1,8 @@
+{
+  "name": "target",
+  "version": "1.0.0",
+  "dependencies": {
+    "google-protobuf": "0.0.1",
+    "rxjs": "7.0.0"
+  }
+}

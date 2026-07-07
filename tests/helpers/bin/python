@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Mock python (used for `python -m grpc_tools.protoc ...` in python/Makefile).
+#   PY_FAIL_MATCH -> if any arg contains this substring, exit PY_FAIL_RC (default 1)
+: "${PY_MOCK_LOG:=/dev/null}"
+printf 'python %s\n' "$*" >> "$PY_MOCK_LOG"
+
+if [ -n "${PY_FAIL_MATCH:-}" ]; then
+  for a in "$@"; do
+    case "$a" in
+      *"$PY_FAIL_MATCH"*) echo "mock python: FAIL on '$a'" >&2; exit "${PY_FAIL_RC:-1}" ;;
+    esac
+  done
+fi
+exit 0

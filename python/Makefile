@@ -20,13 +20,23 @@ run:
 		${IMAGE_NAME}
 
 generate_protos:
-	# Note: the `find` expression contains a `?` to allow for an optional target directory to be passed
-	#	If none is passed, the `/` will be ignored which is the default behaviour.
-	for f in $$(find ${INTERNAL_PROTO_DIR} -path '${INTERNAL_PROTO_DIR}/${INTERNAL_TARGET_PROTO_DIR}?*.proto'); do \
+	# Note: an optional target directory (INTERNAL_TARGET_PROTO_DIR) scopes compilation to a single
+	#	proto sub-directory, anchored on a real `/` boundary; if none is passed, every .proto under
+	#	the proto dir is compiled.
+	target="$$INTERNAL_TARGET_PROTO_DIR"; \
+	target="$${target%/}"; \
+	if [ -n "$$target" ]; then \
+		filter="${INTERNAL_PROTO_DIR}/$$target/*.proto"; \
+	else \
+		filter="${INTERNAL_PROTO_DIR}/*.proto"; \
+	fi; \
+	files=$$(find "${INTERNAL_PROTO_DIR}" -path "$$filter"); \
+	[ -n "$$files" ] || { echo "ERROR: no .proto files found for '$$filter'" >&2; exit 1; }; \
+	for f in $$files; do \
 		python -m grpc_tools.protoc \
-			-I ${INTERNAL_PROTO_DIR}/${INCLUDE_DIR} \
+			-I ${INTERNAL_PROTO_DIR} \
 			--python_out=${INTERNAL_OUTPUT_DIR} \
 			--mypy_out=${INTERNAL_OUTPUT_DIR} \
 			--grpc_python_out=${INTERNAL_OUTPUT_DIR} \
-			$$f; \
+			"$$f" || exit 1; \
 	done

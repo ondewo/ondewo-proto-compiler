@@ -1,17 +1,17 @@
 #!/bin/bash
 
 #Excute the example compilation (by runnning the image with mounting this directory in the image)
-FILEDIRECTORY=$(pwd)/`dirname $0`
+FILEDIRECTORY=$(cd "$(dirname "$0")" && pwd)
 
 # -it flag for running in interactive mode (stdout/stdin) + mounting volume containing src files
 
 # Consume protos and package.json from input volume and write library to output volume
 if [ -z "$1" ]; then
-    mkdir -p $FILEDIRECTORY/lib
-    docker run -it -v $FILEDIRECTORY:/input-volume -v $FILEDIRECTORY/lib:/output-volume ondewo-nodejs-proto-compiler protos library
+    mkdir -p "$FILEDIRECTORY/lib"
+    docker run -it -v "$FILEDIRECTORY":/input-volume -v "$FILEDIRECTORY/lib":/output-volume ondewo-nodejs-proto-compiler protos library
 else
     #Use bash inside container for debugging container and script issues
-    docker run -it --entrypoint /bin/bash -v $FILEDIRECTORY:/input-volume -v $FILEDIRECTORY/lib:/output-volume ondewo-nodejs-proto-compiler
+    docker run -it --entrypoint /bin/bash -v "$FILEDIRECTORY":/input-volume -v "$FILEDIRECTORY/lib":/output-volume ondewo-nodejs-proto-compiler
 fi
 
 
