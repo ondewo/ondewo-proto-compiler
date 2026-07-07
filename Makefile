@@ -44,7 +44,7 @@ ONDEWO_PROTO_COMPILER_VERSION=5.10.0
 
 # Toolchain versions baked into the docker images via each Dockerfile's ARG lines.
 # Change here and run the release targets so every image stays in sync.
-PYTHON_VERSION=3.9
+PYTHON_VERSION=3.12
 NODE_VERSION=24.14.0
 PROTOC_VERSION=32.0
 GRPC_WEB_VERSION=1.5.0
@@ -176,7 +176,8 @@ release_version_update_in_dockerfiles: ## Update ARG versions in Dockerfiles
 		nodejs/Dockerfile \
 		python/Dockerfile \
 		js/Dockerfile \
-		angular/Dockerfile ; do \
+		angular/Dockerfile \
+		Dockerfile.utils ; do \
 		sed -i.bak "s/^ARG PYTHON_VERSION=.*/ARG PYTHON_VERSION=${PYTHON_VERSION}/" $$file; \
 		sed -i.bak "s/^ARG NODE_VERSION=.*/ARG NODE_VERSION=${NODE_VERSION}/" $$file; \
 		sed -i.bak "s/^ARG PROTOC_VERSION=.*/ARG PROTOC_VERSION=${PROTOC_VERSION}/" $$file; \
