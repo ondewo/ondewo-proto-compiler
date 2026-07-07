@@ -212,8 +212,9 @@ To confirm a compiler change generates valid client stubs **without dirtying any
 
 ### Handy facts
 
-- Base-image tag suffix order differs: **python = `<v>-slim-bookworm`, node = `<v>-bookworm-slim`** (there is no
-  `node:<v>-slim-bookworm`).
+- Base images use the distro-agnostic **slim** tags — `python:<v>-slim` and `node:<v>-slim` — deliberately dropping the
+  explicit `-bookworm` so images track Debian stable. If you ever re-pin the distro, note the suffix order differs:
+  python is `<v>-slim-bookworm` but node is `<v>-bookworm-slim` (there is no `node:<v>-slim-bookworm`).
 - Docker does **not** variable-substitute `RUN` lines (only `ADD`/`COPY`/`ENV`/`FROM`/…), so a shell loop var like `$i`
   in a `RUN` is safe; declared `ARG`/`ENV` values are injected as env vars into the `RUN` shell.
 - Generation needs **no network** once the image is built (node deps are `npm install`-ed at image-build time).
