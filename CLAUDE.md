@@ -248,3 +248,9 @@ To confirm a compiler change generates valid client stubs **without dirtying any
 - **Codegen `docker run` must not use `-it`** — it breaks every non-interactive caller (`cannot attach stdin to a TTY-enabled container because stdin is not a terminal`). Drop `-it` from codegen invocations in the example scripts/docs; keep it only on `--entrypoint /bin/bash` debug commands.
 - **Version propagation is automatic.** The `release` / `ondewo_release` targets set `ONDEWO_PROTO_COMPILER_VERSION` into every `*/image-data/package.json` + Dockerfile `ARG` and commit that for you — you only bump the Makefile version and add a `RELEASE.md` entry (MINOR bump for a fix/improvement).
 - The token-bearing `docker run` in `release_to_github_via_docker_image` is correctly prefixed with `@` — do **not** regress that (it keeps `GITHUB_GH_TOKEN` out of the logs). Downstream client release Makefiles are *not* as careful.
+
+## Release notes
+
+- Codegen `docker run` invocations must **not** use `-it` (breaks every non-interactive caller with "cannot attach stdin to a TTY"). Keep `-it` only on the interactive `--entrypoint /bin/bash` debug commands.
+- `release` / `ondewo_release` propagate `ONDEWO_PROTO_COMPILER_VERSION` into every `*/image-data/package.json` + Dockerfile ARG and commit it — you only bump the Makefile version + add a `RELEASE.md` entry (MINOR bump for a fix/improvement).
+- The token-bearing `docker run` in `release_to_github_via_docker_image` is correctly `@`-prefixed — keep it that way.
