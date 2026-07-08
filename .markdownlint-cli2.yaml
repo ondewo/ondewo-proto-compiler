@@ -1,0 +1,31 @@
+# Auto-fix the mechanical rules (blank-line spacing, list indentation, emphasis
+# style, ...) the same way ruff-format does for Python.
+fix: true
+config:
+  # MD013 line-length: docs contain long lines / tables.
+  MD013: false
+  # MD033 no-inline-html: docs embed <p>/<code> HTML tags.
+  MD033: false
+  # MD024 duplicate-heading: changelogs repeat "### Improvements" / "### Breaking
+  # Changes" under each release section; allow when not direct siblings.
+  MD024:
+    siblings_only: true
+  # MD040 fenced-code-language: README embeds plain directory-tree / output blocks.
+  MD040: false
+  # MD041 first-line-heading: README opens with the HTML branding/logo header.
+  MD041: false
+  # MD045 image-alt-text: the branding header uses <img> logos / social icons.
+  MD045: false
+  # MD060 table-column-style: hand-written docs tables aren't pixel-aligned; content
+  # (not pipe alignment) is what matters.
+  MD060: false
+globs:
+  - "*.md"
+ignores:
+  # Frozen test data + generated/vendored client output — never rewrite.
+  - "tests/fixtures/**"
+  - "node_modules/**"
+  - "**/lib/**"
+  - "**/dist/**"
+  - "**/build/**"
+  - ".venv/**"

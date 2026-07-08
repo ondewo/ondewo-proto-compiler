@@ -1,111 +1,52 @@
 #############################################################################################
-# pre-commit is a "framework for managing and maintaining multi-language pre-commit hooks"  #
-# see https://pre-commit.com/#intro for an introduction to pre-commit                       #
-#                                                                                            #
-# - pre-commit hooks are run on staged files just before a commit or a push                 #
-# - to run a given hook on any file at any time, run the following on the command line:     #
-#    pre-commit run <HOOK_ID> --files <FILE1> <FILE2> ..., e.g.,                            #
-#    pre-commit run autopep8 --files mal_formatted_file.py                                  #
+# pre-commit — language-agnostic hooks for this non-python repo. The proto-compiler ships   #
+# js/ts/nodejs/angular client generators; language-specific linting/formatting stays with    #
+# each toolchain (eslint/prettier, buf, shellcheck via `make lint` + the bats suite/CI).      #
+# Ruff/mypy/uv are python-only and NOT included here.                                        #
+# see https://pre-commit.com/#intro for an introduction to pre-commit                        #
 #############################################################################################
 
-exclude: '^tests/fixtures/'
-# Global file exclude pattern. tests/fixtures/ holds frozen test data — copies of client
-# repos plus deliberately malformed inputs (e.g. corrupt/**/package.json used by the bats
-# failure-path cases) — that formatters/validators must never rewrite.
+# Never touch generated / vendored code. tests/fixtures/ holds frozen test data — copies of
+# client repos plus deliberately malformed inputs (e.g. corrupt/**/package.json used by the
+# bats failure-path cases) that formatters/validators must never rewrite. node_modules/lib/
+# dist/build are generated client output (gitignored, guarded here for safety).
+exclude: '(^|/)(node_modules|lib|dist|build|\.venv)/|^tests/fixtures/'
 
 fail_fast: false
 # "fail_fast: false" means pre-commit continues to run hooks after the first failure
 
 repos:
+
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.23.0
+    hooks:
+      - id: markdownlint-cli2
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
-      #      - id: no-commit-to-branch  # Protect specific branches from direct checkins
-      #        args: [ --branch, master ]
-      - id: check-added-large-files # Prevent giant files from being committed
+      - id: check-added-large-files
         args: [ --maxkb=1024 ]
-      - id: check-ast # Check whether files parse as valid python
-      - id: check-json # Attempt to load json files to verify syntax
-      - id: check-xml # Attempt to load xml files to verify syntax
-      - id: check-yaml # Attempt to load yaml files to verify syntax
-      - id: check-merge-conflict # Check for files that contain merge conflict strings
-      - id: check-symlinks # Check for broken symlinks
-      - id: debug-statements # Check for debugger imports and py37+ breakpoint() calls
-      - id: detect-private-key # Check for the existence of private keys
+      - id: check-json          # validate (does NOT reformat) json/package.json
+      - id: check-yaml
+      - id: check-xml
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: detect-private-key
       - id: check-executables-have-shebangs
-      - id: trailing-whitespace # Trim trailing whitespace.
-      - id: end-of-file-fixer # makes sure files end in a newline and only a newline
-      - id: pretty-format-json # autoformat json files (e.g. sorting keys)
-        args: [ --autofix, --indent=2 ]
-      - id: name-tests-test # name pytest files correctly
-        args: [ --pytest-test-first ]
-      - id: requirements-txt-fixer # Sorts the requirement.txt files' content
-        files: 'requirements.*\.txt$'
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.1.0
-    hooks:
-      - id: mypy
-        args: [ '--config-file=dockerfiles/code_checks/mypy.ini' ]
-        exclude: (^ondewo-utils|^notebooks|^tests_old|^tests/pytest_utils)
-        # Use language: system to run Mypy git repo's existing virtual environment
-        # instead of mypy's own virtual environment. Necessary to find types-.* packages
-        # Replace language: python in your hook definition with language: system.
-        # Remove the additional_dependencies line and install Mypy into your
-        # environment directly. Now, Pre-commit will not create a separate virtualenv
-        # for the hook and will run it in whatever environment you happen to be in when
-        # you run git commit or pre-commit run => https://jaredkhan.com/blog/mypy-pre-commit
-        language: system
-        # use require_serial so that script
-        # is only called once per commit
-        require_serial: true
-        # Print the number of files as sanity-check
-        verbose: true
-        types: [ python ]
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.3.0
-    hooks:
-      - id: flake8
-        args: [ '--config=dockerfiles/code_checks/.flake8' ]
-        exclude: (^ondewo-utils|^notebooks)
-
-  - repo: https://github.com/hhatto/autopep8
-    rev: v2.3.2
-    hooks:
-      - id: autopep8 # Perform pep8 auto-formatting
-        args: [ --max-line-length=120, --in-place ]
-        exclude: (^ondewo-utils|^notebooks)
-
-  # Official prettier (github.com/prettier/prettier) ships no .pre-commit-hooks.yaml, and
-  # pre-commit/mirrors-prettier is archived/deprecated. Consume the official prettier npm
-  # package directly via a pre-commit-managed local node hook, pinned to the latest release.
-  - repo: local
-    hooks:
-      - id: prettier
-        name: prettier
-        entry: prettier --write --ignore-unknown
-        language: node
-        additional_dependencies: ['prettier@3.9.4']
-        files: \.(js|jsx|ts|tsx|css|scss|html|vue|json|md)$
-        exclude: '^(typescript|nodejs|js|angular)/image-data/|.*\.md$'
-
-  - repo: local
-    hooks:
-      - id: shellcheck # Static analysis of shell scripts (uses the system shellcheck)
-        name: shellcheck
-        entry: shellcheck
-        language: system
-        args: [ -x, -S, warning ]
-        # Select by extension (types: [shell] relies on shebang detection and can miss files),
-        # plus the extension-less PATH-mock tools under tests/helpers/bin.
-        types: [ file ]
-        files: '(\.(sh|bash)$|^tests/helpers/bin/)'
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
 
   - repo: https://github.com/milin/giticket
     rev: '1.92'
     hooks:
-      - id: giticket  # Prepend the commit message with the JIRA ticket
-        args: [ '--regex=(?:(?:feature|bugfix|support|hotfix)/)?([A-Z][A-Z][A-Z][0-9]{3}-[0-9]{1,5})[_-][\w-]+',
+      - id: giticket
+        args: [ '--regex=(?:(?:feature|bugfix|support|hotfix)/)?(OND[0-9]{3}-[0-9]{1,5})[_-][\w-]+',
                 '--format=[{ticket}] {commit_msg}',
                 '--mode=regex_match' ]
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [ commit-msg ]

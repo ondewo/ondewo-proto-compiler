@@ -170,7 +170,7 @@ pinned to a release commit/tag) and vendors the proto source as a second submodu
 ### How a client generates stubs
 
 Generation always runs the fixed image tag `ondewo-<lang>-proto-compiler:latest`. A client's `build_compiler` rebuilds
-that tag from its submodule, but **the tag is the only contract** — so to test your *working-tree* compiler against a
+that tag from its submodule, but **the tag is the only contract** — so to test your _working-tree_ compiler against a
 client, just `docker build -t ondewo-<lang>-proto-compiler:latest <lang>` from this repo (no submodule bump needed) and
 run the client's generate step.
 
@@ -187,7 +187,7 @@ run the client's generate step.
 - **js** — different arg/volume shape:
   `docker run -v ${PWD}:/input-volume -v ${PWD}/../api:/output-volume ondewo-js-proto-compiler ondewo-nlu-api ondewo-nlu-api ondewo`
   (args = `<lib_entry_name> <relative_protos_dir> <target_subdir>`). Output is a **single webpack bundle** (`<name>.js`
-  + `.min.js` + `.map`) — a low file count is correct here, not a failure.
+  - `.min.js` + `.map`) — a low file count is correct here, not a failure.
 
 ### Image / compile-script internals (`<lang>/image-data/compile-proto-2-<lang>.sh`, baked into the image)
 
@@ -226,7 +226,7 @@ To confirm a compiler change generates valid client stubs **without dirtying any
 - The user's own git author identity (already configured in git) is the only identity that should appear on commits.
 - This rule overrides the default Claude Code commit-template guidance.
 - **Never prepend the JIRA ticket ID** (e.g. `[OND211-2418]`) to the commit subject yourself. The `giticket` pre-commit
-  hook reads the ticket from the branch name and prepends `[<ticket>] ` automatically. Branch names match
+  hook reads the ticket from the branch name and prepends `[<ticket>]` automatically. Branch names match
   `(feature|bugfix|support|hotfix)/<TICKET>-…` **or** a bare `<TICKET>-…` (the prefix is optional), where `<TICKET>`
   looks like `OND211-2418`. Writing the prefix manually produces a duplicate like `[OND211-2418] [OND211-2418] feat: …`.
   Write the subject as plain Conventional Commits (`feat: …`, `fix(scope): …`, `docs: …`) and let the hook add the
@@ -247,7 +247,7 @@ To confirm a compiler change generates valid client stubs **without dirtying any
 
 - **Codegen `docker run` must not use `-it`** — it breaks every non-interactive caller (`cannot attach stdin to a TTY-enabled container because stdin is not a terminal`). Drop `-it` from codegen invocations in the example scripts/docs; keep it only on `--entrypoint /bin/bash` debug commands.
 - **Version propagation is automatic.** The `release` / `ondewo_release` targets set `ONDEWO_PROTO_COMPILER_VERSION` into every `*/image-data/package.json` + Dockerfile `ARG` and commit that for you — you only bump the Makefile version and add a `RELEASE.md` entry (MINOR bump for a fix/improvement).
-- The token-bearing `docker run` in `release_to_github_via_docker_image` is correctly prefixed with `@` — do **not** regress that (it keeps `GITHUB_GH_TOKEN` out of the logs). Downstream client release Makefiles are *not* as careful.
+- The token-bearing `docker run` in `release_to_github_via_docker_image` is correctly prefixed with `@` — do **not** regress that (it keeps `GITHUB_GH_TOKEN` out of the logs). Downstream client release Makefiles are _not_ as careful.
 
 ## Release notes
 

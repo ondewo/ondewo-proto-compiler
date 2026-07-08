@@ -50,7 +50,6 @@ Then proceeds to create an entry point file for all resulting classes and create
     sudo systemctl start docker
     sudo systemctl enable docker
     ```
-On Windows using **Windows Subsystem for Linux (WSL)** is recommended, to prevent any compability issues.
 
 ### Building the docker images ###
 
@@ -59,8 +58,11 @@ bash angular/build.sh
 bash js/build.sh
 bash nodejs/build.sh
 bash typescript/build.sh
+
 ```
+
 Creates the following image tags:
+
 - Angular:
 ondewo-angular-proto-compiler
 - Javascript:
@@ -72,7 +74,6 @@ ondewo-typescript-proto-compiler
 
 ### Using the docker images to consume .proto directories and create platform specific client packages ###
 
-Examples of usage can be found in:
 - angular/example
 - js/example
 - nodejs/example
@@ -84,6 +85,7 @@ To compile a package following format should be followed:
 ```bash
 docker run -v $FILEDIRECTORY:/input-volume -v $FILEDIRECTORY/lib:/output-volume ondewo-angular-proto-compiler protos
 ```
+
 - **-it** Interactive terminal to show the output of the compilation process in the active terminal
 - **-v** specifies the input directory to mount and consume for the compilation (path after the **:**)
 - **-v** specifies the output directory where the resulting package files are copied to
