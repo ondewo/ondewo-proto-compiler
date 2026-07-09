@@ -254,3 +254,10 @@ To confirm a compiler change generates valid client stubs **without dirtying any
 - Codegen `docker run` invocations must **not** use `-it` (breaks every non-interactive caller with "cannot attach stdin to a TTY"). Keep `-it` only on the interactive `--entrypoint /bin/bash` debug commands.
 - `release` / `ondewo_release` propagate `ONDEWO_PROTO_COMPILER_VERSION` into every `*/image-data/package.json` + Dockerfile ARG and commit it — you only bump the Makefile version + add a `RELEASE.md` entry (MINOR bump for a fix/improvement).
 - The token-bearing `docker run` in `release_to_github_via_docker_image` is correctly `@`-prefixed — keep it that way.
+
+## Pre-commit upgraded (language-agnostic hook set)
+
+Pre-commit here uses only the language-agnostic hooks — **markdownlint-cli2, pre-commit-hooks hygiene, giticket, conventional-pre-commit** — no ruff/mypy/uv (there is no Python). Generated docs (`docs/`) and any generated code are excluded via the top-level `exclude:`.
+
+- **markdownlint MD053 is disabled** (its auto-fix deletes `[comment]: <>` reference-definition markers).
+- **markdownlint RELEASE.md reformatting is content-safe**: it only strips trailing whitespace and adds blank lines around headings — the `## Release … <VERSION>` headings and `*****` separators that `ondewo_release` greps for remain intact. (Confirmed: the 6.5.0 release notes sliced correctly after the reformat.)
