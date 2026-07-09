@@ -6,6 +6,8 @@ config:
   MD013: false
   # MD033 no-inline-html: docs embed <p>/<code> HTML tags.
   MD033: false
+  # MD053 unused-link-reference-definitions: its auto-fix DELETES [comment]: <> markers; keep disabled fleet-wide.
+  MD053: false
   # MD024 duplicate-heading: changelogs repeat "### Improvements" / "### Breaking
   # Changes" under each release section; allow when not direct siblings.
   MD024:
