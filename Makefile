@@ -163,7 +163,7 @@ release_version_update_in_packages_json_files: ## Set ONDEWO_PROTO_COMPILER_VERS
 	done; \
 	if ! git diff --cached --quiet; then \
 		echo "$(BLUE)[INFO]$(NC) Committing and pushing changes..."; \
-		git commit -m "Prepare release ${ONDEWO_PROTO_COMPILER_VERSION} and update version in package.json files"; \
+		git commit --no-verify -m "Prepare release ${ONDEWO_PROTO_COMPILER_VERSION} and update version in package.json files"; \
 		git push; \
 		echo "$(GREEN)[SUCCESS]$(NC) Version updated and pushed successfully."; \
 	else \
@@ -187,7 +187,7 @@ release_version_update_in_dockerfiles: ## Update ARG versions in Dockerfiles
 	done; \
 	if ! git diff --cached --quiet; then \
 		echo "$(BLUE)[INFO]$(NC) Committing and pushing Dockerfile updates..."; \
-		git commit -m "Prepare release ${ONDEWO_PROTO_COMPILER_VERSION} and update Dockerfile ARGs"; \
+		git commit --no-verify -m "Prepare release ${ONDEWO_PROTO_COMPILER_VERSION} and update Dockerfile ARGs"; \
 		git push; \
 		echo "$(GREEN)[SUCCESS]$(NC) Version updated and pushed successfully."; \
 	else \
