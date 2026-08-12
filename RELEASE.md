@@ -2,7 +2,7 @@
 
 *****************
 
-## Release ONDEWO Proto Compiler 5.11.1
+## Release ONDEWO Proto Compiler 5.12.0
 
 ### Bug Fixes
 
