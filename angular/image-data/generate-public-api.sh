@@ -31,7 +31,7 @@ done >>"$OUTPUT_FILE"
 
 # symbol<TAB>module for every top-level export, de-duplicated per stub (a stub may
 # declare `export class X` and `export module X` for the same name).
-SYMBOL_INDEX=$(mktemp)
+SYMBOL_INDEX=$(mktemp "${TMPDIR:-/tmp}/public-api-symbols.XXXXXX")
 trap 'rm -f "$SYMBOL_INDEX"' EXIT
 
 find api -iname "*.ts" | sort | while IFS= read -r stub; do
