@@ -13,16 +13,12 @@ FILE_EXT=".ts"
 #Can also be specified in provided directory -> no auto generation
 PUBLIC_API_FILE=$TEMP_SRC_DIRECTORY/public-api$FILE_EXT
 
+GENERATE_PUBLIC_API=$(cd "$(dirname "$0")" && pwd)/generate-public-api.sh
+
 if [ ! -f "$PUBLIC_API_FILE" ]; then
   echo "No public-api$FILE_EXT specified in source directory -> copying default file"
   cp "$DEFAULT_FILES_DIR/public-api$FILE_EXT" "$PUBLIC_API_FILE"
 
   # Trying to auto generate public-api file
-  cd "$TEMP_SRC_DIRECTORY" || exit 1
-
-  #ES6 Style exports
-  export PREFIX="export * from '"
-  export POSTFIX="';"
-
-  find api -iname "*$FILE_EXT" -exec bash -c 'printf "$PREFIX./%s$POSTFIX\n" "${@%.*}"' _ {} + >>"$PUBLIC_API_FILE"
+  bash "$GENERATE_PUBLIC_API" "$TEMP_SRC_DIRECTORY" "$PUBLIC_API_FILE"
 fi
