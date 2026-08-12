@@ -129,10 +129,8 @@ echo "Finished copying api stubs"
 echo "Generating public-api.ts from api stubs"
 PUBLIC_API_TS=$OUTPUT_VOLUME_FS/public-api.ts
 rm -f "$PUBLIC_API_TS"
-find "$TEMP_SRC_DIRECTORY/api" -iname "*.ts" | sort | while IFS= read -r tsfile; do
-  relpath=$(echo "$tsfile" | sed "s|^$TEMP_SRC_DIRECTORY/||" | sed 's|\.ts$||')
-  echo "export * from './$relpath';" >> "$PUBLIC_API_TS"
-done
+touch "$PUBLIC_API_TS"
+bash "$IMAGE_DATA_DIRECTORY/generate-public-api.sh" "$TEMP_SRC_DIRECTORY" "$PUBLIC_API_TS"
 echo "Finished generating public-api.ts"
 
 # -------------- Copy GitHub README and RELEASE

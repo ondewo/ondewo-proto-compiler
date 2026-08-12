@@ -2,6 +2,14 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.12.0
+
+### Bug Fixes
+
+* Angular: the generated `public-api.ts` no longer breaks the library build when two protos declare the same top-level symbol. Protos in different packages may legitimately share a name (`ondewo.nlu` and `ondewo.s2t` both declare `ReasoningEffort`), but the barrel re-exported every stub with `export *` only, which makes such a name ambiguous and fails the build with TS2308. Each duplicated symbol now also gets an explicit re-export bound to the first stub that declares it, which takes precedence over the star exports. Both barrel generators are fixed - the one compiled by `ng build` and the copy shipped in `npm/` - via a shared `generate-public-api.sh`.
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.11.0
 
 ### Improvements
