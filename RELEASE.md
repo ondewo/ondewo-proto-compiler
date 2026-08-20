@@ -7,6 +7,8 @@
 ### Bug Fixes
 
 * Angular: hand-written sources that live beside the generated stubs now reach the library's public surface. The generated `public-api.ts` listed only the proto stubs, so a client's hand-written `auth/` barrel (bearer credential + Keycloak token provider) was compiled but never bundled - `import { KeycloakTokenProvider } from "@ondewo/nlu-client-angular"` did not resolve for any consumer, and applications had to re-implement token acquisition and refresh themselves. `generate-public-api.sh` now star-exports the barrel when `auth/index.ts` exists in the source volume, for both barrels it generates - `./auth` in the entry file `ng build` compiles, and `./src/auth` in the copy written to the output volume, which sits one level above the mounted input directory. A client without an `auth/` barrel is unaffected.
+* Javascript: the generated `public-api.js` no longer star-exports itself. It is created from the default file *before* the stub scan runs, so the scan picked it up and emitted `export * from './public-api';` into the webpack entry point - a circular self-reference. The entry file is now pruned from the scan, and the emitted specifiers lost a doubled `./` prefix (`'././api/…'` -> `'./api/…'`).
+* Nodejs, Typescript: the generated `public-api.d.ts` no longer breaks a consumer's build when two protos declare the same top-level symbol. This is the TS2308 ambiguity fixed for Angular in 5.12.0, ported to the remaining TypeScript-emitting targets: each duplicated symbol now also gets an explicit re-export bound to the first stub that declares it, which takes precedence over the star exports. The `.js` barrel is unaffected - protoc's closure output declares no `export` bindings to collide.
 
 *****************
 
