@@ -2,6 +2,18 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.13.0
+
+### Bug Fixes
+
+* Angular: hand-written sources that live beside the generated stubs now reach the library's public surface. The generated `public-api.ts` listed only the proto stubs, so a client's hand-written `auth/` barrel (bearer credential + Keycloak token provider) was compiled but never bundled - `import { KeycloakTokenProvider } from "@ondewo/nlu-client-angular"` did not resolve for any consumer, and applications had to re-implement token acquisition and refresh themselves. `generate-public-api.sh` now star-exports the barrel when the source volume has one, looking for both layouts in use - `auth/index.ts` (nlu-client-angular) and `lib/auth/index.ts` (csi- and sip-client-angular, which keep it under the library source root). The import prefix follows the destination: `./auth` in the entry file `ng build` compiles, `./src/auth` in the copy written to the output volume one level above the mounted input directory, and no barrel line at all in the `npm/` copy, which holds the packaged output plus `api/` and no hand-written sources at any depth. A client with neither barrel is unaffected.
+* Javascript: the generated `public-api.js` no longer star-exports itself, and no longer emits an export line for a *directory* whose name ends in `.js` (the scan had no `-type f`). It is created from the default file *before* the stub scan runs, so the scan picked it up and emitted `export * from './public-api';` into the webpack entry point - a circular self-reference. The entry file is now pruned from the scan, and the emitted specifiers lost a doubled `./` prefix (`'././api/…'` -> `'./api/…'`).
+* Nodejs, Typescript: the client's hand-written `auth/` modules are re-exported from the generated `public-api.d.ts` / `public-api.js`. These targets keep hand-written sources at the *output* volume root, beside the generated barrels, rather than inside the mounted input directory the way Angular does, so the export is appended by a new `append-auth-exports.sh` after the output copy rather than by the barrel generator. Without it a client shipped `auth/` but nothing re-exported it, so `import { login } from "@ondewo/nlu-client-nodejs"` did not resolve and only a deep import into the module worked. Every non-spec module directly under `auth/` is exported once, keyed by basename so the `.ts` / `.js` / `.d.ts` spellings of one module collapse; re-running never duplicates a line, and a client without an `auth/` directory is untouched.
+* Nodejs, Typescript: `append-auth-exports.sh` skips an `auth/` module whose basename contains a quote, backslash or space instead of emitting a syntactically broken export line that would take the whole barrel down with it.
+* Nodejs, Typescript: the generated `public-api.d.ts` no longer breaks a consumer's build when two protos declare the same top-level symbol. This is the TS2308 ambiguity fixed for Angular in 5.12.0, ported to the remaining TypeScript-emitting targets: each duplicated symbol now also gets an explicit re-export bound to the first stub that declares it, which takes precedence over the star exports. The `.js` barrel is unaffected - protoc's closure output declares no `export` bindings to collide.
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.12.0
 
 ### Bug Fixes

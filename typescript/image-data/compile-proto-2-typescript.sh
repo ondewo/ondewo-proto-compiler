@@ -103,5 +103,8 @@ rm -rf "$OUTPUT_VOLUME_FS/api"
 cp -r "$TEMP_SRC_DIRECTORY"/lib/* "$OUTPUT_VOLUME_FS" || { echo "ERROR: failed to copy library to output volume" >&2; exit 1; }
 echo "Finished copying"
 
+# -------------- Re-export the client's hand-written auth barrel from the generated public-api
+bash ./append-auth-exports.sh "$OUTPUT_VOLUME_FS" || { echo "ERROR: append-auth-exports.sh failed" >&2; exit 1; }
+
 # -------------- END
 echo ".proto to typescript library compilation finished successfully and output files are located in 'lib' directory of the mounted volume"

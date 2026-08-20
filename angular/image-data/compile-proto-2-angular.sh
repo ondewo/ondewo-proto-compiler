@@ -130,7 +130,9 @@ echo "Generating public-api.ts from api stubs"
 PUBLIC_API_TS=$OUTPUT_VOLUME_FS/public-api.ts
 rm -f "$PUBLIC_API_TS"
 touch "$PUBLIC_API_TS"
-bash "$IMAGE_DATA_DIRECTORY/generate-public-api.sh" "$TEMP_SRC_DIRECTORY" "$PUBLIC_API_TS"
+# "./src": this copy lands at the root of the output volume, one level above the mounted
+# input directory the hand-written barrel lives in, unlike the entry file ng build compiles.
+bash "$IMAGE_DATA_DIRECTORY/generate-public-api.sh" "$TEMP_SRC_DIRECTORY" "$PUBLIC_API_TS" "./src"
 echo "Finished generating public-api.ts"
 
 # -------------- Copy GitHub README and RELEASE
@@ -147,7 +149,12 @@ mkdir "$OUTPUT_VOLUME_FS/npm"
 cp -r "$TEMP_SRC_DIRECTORY"/lib/* "$OUTPUT_VOLUME_FS/npm"
 rm -rf "$OUTPUT_VOLUME_FS/npm/api"
 cp -r "$TEMP_SRC_DIRECTORY/api" "$OUTPUT_VOLUME_FS/npm/api"
-cp "$OUTPUT_VOLUME_FS/public-api.ts" "$OUTPUT_VOLUME_FS/npm/public-api.ts"
+# npm/ holds the ng-packagr output plus a copy of api/ -- no hand-written sources at any
+# depth -- so the barrel line that is correct at the output root would dangle here. Generate
+# this copy stubs-only rather than copying the root one. The auth surface still reaches the
+# package: ng-packagr bundled it into fesm2022/ and index.d.ts through the entry barrel.
+bash "$IMAGE_DATA_DIRECTORY/generate-public-api.sh" "$TEMP_SRC_DIRECTORY" \
+  "$OUTPUT_VOLUME_FS/npm/public-api.ts" "none"
 echo "Finished copying"
 
 # -------------- END

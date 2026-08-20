@@ -28,8 +28,12 @@ if [ ! -f "$PUBLIC_API_FILE" ]; then
     export POSTFIX="';"
 
     #find api -iname "*.ts" -printf "$PREFIX%p$POSTFIX\n" >> $PUBLIC_API_FILE
-    # explicit "." start path: BSD/macOS find has no GNU-style implicit path
-    find . -iname "*$FILE_EXT" -exec bash -c 'printf "$PREFIX./%s$POSTFIX\n" "${@%.*}"' _ {} + >> "$PUBLIC_API_FILE"
+    # explicit "." start path: BSD/macOS find has no GNU-style implicit path.
+    # -path ./public-api* is pruned: this file is created (from the default) BEFORE the find
+    # runs, so without the prune the webpack entry point star-exports ITSELF -- a circular
+    # self-reference webpack resolves to nothing useful. find prints "./x", so the printf adds
+    # no second "./" of its own or every specifier comes out as '././x'.
+    find . -path "./public-api$FILE_EXT" -prune -o -type f -iname "*$FILE_EXT" -exec bash -c 'printf "$PREFIX%s$POSTFIX\n" "${@%.*}"' _ {} + >> "$PUBLIC_API_FILE"
     # -i.bak (not bare -i) keeps this working with both GNU and BSD/macOS sed
     sed -i.bak '/\/node_modules\//d' "$PUBLIC_API_FILE"
     sed -i.bak '/\/webpack/d' "$PUBLIC_API_FILE"

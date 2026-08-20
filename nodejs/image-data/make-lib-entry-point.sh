@@ -32,4 +32,41 @@ if [ ! -f "$PUBLIC_API_FILE" ]; then
 
     #find api -iname "*.ts" -printf "$PREFIX%p$POSTFIX\n" >> $PUBLIC_API_FILE
     find api -iname "*$FILE_EXTENSION" -exec bash -c 'printf "$PREFIX./%s$POSTFIX\n" "${@%.*}"' _ {} + >> "$PUBLIC_API_FILE"
+
+    # A star export alone is not enough. Two protos in different packages may legitimately
+    # declare the same top-level symbol -- ondewo.nlu and ondewo.s2t both declare
+    # `ReasoningEffort` -- and a name reachable through two `export *` lines is ambiguous:
+    # tsc fails the consumer's build with TS2308 on the .d.ts barrel, and ESM silently drops
+    # the name instead of exporting it. An explicit re-export takes precedence over star
+    # exports, so each duplicated symbol also gets one, bound to the first stub that declares
+    # it in sorted order (deterministic across runs). The generated .js stubs are closure /
+    # commonjs and carry no `export ` lines, so this is inert for the .js barrel and only the
+    # .d.ts barrel is actually disambiguated.
+    # symbol<TAB>module for every top-level export, de-duplicated per stub (a stub declares
+    # both `export class X` and `export namespace X` for the same message).
+    SYMBOL_INDEX=$(mktemp "${TMPDIR:-/tmp}/public-api-symbols.XXXXXX")
+    trap 'rm -f "$SYMBOL_INDEX"' EXIT
+
+    find api -iname "*$FILE_EXTENSION" | sort | while IFS= read -r stub; do
+        awk -v mod="./${stub%.*}" '
+      /^export / {
+        for (i = 2; i <= NF; i++) {
+          token = $i
+          if (token == "declare" || token == "abstract" || token == "default" ||
+              token == "async" || token == "class" || token == "interface" ||
+              token == "enum" || token == "const" || token == "let" ||
+              token == "var" || token == "type" || token == "function" ||
+              token == "module" || token == "namespace") continue
+          gsub(/[^A-Za-z0-9_$].*$/, "", token)
+          if (token != "") print token "\t" mod
+          break
+        }
+      }
+    ' "$stub" | sort -u
+    done >>"$SYMBOL_INDEX"
+
+    cut -f1 "$SYMBOL_INDEX" | sort | uniq -d | while IFS= read -r duplicate; do
+        first_module=$(awk -F'\t' -v symbol="$duplicate" '$1 == symbol { print $2; exit }' "$SYMBOL_INDEX")
+        echo "export { $duplicate } from '$first_module';" >> "$PUBLIC_API_FILE"
+    done
 fi
