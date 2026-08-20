@@ -35,6 +35,14 @@ find "$AUTH_DIR" -maxdepth 1 -type f \( -name "*.ts" -o -name "*.js" \) \
   sort -u |
   while IFS= read -r module; do
     [ -n "$module" ] || continue
+    # A quote, backslash or space in the basename would emit a syntactically broken export
+    # line and take the whole barrel down with it. Skip loudly instead.
+    case $module in
+      *[\'\"\\\ ]*)
+        echo "append-auth-exports: skipping auth module with an unsafe name: $module" >&2
+        continue
+        ;;
+    esac
     for barrel in "$OUTPUT_ROOT/public-api.d.ts" "$OUTPUT_ROOT/public-api.js"; do
       [ -f "$barrel" ] || continue
       if ! grep -Fq "'./auth/$module'" "$barrel"; then

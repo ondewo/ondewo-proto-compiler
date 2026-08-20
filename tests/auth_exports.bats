@@ -85,6 +85,36 @@ run_append() {
   [ "$output" = "0" ]
 }
 
+@test "append-auth-exports: skips a module whose name cannot be a safe specifier" {
+  # A quote or backslash in the basename would emit a broken export line and take the whole
+  # barrel down with it, so such a module is skipped loudly instead.
+  : > "$OUT/auth/offlineTokenProvider.ts"
+  : > "$OUT/auth/od'd.ts"
+
+  run_append nodejs
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"unsafe name"* ]]
+
+  grep -Fq "export * from './auth/offlineTokenProvider';" "$OUT/public-api.js"
+  run grep -c "od'd" "$OUT/public-api.js"
+  [ "$output" = "0" ]
+  # the emitted barrel is still syntactically valid
+  run node --check "$OUT/public-api.js"
+  [ "$status" -eq 0 ]
+}
+
+@test "append-auth-exports: a partial basename match does not suppress a real export" {
+  # the duplicate guard greps for './auth/<module>' -- it must not treat an existing
+  # './auth/offlineTokenProviderExtra' line as already covering './auth/offlineTokenProvider'
+  printf "export * from './auth/offlineTokenProviderExtra';\n" >> "$OUT/public-api.js"
+  : > "$OUT/auth/offlineTokenProvider.ts"
+
+  run_append nodejs
+  [ "$status" -eq 0 ]
+
+  grep -Fq "export * from './auth/offlineTokenProvider';" "$OUT/public-api.js"
+}
+
 @test "append-auth-exports: requires the output root argument" {
   run bash "$REPO_ROOT/nodejs/image-data/append-auth-exports.sh"
   [ "$status" -ne 0 ]

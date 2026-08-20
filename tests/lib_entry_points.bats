@@ -64,6 +64,21 @@ run_entry_point() {
   grep -Fq "export * from './auth/offlineTokenProvider';" "$SRC/public-api.js"
 }
 
+@test "js entry point: a DIRECTORY named *.js is not exported" {
+  # find without -type f matched directories too, emitting an export line for a folder.
+  printf 'exports.A = 1;\n' > "$SRC/api/ondewo/nlu/session_pb.js"
+  mkdir -p "$SRC/vendor.js"
+  printf 'exports.B = 1;\n' > "$SRC/vendor.js/inner.js"
+
+  run_entry_point js
+  [ "$status" -eq 0 ]
+
+  run grep -c "from './vendor';" "$SRC/public-api.js"
+  [ "$output" = "0" ]
+  # the real file inside it is still exported
+  grep -Fq "export * from './vendor.js/inner';" "$SRC/public-api.js"
+}
+
 # ------------------------------------------------- nodejs / typescript
 
 # Both targets ship the same generator; assert each so a divergence is caught.

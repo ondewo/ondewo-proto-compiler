@@ -199,6 +199,30 @@ run the client's generate step.
   python `run` target uses `--user`. Some node scripts wipe parts of the output volume (e.g. angular `rm -rf npm
   package.json …`), so pointing `/output-volume` at a real repo root deletes + regenerates files in place.
 
+### The public-api barrel and hand-written client sources (5.13.0+)
+
+Only the proto stubs are generated. Anything a client hand-writes beside them (the Keycloak/bearer `auth`
+surface) is compiled but **unreachable** unless the barrel re-exports it — that is the bug 5.13.0 fixes. The
+two target groups need different mechanisms because the clients put the sources in different places:
+
+- **angular** — hand-written sources live INSIDE the mounted input volume (`src/auth/index.ts` for
+  nlu-client-angular, `src/lib/auth/index.ts` for csi- and sip-client-angular). `generate-public-api.sh`
+  star-exports them, and takes an optional 3rd argument, the import prefix, because one generated barrel is
+  written to three destinations at different depths: `.` (default) for the entry file `ng build` compiles,
+  `./src` for the artifact copy at the output-volume root, and the literal **`none`** for `npm/`, which holds
+  no hand-written sources at any depth — a barrel line there would dangle (TS2307).
+- **nodejs / typescript** — hand-written sources live at the OUTPUT volume root, beside the generated barrels
+  and outside anything the image can see during generation. `append-auth-exports.sh` runs after the output
+  copy instead, exporting every non-spec module directly under `auth/`, keyed by basename so the `.ts`/`.js`/
+  `.d.ts` spellings collapse. Idempotent; a client without `auth/` is untouched.
+- **js** — deliberately excluded. Its `public-api.js` is an internal webpack entry that is never published, and
+  the clients' auth helper is a Node-only `undici` consumer that has no business in a browser bundle; it ships
+  as its own CommonJS entry and is documented as a deep import.
+
+A hand-written name that collides with a generated one is left to fail loudly as TS2308 rather than be
+auto-bound — **except** when the name is declared by two or more stubs, where the duplicate-disambiguation
+block emits an explicit re-export that silently beats the star export. Keep hand-written names distinct.
+
 ### Safe end-to-end verification recipe
 
 To confirm a compiler change generates valid client stubs **without dirtying any client repo**:
