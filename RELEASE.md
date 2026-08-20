@@ -2,6 +2,14 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.13.0
+
+### Bug Fixes
+
+* Angular: hand-written sources that live beside the generated stubs now reach the library's public surface. The generated `public-api.ts` listed only the proto stubs, so a client's hand-written `auth/` barrel (bearer credential + Keycloak token provider) was compiled but never bundled - `import { KeycloakTokenProvider } from "@ondewo/nlu-client-angular"` did not resolve for any consumer, and applications had to re-implement token acquisition and refresh themselves. `generate-public-api.sh` now star-exports the barrel when `auth/index.ts` exists in the source volume, for both barrels it generates - `./auth` in the entry file `ng build` compiles, and `./src/auth` in the copy written to the output volume, which sits one level above the mounted input directory. A client without an `auth/` barrel is unaffected.
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.12.0
 
 ### Bug Fixes

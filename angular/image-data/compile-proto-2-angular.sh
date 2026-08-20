@@ -130,7 +130,9 @@ echo "Generating public-api.ts from api stubs"
 PUBLIC_API_TS=$OUTPUT_VOLUME_FS/public-api.ts
 rm -f "$PUBLIC_API_TS"
 touch "$PUBLIC_API_TS"
-bash "$IMAGE_DATA_DIRECTORY/generate-public-api.sh" "$TEMP_SRC_DIRECTORY" "$PUBLIC_API_TS"
+# "./src": this copy lands at the root of the output volume, one level above the mounted
+# input directory the hand-written barrel lives in, unlike the entry file ng build compiles.
+bash "$IMAGE_DATA_DIRECTORY/generate-public-api.sh" "$TEMP_SRC_DIRECTORY" "$PUBLIC_API_TS" "./src"
 echo "Finished generating public-api.ts"
 
 # -------------- Copy GitHub README and RELEASE

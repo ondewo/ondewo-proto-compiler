@@ -72,6 +72,49 @@ teardown() { common_teardown; }
   [ "$output" = "0" ]
 }
 
+@test "generate-public-api: star-exports a hand-written auth barrel when one exists" {
+  # Hand-written sources are not emitted by the compiler, so without this line `auth/` is
+  # compiled but never bundled and no consumer can import a symbol from it.
+  printf 'export class DetectIntentRequest {}\n' > "$SRC/api/ondewo/nlu/session.pb.ts"
+  mkdir -p "$SRC/auth"
+  printf 'export { KeycloakTokenProvider } from "./keycloak-token-provider";\n' > "$SRC/auth/index.ts"
+
+  run bash "$GEN" "$SRC" "$OUT_FILE"
+  [ "$status" -eq 0 ]
+
+  grep -Fq "export * from './auth';" "$OUT_FILE"
+  run grep -c "export \* from './auth';" "$OUT_FILE"
+  [ "$output" = "1" ]
+
+  # the generated stubs are still star-exported
+  grep -Fq "export * from './api/ondewo/nlu/session.pb';" "$OUT_FILE"
+}
+
+@test "generate-public-api: honours a barrel prefix for the copy written one level up" {
+  # The entry file ng build compiles sits beside auth/; the copy written to the output
+  # volume sits one level above the mounted input directory that holds it.
+  printf 'export class DetectIntentRequest {}\n' > "$SRC/api/ondewo/nlu/session.pb.ts"
+  mkdir -p "$SRC/auth"
+  printf 'export { KeycloakTokenProvider } from "./keycloak-token-provider";\n' > "$SRC/auth/index.ts"
+
+  run bash "$GEN" "$SRC" "$OUT_FILE" "./src"
+  [ "$status" -eq 0 ]
+
+  grep -Fq "export * from './src/auth';" "$OUT_FILE"
+  run grep -c "export \* from './auth';" "$OUT_FILE"
+  [ "$output" = "0" ]
+}
+
+@test "generate-public-api: omits the auth export for a client without an auth barrel" {
+  printf 'export class DetectIntentRequest {}\n' > "$SRC/api/ondewo/nlu/session.pb.ts"
+
+  run bash "$GEN" "$SRC" "$OUT_FILE"
+  [ "$status" -eq 0 ]
+
+  run grep -c "\./auth" "$OUT_FILE"
+  [ "$output" = "0" ]
+}
+
 @test "generate-public-api: requires both arguments" {
   run bash "$GEN" "$SRC"
   [ "$status" -ne 0 ]

@@ -3,9 +3,13 @@ set -e
 
 # Append the public-api barrel for the generated proto stubs to a file.
 #
-# Usage: generate-public-api.sh <src_root> <output_file>
-#   <src_root>     directory containing the generated "api" tree
-#   <output_file>  file the "export ..." lines are appended to
+# Usage: generate-public-api.sh <src_root> <output_file> [barrel_prefix]
+#   <src_root>      directory containing the generated "api" tree
+#   <output_file>   file the "export ..." lines are appended to
+#   [barrel_prefix] import prefix for the hand-written barrel, default "." -- the two
+#                   barrels this generates sit at different depths relative to it (the
+#                   entry file ng build compiles sits beside "auth/", the copy written to
+#                   the output volume sits beside the input directory holding it)
 #
 # Every stub gets an `export *`. That alone is not enough: two protos in different
 # packages may declare the same top-level symbol -- ondewo.nlu and ondewo.s2t both
@@ -13,12 +17,19 @@ set -e
 # ambiguous, so tsc fails the library build with TS2308. An explicit re-export takes
 # precedence over star exports, so each duplicated symbol also gets one, bound to the
 # first stub that declares it in sorted order (deterministic across runs).
+#
+# A client may also ship hand-written sources beside the generated stubs. Those are not
+# emitted by the compiler, so nothing here would export them and they would be compiled
+# into a library no consumer can import from. `auth/index.ts` -- the bearer-credential
+# and Keycloak-token-provider barrel of the angular NLU client -- is star-exported too
+# when present; a client without one is unaffected.
 
 SRC_ROOT=$1
 OUTPUT_FILE=$2
+BARREL_PREFIX=${3:-.}
 
 if [ -z "$SRC_ROOT" ] || [ -z "$OUTPUT_FILE" ]; then
-  echo "usage: generate-public-api.sh <src_root> <output_file>" >&2
+  echo "usage: generate-public-api.sh <src_root> <output_file> [barrel_prefix]" >&2
   exit 1
 fi
 
@@ -28,6 +39,13 @@ cd "$SRC_ROOT" || exit 1
 find api -iname "*.ts" | sort | while IFS= read -r stub; do
   echo "export * from './${stub%.*}';"
 done >>"$OUTPUT_FILE"
+
+# Hand-written barrel, star-exported alongside the stubs. Its symbols are deliberately left
+# out of the duplicate scan below: a hand-written name that collides with a generated one is
+# a naming mistake to fix in the barrel, not something to silently bind to a proto stub.
+if [ -f "auth/index.ts" ]; then
+  echo "export * from '${BARREL_PREFIX}/auth';" >>"$OUTPUT_FILE"
+fi
 
 # symbol<TAB>module for every top-level export, de-duplicated per stub (a stub may
 # declare `export class X` and `export module X` for the same name).
