@@ -199,6 +199,28 @@ run the client's generate step.
   python `run` target uses `--user`. Some node scripts wipe parts of the output volume (e.g. angular `rm -rf npm
   package.json …`), so pointing `/output-volume` at a real repo root deletes + regenerates files in place.
 
+### Angular proto3 explicit presence (5.14.0+)
+
+`angular/image-data/compile-proto-2-stubs.sh` **strips the `optional` keyword from a copy of the protos** before it
+runs protoc-gen-ng, and the plugin then emits identical code for `optional bool x = 5` and plain `bool x = 5`:
+`refineValues` coerces an unset field to the zero value and the writer skips it (`if (_instance.x)`). That made
+`false` / `0` / `""` unsendable from Angular - and `CallView.MINIMUM`, enum value 0, unrequestable.
+
+- **The distinction survives only in a descriptor.** The script takes `--descriptor_set_out` **before** the strip, and
+  `fix-proto3-optional-presence.ts` (run right after `--ng_out`) rewrites exactly the fields protoc marked
+  `proto3_optional`: it deletes the `refineValues` coercion and turns the writer guard into `!== undefined && !== null`.
+  Do not reorder those two steps, and do not "simplify" the codemod into a regex over the `.ts` - the generated text
+  cannot tell the two field kinds apart, and rewriting both is wire-breaking.
+- **The join key is the message's `static id` plus the field NUMBER**, never a camel-cased name, and anything the
+  codemod cannot match fails the build rather than silently shipping a client that drops values.
+- The **reader** is deliberately untouched (its per-field branch already runs only when the field is on the wire), as
+  are the declared TypeScript types and message-typed `optional` fields (already exact).
+- **js / nodejs / typescript / python are NOT affected**: they never strip `optional` and their generators
+  (`--js_out`, `grpc_tools.protoc`) emit `jspb.Message.setField` + `hasX()` / `clearX()` for a presence field and
+  `setProto3BooleanField` for a plain one. Do not port this codemod to them.
+- Fixtures: `tests/fixtures/presence/` holds REAL generator output (`regenerate.sh` rebuilds it); cases in
+  `tests/proto3_optional_presence.bats`.
+
 ### The public-api barrel and hand-written client sources (5.13.0+)
 
 Only the proto stubs are generated. Anything a client hand-writes beside them (the Keycloak/bearer `auth`

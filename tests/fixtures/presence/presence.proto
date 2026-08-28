@@ -1,0 +1,44 @@
+// Fixture for the proto3-explicit-presence codemod (fix-proto3-optional-presence.ts).
+//
+// Covers every case the codemod must tell apart: a scalar WITH explicit presence next to a
+// plain proto3 scalar of the same type, an enum whose first value is meaningful, a nested
+// message (its class id is the fully qualified name), a message-typed optional (already has
+// presence, must stay untouched) and a repeated field (cannot be optional).
+//
+// presence.descriptor.bin and presence.pb.ts are generated FROM THIS FILE by
+// tests/fixtures/presence/regenerate.sh - do not hand-edit them.
+syntax = "proto3";
+
+package fixture.presence;
+
+enum View {
+  MINIMUM = 0;
+  FULL = 1;
+}
+
+message Nested {
+  optional bool nested_flag = 1;
+}
+
+message Outer {
+  message Inner {
+    optional string inner_text = 1;
+    string plain_inner_text = 2;
+  }
+
+  optional bool outer_flag = 1;
+}
+
+message PresenceFixture {
+  optional bool optional_flag = 1;
+  bool plain_flag = 2;
+  optional string optional_text = 3;
+  string plain_text = 4;
+  optional int32 optional_count = 5;
+  optional View optional_view = 6;
+  View plain_view = 7;
+  optional Nested optional_message = 8;
+  repeated string plain_list = 9;
+  optional int64 optional_size = 12;
+  optional float optional_ratio = 13;
+}

@@ -2,6 +2,14 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.14.0
+
+### Bug Fixes
+
+* Angular: a proto3 field declared `optional` can finally carry its zero value across the wire. `@ngx-grpc/protoc-gen-ng` generates the same code for `optional bool x = 5` and for plain `bool x = 5`: `refineValues` rewrites an unset field to the zero value (`_instance.x = _instance.x || false`) and the writer then skips that value (`if (_instance.x) { _writer.writeBool(5, _instance.x); }`). Explicit presence was therefore destroyed twice over, and `false` / `0` / `""` produced no bytes at all, so the server applied its own default instead of what the caller asked for - `optional bool resume_after_false_interruption` (vtsi) could not be set to `false` from Angular by any means, and `CallView.MINIMUM`, being enum value 0, was unrequestable on all six read RPCs. Since the generated code for the two cases is byte-identical, no pattern over the `.ts` can tell them apart, and rewriting both would be wire-breaking - a plain proto3 scalar must stay unwritten at its zero value. `compile-proto-2-stubs.sh` now records a `--descriptor_set_out` **before** it strips the `optional` keyword from the protos, which is the only moment `proto3_optional` still marks the presence-bearing fields, and the new `fix-proto3-optional-presence.ts` replays that set over the generated stubs: it deletes the `refineValues` coercion, so "the caller said nothing" survives as `undefined`, and turns the writer's truthiness test into a presence test (`!== undefined && !== null`) - for those fields and no others. The reader needs no edit of its own: its per-field branch already runs only when the field is on the wire, and the `refineValues` call at the end of it was the only thing collapsing presence, so an absent field now reads back as `undefined`. Message-typed `optional` fields are deliberately left alone (a message is either an object or absent, so the truthiness guard is already an exact presence test), and so are the declared TypeScript types, which never modelled presence in the first place and whose widening would break every consumer compiled with `strictNullChecks`. A message the descriptor knows and the stubs do not, or a generated shape a future protoc-gen-ng release changes, fails the build rather than silently shipping a client that drops values. It also closes a second, quieter half of the same defect: protoc-gen-ng models a 64-bit value as the STRING `'0'`, which is truthy, so an `optional int64` that nobody set was coerced by `refineValues` and then written to the wire as 0 on every message that carried one. Measured over the ondewo-vtsi API: 183 fields in 72 messages rewritten across 10 of 75 stub files, every other byte identical; of those 183, 177 could not transmit their zero value and 6 transmitted one nobody set.
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.13.0
 
 ### Bug Fixes
