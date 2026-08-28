@@ -18,6 +18,12 @@ fi
 
 for a in "$@"; do
   case "$a" in
+    --descriptor_set_out=*)
+      # A descriptor set is a FILE, not an output directory. Write the smallest valid
+      # FileDescriptorSet -- one FileDescriptorProto carrying only its name -- so consumers
+      # (the angular proto3-presence codemod) see a well-formed set that marks no field.
+      printf '\012\014\012\012mock.proto' > "${a#*=}"
+      ;;
     --*_out=*)
       dir="${a#*=}"
       dir="${dir##*:}"           # strip generator options ("opts:DIR" -> "DIR")
