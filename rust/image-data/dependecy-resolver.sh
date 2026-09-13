@@ -85,9 +85,14 @@ echoDependencies(){
                 fi
             done
 
-            IS_EXCLUDED=$(echo "$IMPORT_PATH" | grep -E "$EXCLUDE_REGEX")
-            if [ -z "$EXCLUDE_REGEX" ]; then
-                IS_EXCLUDED=""
+            # An EMPTY regex must exclude NOTHING. Testing it first rather than
+            # blanking the result afterwards matters: `grep -E ""` matches every
+            # line, so running the grep first and then clearing the result leaves
+            # a branch that can only be reached by a caller that does not exist
+            # (echoProtoDependencies always passes "google/protobuf/").
+            IS_EXCLUDED=""
+            if [ -n "$EXCLUDE_REGEX" ]; then
+                IS_EXCLUDED=$(echo "$IMPORT_PATH" | grep -E "$EXCLUDE_REGEX")
             fi
 
             if [ -n "$IS_EXCLUDED" ]; then

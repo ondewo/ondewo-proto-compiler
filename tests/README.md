@@ -204,14 +204,13 @@ backslash or an unterminated quote such as a multi-line `jq` program — is repo
 exactly once, and *which* line it reports differs by construct (a backslash continuation is
 logged at head+1, a multi-line quoted command at head).
 
-Result: **1216 of 1217 logical commands (99.9%)** — `php`, `go`, `java` and `csharp` at 100%,
-`rust` and `cpp` at 99.6%.
+Result: **1349 of 1349 logical commands (100%)** — every one of the six new targets is fully covered.
 
-The single uncovered command is `IS_EXCLUDED=""` in `{rust,cpp}/image-data/dependecy-resolver.sh`,
-inside `if [ -z "$EXCLUDE_REGEX" ]`. It is **unreachable through every production path**: the
-only entry point, `echoProtoDependencies()`, hardcodes a non-empty `"google/protobuf/"` regex.
-The branch is inherited verbatim from the pre-existing `js/image-data/dependecy-resolver.sh`
-and is left alone rather than covered by a contrived direct call to the inner function.
+Getting the last two commands there was a code change, not a test trick: both vendored
+`dependecy-resolver.sh` copies ran `grep -E "$EXCLUDE_REGEX"` first and blanked the result afterwards
+when the regex was empty, which left a branch no caller could reach (`echoProtoDependencies()` always
+passes `"google/protobuf/"`). Testing the regex first is equivalent, avoids running `grep -E ""` — which
+matches every line — and leaves no unreachable command behind.
 
 `build.sh` and `example/run-compile.sh` are excluded from the figure — they are `#!/bin/sh`,
 and the `dash` that runs them on Linux ignores `BASH_ENV`, so the harness cannot see them.
