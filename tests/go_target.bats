@@ -32,6 +32,9 @@ setup() {
   # reach the script under test) and only spares the *_MOCK_*/*_FAIL_* names.
   export PROTOC_MOCK_LOG="$SANDBOX/protoc.log"
   export GO_MOCK_LOG="$SANDBOX/go.log"
+  # ... and the extra-include knob is not in any namespace common_setup scrubs, so
+  # an ambient value would add a -I root (or abort the run) on one machine only
+  unset EXTRA_PROTO_DIRS
 
   IN="$SANDBOX/input"
   OUT="$SANDBOX/output"
@@ -406,6 +409,155 @@ file_count() { find "$1" -type f | grep -c . || true; }
   [ "$status" -eq 0 ]
   run grep -Fq -- "--go_opt=Mdependency/myimport.proto=$MODULE/api/dependency;dependency" "$PROTOC_MOCK_LOG"
   [ "$status" -eq 0 ]
+}
+
+# --------------------------------------------------- extra protoc include roots
+# Most ONDEWO APIs vendor the google protos at <protos root>/google/..., which the
+# single -I on the protos root already resolves. The survey API keeps them at
+# <protos root>/googleapis/google/... instead, where `import
+# "google/api/annotations.proto"` resolves against nothing ("File not found").
+# EXTRA_PROTO_DIRS adds such a tree as a second -I root; its default auto-detects
+# exactly the googleapis layout, so the roots that already worked are untouched.
+
+# Stage the survey-style layout: the google protos one level deeper, under
+# googleapis/, and no google/ at the protos root.
+stage_googleapis_layout() {
+  mkdir -p "$IN/protos/googleapis/google/api"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage Http {}\n' \
+    > "$IN/protos/googleapis/google/api/annotations.proto"
+}
+
+@test "go extra includes: googleapis/ is auto-detected as a second -I root" {
+  stage
+  stage_googleapis_layout
+  run_compile protos "" "$MODULE"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Extra protoc include roots: -I $TEMP_SRC/protos/googleapis"* ]]
+  run grep -Fq -- "-I $TEMP_SRC/protos/googleapis" "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+  # the protos root stays the FIRST -I - the extra one is additive, never a replacement
+  run grep -Fq -- "-I $TEMP_SRC/protos -I $TEMP_SRC/protos/googleapis" "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+}
+
+@test "go extra includes: a root that has no googleapis/ gets no extra -I" {
+  stage
+  run_compile protos "" "$MODULE"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Extra protoc include roots"* ]]
+  run grep -Fq -- " -I $TEMP_SRC/protos " "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+  run grep -Eq -- '-I [^ ]+ -I ' "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+}
+
+@test "go extra includes: a root with its own google/ keeps the single -I even beside a googleapis/" {
+  stage
+  stage_googleapis_layout
+  # the nlu/csi/vtsi layout: google/** at the protos root already resolves, so the
+  # auto-detection must stay out of the way rather than add a competing root
+  mkdir -p "$IN/protos/google/protobuf"
+  printf 'syntax = "proto3";\npackage google.protobuf;\nmessage Empty {}\n' \
+    > "$IN/protos/google/protobuf/empty.proto"
+  run_compile protos "" "$MODULE"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Extra protoc include roots"* ]]
+  run grep -Fq -- "-I $TEMP_SRC/protos/googleapis" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+}
+
+@test "go extra includes: protos below the extra root are neither compiled nor import-mapped" {
+  stage
+  stage_googleapis_layout
+  run_compile protos "" "$MODULE"
+  [ "$status" -eq 0 ]
+  # protoc resolves them under their OWN root, so a mapping keyed on the path seen
+  # here would never match, and their go packages come from .../genproto anyway
+  run grep -Fq "Mgoogleapis/" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+  run grep -Fq "annotations.proto" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+  # the module's own protos are still compiled and mapped
+  run grep -Fq -- " $TEMP_SRC/protos/test.proto" "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+  run grep -Fq -- "--go_opt=Mtest.proto=$MODULE/api;api" "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+}
+
+@test "go extra includes: the exclusion is anchored on a directory boundary" {
+  stage
+  stage_googleapis_layout
+  # "googleapis-fork" merely STARTS with the excluded name - it is a directory of
+  # the module and has to keep its stubs and its import mapping
+  mkdir -p "$IN/protos/googleapis-fork"
+  printf 'syntax = "proto3";\npackage fork;\nmessage F {}\n' > "$IN/protos/googleapis-fork/f.proto"
+  run_compile protos "" "$MODULE"
+  [ "$status" -eq 0 ]
+  run grep -Fq -- "--go_opt=Mgoogleapis-fork/f.proto=$MODULE/api/googleapis-fork;googleapis_fork" "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+  run grep -Fq -- " $TEMP_SRC/protos/googleapis-fork/f.proto" "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+}
+
+@test "go extra includes: EXTRA_PROTO_DIRS overrides the auto-detection" {
+  stage
+  stage_googleapis_layout
+  mkdir -p "$IN/protos/vendor/google/api"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage V {}\n' \
+    > "$IN/protos/vendor/google/api/v.proto"
+  export EXTRA_PROTO_DIRS=vendor
+  run_compile protos "" "$MODULE"
+  [ "$status" -eq 0 ]
+  run grep -Fq -- "-I $TEMP_SRC/protos/vendor" "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+  # an explicit value REPLACES the auto-detected one, it does not extend it
+  run grep -Fq -- "-I $TEMP_SRC/protos/googleapis" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+  # ... so googleapis/ is now an ordinary directory of the module again
+  run grep -Fq -- "--go_opt=Mgoogleapis/google/api/annotations.proto=" "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+}
+
+@test "go extra includes: EXTRA_PROTO_DIRS takes several directories and normalises trailing slashes" {
+  stage
+  mkdir -p "$IN/protos/first/google/api" "$IN/protos/second/google/type"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage A {}\n' \
+    > "$IN/protos/first/google/api/a.proto"
+  printf 'syntax = "proto3";\npackage google.type;\nmessage B {}\n' \
+    > "$IN/protos/second/google/type/b.proto"
+  export EXTRA_PROTO_DIRS="first/ second"
+  run_compile protos "" "$MODULE"
+  [ "$status" -eq 0 ]
+  # a doubled separator would leave a prefix no rel_proto starts with, so both the
+  # -I path and the exclusion have to survive the trailing slash
+  run grep -Fq -- "-I $TEMP_SRC/protos/first -I $TEMP_SRC/protos/second" "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+  run grep -Fq -- "//" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+  run grep -Eq -- "Mfirst/|Msecond/" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+}
+
+@test "go extra includes: a nonexistent EXTRA_PROTO_DIRS entry fails loudly before protoc runs" {
+  stage
+  export EXTRA_PROTO_DIRS=not-here
+  run_compile protos "" "$MODULE"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"the extra include directory 'not-here' (EXTRA_PROTO_DIRS) does not exist"* ]]
+  [[ "$output" == *"ERROR: compile-proto-2-stubs.sh failed"* ]]
+  [ ! -f "$PROTOC_MOCK_LOG" ]
+  [ ! -f "$GO_MOCK_LOG" ]
+}
+
+@test "go extra includes: the EXTRA_PROTO_DIRS guard writes to stderr and leaves the volumes alone" {
+  stage
+  before="$(snapshot "$IN")"
+  export EXTRA_PROTO_DIRS=not-here
+  run bash -c "bash ./compile-proto-2-go.sh protos '' '$MODULE' 2>/dev/null"
+  [ "$status" -ne 0 ]
+  [[ "$output" != *"EXTRA_PROTO_DIRS"* ]]
+  [ "$before" = "$(snapshot "$IN")" ]
+  [ "$(file_count "$OUT")" -eq 0 ]
 }
 
 # ------------------------------------------------------------- no-protos guard

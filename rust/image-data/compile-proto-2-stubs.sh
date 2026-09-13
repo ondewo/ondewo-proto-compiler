@@ -11,6 +11,9 @@ set -e
 #   $2  the proto root (protoc -I); every `import "x/y.proto";` resolves against it
 #   $3  the sub-directory of the proto root whose protos are the compilation entry points
 #   $4  the crate manifest template handed to --prost-crate_opt=gen_crate=
+#
+# $EXTRA_PROTO_DIRS adds further -I directories (relative to the proto root) for apis that
+# do not keep their google protos at the root; see the auto-detection block below.
 # ---------------------------------------------------------------------------------------
 
 # Pull in the transitive proto dependency resolver (a verbatim copy of the js target's):
@@ -55,6 +58,42 @@ if [ ! -f "$MANIFEST_TEMPLATE" ]; then
     exit 1
 fi
 
+# -------------- Extra protoc include directories
+# Space-separated, each RELATIVE to the protos root, appended to protoc's -I list after
+# the root itself and searched by the dependency resolver in the same order.
+#
+# The default AUTO-DETECTS the ondewo-survey-api layout: that api vendors its google
+# protos under `googleapis/google/...` instead of the `google/...` every other api ships
+# at the proto root, so `import "google/api/annotations.proto";` resolves against
+# <root>/googleapis and nowhere else. An api that does ship `google/` at the root (nlu,
+# csi, vtsi, ...) keeps an EMPTY list and an entirely unchanged protoc command line.
+# Setting the variable - to a list or to "" - switches the auto-detection off.
+if [ -z "${EXTRA_PROTO_DIRS+set}" ]; then
+    EXTRA_PROTO_DIRS=""
+    if [ -d "$PROTOS_ROOT_DIR/googleapis" ] && [ ! -d "$PROTOS_ROOT_DIR/google" ]; then
+        echo "Detected a 'googleapis/' proto layout without a 'google/' root -> adding 'googleapis' as an extra include directory"
+        EXTRA_PROTO_DIRS="googleapis"
+    fi
+fi
+
+#Canonicalised absolutes for the resolver, and the matching -I arguments for protoc.
+#Both have to be absolute: the protoc invocation below runs after a cd into the proto root.
+EXTRA_INCLUDE_DIRS=""
+EXTRA_INCLUDE_ARGS=""
+# shellcheck disable=SC2086  # intentional word splitting of the extra include dir list
+for extradir in $EXTRA_PROTO_DIRS; do
+    if [ ! -d "$PROTOS_ROOT_DIR/$extradir" ]; then
+        echo "ERROR: the extra proto include directory '$extradir' does not exist under the protos root '$PROTOS_ROOT_DIR' - exiting" >&2
+        exit 1
+    fi
+    extraabs="$(cd "$PROTOS_ROOT_DIR/$extradir" && pwd)"
+    EXTRA_INCLUDE_DIRS="$EXTRA_INCLUDE_DIRS $extraabs"
+    EXTRA_INCLUDE_ARGS="$EXTRA_INCLUDE_ARGS -I $extraabs"
+done
+if [ -n "$EXTRA_INCLUDE_DIRS" ]; then
+    echo "Extra proto include dirs:$EXTRA_INCLUDE_DIRS"
+fi
+
 #Find .protos in directory and count the occurances.
 #`-type f` matters: a DIRECTORY named e.g. "dir.protos" would otherwise satisfy the guard
 #and hand protoc a directory as an input file.
@@ -74,7 +113,7 @@ echo "Found $PROTO_FILES_CNT .proto files in directory: $PROTOS_SRC_DIR"
 echo "Source verified."
 
 # -------------- Resolve the transitive, proto-root-relative, de-duplicated file list
-if ! ALL_PROTO_FILES=$(echoProtoDependencies "$PROTOS_ROOT_DIR" "$ENTRY_PROTO_FILES"); then
+if ! ALL_PROTO_FILES=$(echoProtoDependencies "$PROTOS_ROOT_DIR" "$ENTRY_PROTO_FILES" "$EXTRA_INCLUDE_DIRS"); then
     echo "ERROR: proto dependency resolution failed - exiting" >&2
     exit 1
 fi
@@ -87,13 +126,22 @@ ALL_PROTO_FILES_CNT=$(echo "$ALL_PROTO_FILES" | wc -w | tr -d ' ')
 # calls `next.parts().last().unwrap()`; for the 0-part root module of a package-less proto
 # that underflows and panics, and protoc only reports an opaque "plugin failed". Catch it
 # here with a message that names the offending file.
-# shellcheck disable=SC2086  # intentional word splitting of proto file list
+#Every resolved path is spelled relative to the include directory it was found under, so
+#it is looked up the way protoc will look it up: the root first, then the extra dirs.
+# shellcheck disable=SC2086  # intentional word splitting of the proto file / include dir lists
 for protofile in $ALL_PROTO_FILES; do
-    if [ ! -f "$PROTOS_ROOT_DIR/$protofile" ]; then
+    protopath=""
+    for includedir in "$PROTOS_ROOT_DIR" $EXTRA_INCLUDE_DIRS; do
+        if [ -f "$includedir/$protofile" ]; then
+            protopath="$includedir/$protofile"
+            break
+        fi
+    done
+    if [ -z "$protopath" ]; then
         echo "ERROR: the resolved proto '$protofile' does not exist under the protos root '$PROTOS_ROOT_DIR' - exiting" >&2
         exit 1
     fi
-    if ! grep -q '^[[:space:]]*package[[:space:]]' "$PROTOS_ROOT_DIR/$protofile"; then
+    if ! grep -q '^[[:space:]]*package[[:space:]]' "$protopath"; then
         echo "ERROR: '$protofile' declares no 'package' - prost cannot place it in the crate module tree - exiting" >&2
         exit 1
     fi
@@ -143,9 +191,13 @@ cd "$PROTOS_ROOT_DIR" || exit 1
 # directory literally named `r#type` (prost escapes the Rust keyword).
 # no_features keeps the manifest template verbatim; no compile_well_known_types so that
 # google.protobuf.* keeps mapping to ::prost_types.
-# shellcheck disable=SC2086  # intentional word splitting of proto file list
+#
+# $EXTRA_INCLUDE_ARGS follows the root so that protoc walks the -I list in the same order
+# the dependency resolver did, and the two agree on which file each resolved path names.
+# shellcheck disable=SC2086  # intentional word splitting of the proto file / -I lists
 "$PROTOC" \
 -I "$PROTOS_ROOT_DIR" \
+$EXTRA_INCLUDE_ARGS \
 --prost_out="$CRATE_API_DIR" \
 --prost_opt=flat_output_dir \
 --tonic_out="$CRATE_API_DIR" \

@@ -194,6 +194,32 @@ off-image:
 | `java` | `MAVEN_REPO_LOCAL`, `PROTOC_GEN_GRPC_JAVA`, `ONDEWO_PROTO_COMPILER_VERSION`, and the pom pins `GRPC_JAVA_VERSION` / `PROTOBUF_JAVA_VERSION` / `GOOGLE_COMMON_PROTOS_VERSION` / `MAVEN_SOURCE_PLUGIN_VERSION` / `JAVA_RELEASE` (`make-lib-entry-point.sh`, the pom renderer, fails loudly if any is empty) |
 | `csharp` | `NUGET_OFFLINE_FEED`, `GRPC_CSHARP_PLUGIN`, `OndewoPackageId` (the fallback for positional argument 3), and the five MSBuild properties the orchestrator **requires** in the environment and aborts without: `OndewoTargetFramework`, `OndewoPackageVersion`, `GoogleProtobufVersion`, `GrpcDotnetVersion`, `GoogleApiCommonProtosVersion` (the image sets them from its `ARG` lines — and `scrub_toolchain_env` removes them, so a case has to export them itself). `OndewoProtosDir` is *derived* from argument 1 and exported, not read |
 
+## Measured coverage
+
+The suite's line coverage of the six new targets' `image-data/` scripts was measured by
+running it under `BASH_ENV` + a `PS4` xtrace capture (`BASH_XTRACEFD` to a log), attributing
+the traced sandbox copies back to the repo sources by basename. The unit is the **logical
+command**, not the physical line: a command continued over several lines — by a trailing
+backslash or an unterminated quote such as a multi-line `jq` program — is reported by bash
+exactly once, and *which* line it reports differs by construct (a backslash continuation is
+logged at head+1, a multi-line quoted command at head).
+
+Result: **1216 of 1217 logical commands (99.9%)** — `php`, `go`, `java` and `csharp` at 100%,
+`rust` and `cpp` at 99.6%.
+
+The single uncovered command is `IS_EXCLUDED=""` in `{rust,cpp}/image-data/dependecy-resolver.sh`,
+inside `if [ -z "$EXCLUDE_REGEX" ]`. It is **unreachable through every production path**: the
+only entry point, `echoProtoDependencies()`, hardcodes a non-empty `"google/protobuf/"` regex.
+The branch is inherited verbatim from the pre-existing `js/image-data/dependecy-resolver.sh`
+and is left alone rather than covered by a contrived direct call to the inner function.
+
+`build.sh` and `example/run-compile.sh` are excluded from the figure — they are `#!/bin/sh`,
+and the `dash` that runs them on Linux ignores `BASH_ENV`, so the harness cannot see them.
+They are covered behaviourally by `orchestrators.bats` and `examples.bats` instead.
+
+The harness is a throwaway diagnostic, not part of `make test`; there is no `kcov`/`bashcov`
+dependency in CI.
+
 ## Out of scope (needs a real Docker build)
 
 Actual code generation and package building — `protoc` / `ng` / `webpack`, and

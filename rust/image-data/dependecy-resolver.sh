@@ -2,11 +2,29 @@
 
 # BSD/macOS realpath has no --relative-to: canonicalise both paths with cd+pwd
 # and strip the root prefix (resolved files are always under the proto root)
+#
+# $3 is the optional, space-separated list of EXTRA protoc include directories (absolute,
+# already canonicalised by the caller). A file that lives under one of them is spelled
+# relative to THAT directory, not to the proto root: the extra include dirs are nested
+# inside the root (<root>/googleapis/google/api/x.proto), so the root-relative spelling
+# and the spelling its importers use ("google/api/x.proto") are two different virtual
+# paths for one file - handing protoc both makes it compile the file twice and collide
+# on every symbol it declares. Extra dirs are deeper than the root, so the shortest
+# candidate is always the most specific include directory containing the file.
 relativeToRoot(){
     _rtr_root=$(cd "$1" && pwd) || return 1
     _rtr_dir=$(cd "$(dirname "$2")" && pwd) || return 1
     _rtr_abs="$_rtr_dir/$(basename "$2")"
-    printf '%s\n' "${_rtr_abs#"$_rtr_root"/}"
+    _rtr_best="${_rtr_abs#"$_rtr_root"/}"
+    # an unchanged candidate means the prefix did not strip, i.e. the file is not under
+    # that include dir
+    for _rtr_extra in $3; do
+        _rtr_candidate="${_rtr_abs#"$_rtr_extra"/}"
+        if [ "$_rtr_candidate" != "$_rtr_abs" ] && [ "${#_rtr_candidate}" -lt "${#_rtr_best}" ]; then
+            _rtr_best="$_rtr_candidate"
+        fi
+    done
+    printf '%s\n' "$_rtr_best"
 }
 
 echoDependencies(){
@@ -14,6 +32,7 @@ echoDependencies(){
     ROOT_DIR="$1"
     FILE_PATHS="$2"
     EXCLUDE_REGEX="$3"
+    EXTRA_DIRS="$4"
 
     #echo "ROOT_DIR: $ROOT_DIR"
     #echo "FILE_PATHS: $FILE_PATHS"
@@ -33,7 +52,7 @@ echoDependencies(){
             echo "ERROR: '$FILE_PATH' is not a readable .proto file - exiting" >&2
             exit 1
         fi
-        RELATIVE=$(relativeToRoot "$ROOT_DIR" "$FILE_PATH")
+        RELATIVE=$(relativeToRoot "$ROOT_DIR" "$FILE_PATH" "$EXTRA_DIRS")
         echo "$RELATIVE"
 
         #echo "Print dependencies for $FILE_PATH"
@@ -52,6 +71,20 @@ echoDependencies(){
             #echo "ABS_PATH: $ABS_PATH"
             #echo "REL_PATH: $REL_PATH"
 
+            # An import that does not resolve against the proto root may still resolve
+            # against one of the EXTRA include dirs - that is the whole point of them
+            # (ondewo-survey-api spells its google protos googleapis/google/..., so
+            # `import "google/api/annotations.proto";` is only findable under
+            # <root>/googleapis). Tried in the order given, before the
+            # relative-to-the-importing-file fallback, exactly as protoc walks its -I list.
+            EXTRA_PATH=""
+            for EXTRA_DIR in $EXTRA_DIRS; do
+                if [ -f "$EXTRA_DIR/$IMPORT_PATH" ]; then
+                    EXTRA_PATH="$EXTRA_DIR/$IMPORT_PATH"
+                    break
+                fi
+            done
+
             IS_EXCLUDED=$(echo "$IMPORT_PATH" | grep -E "$EXCLUDE_REGEX")
             if [ -z "$EXCLUDE_REGEX" ]; then
                 IS_EXCLUDED=""
@@ -66,12 +99,14 @@ echoDependencies(){
                 #RELATIVE=$(realpath --relative-to="$ROOT_DIR" "$ABS_PATH")
                 #echo "$RELATIVE"
 
-                echoDependencies "$ROOT_DIR" "$ABS_PATH" "$EXCLUDE_REGEX"
+                echoDependencies "$ROOT_DIR" "$ABS_PATH" "$EXCLUDE_REGEX" "$EXTRA_DIRS"
+            elif [ -n "$EXTRA_PATH" ]; then
+                echoDependencies "$ROOT_DIR" "$EXTRA_PATH" "$EXCLUDE_REGEX" "$EXTRA_DIRS"
             elif [ -f "$REL_PATH" ]; then
                 #echo "$REL_PATH"
                 #RELATIVE=$(realpath --relative-to="$ROOT_DIR" "$REL_PATH")
                 #echo "$RELATIVE"
-                echoDependencies "$ROOT_DIR" "$REL_PATH" "$EXCLUDE_REGEX"
+                echoDependencies "$ROOT_DIR" "$REL_PATH" "$EXCLUDE_REGEX" "$EXTRA_DIRS"
             elif [ -n "$IMPORT_PATH" ]; then
                 echo "$FILE_PATH --> Failed to resolve dependency with root: '$ROOT_DIR' and import path: '$IMPORT_PATH'" >&2
                 exit 1
@@ -83,7 +118,7 @@ echoDependencies(){
 }
 
 echoProtoDependencies(){
-    echoDependencies "$1" "$2" "google/protobuf/"
+    echoDependencies "$1" "$2" "google/protobuf/" "$3"
 }
 
 #echoProtoDependencies "$1" "$2"

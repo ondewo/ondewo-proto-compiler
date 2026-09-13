@@ -19,6 +19,10 @@ load 'helpers/setup'
 
 setup() {
   common_setup
+  # the extra-include knob is read as "unset vs set" (unset = auto-detect), and it
+  # matches none of scrub_toolchain_env's prefixes, so an ambient value in the
+  # developer's shell would silently steer every case in this file
+  unset EXTRA_PROTO_DIRS
   export PROTOC_MOCK_LOG="$SANDBOX/protoc.log"
   export CMAKE_MOCK_LOG="$SANDBOX/cmake.log"
   export DOCKER_MOCK_LOG="$SANDBOX/docker.log"
@@ -358,6 +362,188 @@ PROTO
   [[ "$output" == *"dependency resolution failed"* ]]
   [[ "$output" == *"compile-proto-2-stubs.sh failed"* ]]
   [ ! -e "$CMAKE_MOCK_LOG" ]
+}
+
+# -------------------------------------------------- extra protoc include dirs
+# ondewo-survey-api does not lay its google imports out the way nlu/csi/vtsi do:
+# they live under <protos_root>/googleapis/google/... instead of
+# <protos_root>/google/..., so `import "google/api/annotations.proto";` resolves
+# against neither the proto root nor the importing file's own directory and the
+# whole run used to abort. EXTRA_PROTO_DIRS adds include roots; unset, it
+# auto-detects exactly that layout.
+
+# A survey-shaped tree: googleapis/ carries the google imports, the proto root
+# has no google/ of its own, and the extra root has an internal import of its own
+# (annotations -> http) so the closure has to keep resolving once it is inside it.
+stage_googleapis_layout() {
+  rm -rf "${IN:?}/protos"
+  mkdir -p "$IN/protos/ondewo/survey" "$IN/protos/googleapis/google/api"
+  cat > "$IN/protos/ondewo/survey/survey.proto" <<'PROTO'
+syntax = "proto3";
+package ondewo.survey;
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+message Survey { string name = 1; }
+service Surveys { rpc GetSurvey (Survey) returns (Survey); }
+PROTO
+  printf 'syntax = "proto3";\npackage google.api;\nimport "google/api/http.proto";\nmessage Annotations { string x = 1; }\n' \
+    > "$IN/protos/googleapis/google/api/annotations.proto"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage HttpRule { string x = 1; }\n' \
+    > "$IN/protos/googleapis/google/api/http.proto"
+}
+
+# how many "-I " flags reached protoc (BSD wc pads, so count with grep -c)
+include_flag_count() { grep -o -- ' -I ' "$PROTOC_MOCK_LOG" | grep -c . || true; }
+
+@test "cpp extra includes: a vendored googleapis/ is auto-detected and added as a second -I" {
+  stage_googleapis_layout
+  stage
+  run bash ./compile-proto-2-cpp.sh protos ondewo mylib
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Detected a vendored 'googleapis/' and no 'google/' at the protos root"* ]]
+  # the proto root stays first, the extra root is appended after it
+  grep -Fq -- "-I $TEMP/protos -I $TEMP/protos/googleapis " "$PROTOC_MOCK_LOG"
+  [ "$(include_flag_count)" -eq 2 ]
+  # the closure crossed into the extra root and kept resolving inside it
+  grep -Fq -- " ondewo/survey/survey.proto" "$PROTOC_MOCK_LOG"
+  grep -Fq -- " google/api/annotations.proto" "$PROTOC_MOCK_LOG"
+  grep -Fq -- " google/api/http.proto" "$PROTOC_MOCK_LOG"
+  # and the library was built from what that produced
+  [ -f "$OUT/lib/libmylib.a" ]
+  [ -f "$OUT/api/mock.pb.cc" ]
+}
+
+@test "cpp extra includes: protos under the extra root are spelled relative to THAT root" {
+  # the subtle half: protoc resolves the import line against -I <root>/googleapis,
+  # so the file list must say google/api/annotations.proto. Spelled relative to the
+  # proto root instead (googleapis/google/api/annotations.proto) protoc sees one
+  # file under two names and aborts with "was previously imported under a different
+  # name" - a failure this suite would otherwise only meet inside the image.
+  stage_googleapis_layout
+  stage
+  run bash ./compile-proto-2-cpp.sh protos ondewo mylib
+  [ "$status" -eq 0 ]
+  run grep -Fq -- " googleapis/google/api/" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+}
+
+@test "cpp extra includes: the well-known types stay excluded in the googleapis layout" {
+  # survey.proto imports google/protobuf/empty.proto and the vendored googleapis
+  # tree HAS a copy of it: the extra include dir must not turn the well-known types
+  # into compiled sources (they are already inside libprotobuf -> duplicate symbols)
+  stage_googleapis_layout
+  mkdir -p "$IN/protos/googleapis/google/protobuf"
+  printf 'syntax = "proto3";\npackage google.protobuf;\nmessage Empty {}\n' \
+    > "$IN/protos/googleapis/google/protobuf/empty.proto"
+  stage
+  run bash ./compile-proto-2-cpp.sh protos ondewo mylib
+  [ "$status" -eq 0 ]
+  run grep -Fq "google/protobuf" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+}
+
+@test "cpp extra includes: nothing is added for a proto root that carries its own google/" {
+  # the 36 product/language combinations that already worked: one -I, no detection
+  stage
+  run bash ./compile-proto-2-cpp.sh protos library mylib
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Detected a vendored"* ]]
+  [ "$(include_flag_count)" -eq 1 ]
+  grep -Fq -- "-I $TEMP/protos " "$PROTOC_MOCK_LOG"
+  grep -Fq -- " google/api/annotations.proto" "$PROTOC_MOCK_LOG"
+}
+
+@test "cpp extra includes: a googleapis/ beside an existing google/ is NOT added" {
+  # both layouts at once: google/ already resolves every import, so adding the
+  # vendored tree could only introduce a second spelling of the same file
+  mkdir -p "$IN/protos/googleapis/google/api"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage Annotations { string x = 1; }\n' \
+    > "$IN/protos/googleapis/google/api/annotations.proto"
+  stage
+  run bash ./compile-proto-2-cpp.sh protos library mylib
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Detected a vendored"* ]]
+  [ "$(include_flag_count)" -eq 1 ]
+  run grep -Fq -- "-I $TEMP/protos/googleapis" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+}
+
+@test "cpp extra includes: EXTRA_PROTO_DIRS overrides the auto-detection" {
+  # a tree whose extra root is named something else entirely - only the env knob
+  # can find it
+  rm -rf "${IN:?}/protos"
+  mkdir -p "$IN/protos/ondewo/survey" "$IN/protos/vendor/google/api"
+  printf 'syntax = "proto3";\npackage ondewo.survey;\nimport "google/api/annotations.proto";\nmessage S { string x = 1; }\n' \
+    > "$IN/protos/ondewo/survey/survey.proto"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage Annotations { string x = 1; }\n' \
+    > "$IN/protos/vendor/google/api/annotations.proto"
+  stage
+  export EXTRA_PROTO_DIRS="vendor"
+  run bash ./compile-proto-2-cpp.sh protos ondewo mylib
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Extra proto include dirs (EXTRA_PROTO_DIRS): 'vendor'"* ]]
+  grep -Fq -- "-I $TEMP/protos -I $TEMP/protos/vendor " "$PROTOC_MOCK_LOG"
+  grep -Fq -- " google/api/annotations.proto" "$PROTOC_MOCK_LOG"
+  [ -f "$OUT/lib/libmylib.a" ]
+}
+
+@test "cpp extra includes: EXTRA_PROTO_DIRS takes a list, in order" {
+  rm -rf "${IN:?}/protos"
+  mkdir -p "$IN/protos/ondewo" "$IN/protos/first/google/api" "$IN/protos/second/extra"
+  printf 'syntax = "proto3";\npackage ondewo;\nimport "google/api/annotations.proto";\nimport "extra/more.proto";\nmessage S { string x = 1; }\n' \
+    > "$IN/protos/ondewo/survey.proto"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage Annotations { string x = 1; }\n' \
+    > "$IN/protos/first/google/api/annotations.proto"
+  printf 'syntax = "proto3";\npackage extra;\nmessage More { string x = 1; }\n' \
+    > "$IN/protos/second/extra/more.proto"
+  stage
+  export EXTRA_PROTO_DIRS="first second"
+  run bash ./compile-proto-2-cpp.sh protos ondewo mylib
+  [ "$status" -eq 0 ]
+  grep -Fq -- "-I $TEMP/protos -I $TEMP/protos/first -I $TEMP/protos/second " "$PROTOC_MOCK_LOG"
+  [ "$(include_flag_count)" -eq 3 ]
+  # each import spelled relative to the extra root that resolves it
+  grep -Fq -- " google/api/annotations.proto" "$PROTOC_MOCK_LOG"
+  grep -Fq -- " extra/more.proto" "$PROTOC_MOCK_LOG"
+}
+
+@test "cpp extra includes: an empty EXTRA_PROTO_DIRS disables the auto-detection" {
+  stage_googleapis_layout
+  stage
+  export EXTRA_PROTO_DIRS=""
+  run bash ./compile-proto-2-cpp.sh protos ondewo mylib
+  [ "$status" -ne 0 ]
+  [[ "$output" != *"Detected a vendored"* ]]
+  [[ "$output" == *"Failed to resolve dependency"* ]]
+  [[ "$output" == *"dependency resolution failed"* ]]
+  [ ! -s "$PROTOC_MOCK_LOG" ]
+}
+
+@test "cpp extra includes: an EXTRA_PROTO_DIRS entry that does not exist is rejected up front" {
+  stage_googleapis_layout
+  stage
+  export EXTRA_PROTO_DIRS="googleapis nope"
+  run bash ./compile-proto-2-cpp.sh protos ondewo mylib
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"the extra proto include directory '$TEMP/protos/nope' does not exist"* ]]
+  [[ "$output" == *"relative to the protos root"* ]]
+  # the guard fires before the resolver and before protoc
+  [ ! -e "$PROTOC_MOCK_LOG" ]
+  [ ! -e "$CMAKE_MOCK_LOG" ]
+}
+
+@test "cpp extra includes: an import that resolves under neither root still aborts" {
+  # the extra include dir widens the search, it does not silence the failure
+  stage_googleapis_layout
+  printf 'syntax = "proto3";\npackage ondewo.survey;\nimport "google/api/nowhere.proto";\nmessage S {}\n' \
+    > "$IN/protos/ondewo/survey/survey.proto"
+  stage
+  run bash ./compile-proto-2-cpp.sh protos ondewo mylib
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Failed to resolve dependency"* ]]
+  # ... and the message names the extra roots that were searched too
+  [[ "$output" == *"extra include roots: $TEMP/protos/googleapis"* ]]
+  [[ "$output" == *"or the extra include dirs: $TEMP/protos/googleapis"* ]]
 }
 
 # -------------------------------------------------------------- cmake contract
@@ -1087,6 +1273,37 @@ PROTO
   grep -Fxq "library/test.proto" "$SANDBOX/closure-wkt.txt"
   grep -Fxq "dependency/myimport.proto" "$SANDBOX/closure-wkt.txt"
   run grep -Fq "google/protobuf" "$SANDBOX/closure-wkt.txt"
+  [ "$status" -ne 0 ]
+}
+
+@test "cpp resolver: the extra-roots argument widens the search and fixes the spelling" {
+  # the generic contract of the 3rd argument, independent of the pipeline's
+  # auto-detection: an import that lives under an extra root resolves, and is
+  # echoed relative to THAT root - while a file under the proto root is still
+  # echoed relative to the proto root, even though the extra root is searched first
+  source "$REPO_ROOT/cpp/image-data/dependecy-resolver.sh"
+  ROOT="$SANDBOX/protos"
+  mkdir -p "$ROOT/ondewo/survey" "$ROOT/googleapis/google/api"
+  printf 'syntax = "proto3";\nimport "google/api/annotations.proto";\nimport "ondewo/survey/other.proto";\nmessage S { string x = 1; }\n' \
+    > "$ROOT/ondewo/survey/survey.proto"
+  printf 'syntax = "proto3";\nmessage O { string x = 1; }\n' \
+    > "$ROOT/ondewo/survey/other.proto"
+  printf 'syntax = "proto3";\nmessage A { string x = 1; }\n' \
+    > "$ROOT/googleapis/google/api/annotations.proto"
+
+  # without the extra root the import is unresolvable ...
+  run echoProtoDependencies "$ROOT" "$ROOT/ondewo/survey/survey.proto"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Failed to resolve dependency"* ]]
+
+  # ... with it, the whole closure resolves
+  run echoProtoDependencies "$ROOT" "$ROOT/ondewo/survey/survey.proto" "$ROOT/googleapis"
+  [ "$status" -eq 0 ]
+  printf '%s\n' "$output" > "$SANDBOX/closure-extra.txt"
+  grep -Fxq "ondewo/survey/survey.proto" "$SANDBOX/closure-extra.txt"
+  grep -Fxq "ondewo/survey/other.proto" "$SANDBOX/closure-extra.txt"
+  grep -Fxq "google/api/annotations.proto" "$SANDBOX/closure-extra.txt"
+  run grep -Fq "googleapis/" "$SANDBOX/closure-extra.txt"
   [ "$status" -ne 0 ]
 }
 

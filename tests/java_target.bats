@@ -20,6 +20,11 @@ load 'helpers/setup'
 
 setup() {
   common_setup
+  # Extra protoc import roots are read from the environment by
+  # compile-proto-2-stubs.sh, and the name matches none of common_setup's
+  # scrubbed prefixes - an ambient value would silently decide the outcome of
+  # every auto-detection case below.
+  unset EXTRA_PROTO_DIRS
   export PROTOC_MOCK_LOG="$SANDBOX/protoc.log"
   export MVN_MOCK_LOG="$SANDBOX/mvn.log"
   export DOCKER_MOCK_LOG="$SANDBOX/docker.log"
@@ -405,6 +410,153 @@ add_unknown_template_placeholder() {
   run bash ./compile-proto-2-java.sh protos
   [ "$status" -eq 0 ]
   [[ "$output" != *"top-level trees"* ]]
+}
+
+# ---------------------------------------------- extra protoc import roots (-I)
+
+# ondewo-survey-api's shape, and the only one of the seven apis that has it: the
+# googleapis checkout one level DOWN (googleapis/google/api/...) and no google/
+# at the protos root - so `import "google/api/annotations.proto";` resolves
+# against a second -I or not at all.
+make_survey_layout() {
+  mkdir -p "$IN/protos/googleapis/google/api"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage Http {}\n' \
+    > "$IN/protos/googleapis/google/api/annotations.proto"
+}
+
+# How many import roots the single protoc invocation was handed. Counted by
+# splitting the logged argv on spaces and matching whole "-I" words, so a path
+# that merely contains "-I" cannot inflate the count.
+count_import_roots() {
+  tr ' ' '\n' < "$PROTOC_MOCK_LOG" | grep -cx -- '-I' || true
+}
+
+@test "java extra-I: a survey-style googleapis/ tree becomes a second import root" {
+  make_survey_layout
+  stage_java
+  run bash ./compile-proto-2-java.sh protos library
+  [ "$status" -eq 0 ]
+
+  [ "$(count_import_roots)" = "2" ]
+  # the protos root stays first, so a proto the api vendors itself still wins
+  grep -Fq -- "-I $TMPSRC/protos -I $TMPSRC/protos/googleapis " "$PROTOC_MOCK_LOG"
+  [[ "$output" == *"Extra protoc import root: $TMPSRC/protos/googleapis"* ]]
+}
+
+@test "java extra-I: a root without googleapis/ keeps protoc's single import root" {
+  # the 36 combinations that already work: nothing to detect, nothing added, and
+  # a command line byte-identical to the one before this knob existed.
+  stage_java
+  run bash ./compile-proto-2-java.sh protos library
+  [ "$status" -eq 0 ]
+
+  [ "$(count_import_roots)" = "1" ]
+  grep -Fq -- "-I $TMPSRC/protos " "$PROTOC_MOCK_LOG"
+  [[ "$output" != *"Extra protoc import root"* ]]
+}
+
+@test "java extra-I: a root that vendors google/ itself gets no extra import root" {
+  # nlu/csi/vtsi resolve google/* from the protos root. Even with a googleapis/
+  # alongside it, the auto-detection must stay out of the way rather than add a
+  # second root that shadows what the api deliberately vendored.
+  make_survey_layout
+  mkdir -p "$IN/protos/google/api"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage Http {}\n' \
+    > "$IN/protos/google/api/annotations.proto"
+  stage_java
+  run bash ./compile-proto-2-java.sh protos library
+  [ "$status" -eq 0 ]
+
+  [ "$(count_import_roots)" = "1" ]
+  run grep -F -- "-I $TMPSRC/protos/googleapis" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+}
+
+@test "java extra-I: EXTRA_PROTO_DIRS overrides the auto-detected default" {
+  make_survey_layout
+  mkdir -p "$IN/protos/vendor/gapi/google/api"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage Http {}\n' \
+    > "$IN/protos/vendor/gapi/google/api/annotations.proto"
+  stage_java
+  export EXTRA_PROTO_DIRS="vendor/gapi"
+  run bash ./compile-proto-2-java.sh protos library
+  [ "$status" -eq 0 ]
+
+  grep -Fq -- "-I $TMPSRC/protos/vendor/gapi " "$PROTOC_MOCK_LOG"
+  # the override REPLACES the detected default, it does not extend it
+  [ "$(count_import_roots)" = "2" ]
+  run grep -F -- "-I $TMPSRC/protos/googleapis" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+}
+
+@test "java extra-I: EXTRA_PROTO_DIRS is a list, added in the order given" {
+  mkdir -p "$IN/protos/first" "$IN/protos/second"
+  stage_java
+  export EXTRA_PROTO_DIRS="first second"
+  run bash ./compile-proto-2-java.sh protos library
+  [ "$status" -eq 0 ]
+
+  [ "$(count_import_roots)" = "3" ]
+  grep -Fq -- "-I $TMPSRC/protos -I $TMPSRC/protos/first -I $TMPSRC/protos/second " \
+    "$PROTOC_MOCK_LOG"
+}
+
+@test "java extra-I: an absolute EXTRA_PROTO_DIRS entry is taken as-is" {
+  mkdir -p "$SANDBOX/shared-protos"
+  stage_java
+  export EXTRA_PROTO_DIRS="$SANDBOX/shared-protos"
+  run bash ./compile-proto-2-java.sh protos library
+  [ "$status" -eq 0 ]
+
+  # not re-anchored on the protos root, and not doubled up with it either
+  grep -Fq -- "-I $SANDBOX/shared-protos " "$PROTOC_MOCK_LOG"
+  run grep -F -- "-I $TMPSRC/protos$SANDBOX" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+}
+
+@test "java extra-I: an explicit empty EXTRA_PROTO_DIRS switches auto-detection off" {
+  make_survey_layout
+  stage_java
+  export EXTRA_PROTO_DIRS=""
+  run bash ./compile-proto-2-java.sh protos library
+  [ "$status" -eq 0 ]
+
+  [ "$(count_import_roots)" = "1" ]
+  run grep -F -- "-I $TMPSRC/protos/googleapis" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+}
+
+@test "java extra-I: a nonexistent EXTRA_PROTO_DIRS entry is refused before protoc" {
+  # the auto-detected default is produced by a `-d` test and can never name a
+  # missing directory, so this can only be a typo in a caller's override -
+  # refused here, instead of surfacing later as protoc's "File not found." on an
+  # import, which names the import and not the import root that is missing.
+  stage_java
+  export EXTRA_PROTO_DIRS="no-such-vendor"
+  run_orchestrator protos library
+  [ "$status" -ne 0 ]
+
+  grep -Fq "the extra protoc import root '$TMPSRC/protos/no-such-vendor'" "$SANDBOX/stderr.txt"
+  grep -Fq "EXTRA_PROTO_DIRS entry" "$SANDBOX/stderr.txt"
+  grep -Fq "ERROR: compile-proto-2-stubs.sh failed" "$SANDBOX/stderr.txt"
+  [ ! -s "$PROTOC_MOCK_LOG" ]
+  [ ! -s "$MVN_MOCK_LOG" ]
+}
+
+@test "java extra-I: the googleapis tree is an import root, never a compilation target" {
+  make_survey_layout
+  stage_java
+  # Unscoped, which is what survey's real shape allows: every proto below
+  # googleapis/ sits under google/, so the pre-existing exclusion keeps it out of
+  # BOTH the input set and the multi-tree guard's tree count.
+  run bash ./compile-proto-2-java.sh protos
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"top-level trees"* ]]
+
+  run grep -F -- "$TMPSRC/protos/googleapis/google/api/annotations.proto" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+  grep -Fq -- "-I $TMPSRC/protos/googleapis " "$PROTOC_MOCK_LOG"
+  grep -Fq -- "$TMPSRC/protos/library/test.proto" "$PROTOC_MOCK_LOG"
 }
 
 # -------------------------------------------------------- the no-protos guard

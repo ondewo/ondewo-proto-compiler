@@ -25,6 +25,10 @@ load 'helpers/setup'
 
 setup() {
   common_setup
+  # Extra protoc -I roots are read from the environment (see the section at the
+  # bottom); it is not one of the toolchain namespaces common_setup scrubs, so an
+  # ambient value would silently add an include root to every case here.
+  unset EXTRA_PROTO_DIRS
   export PROTOC_MOCK_LOG="$SANDBOX/protoc.log"
   export COMPOSER_MOCK_LOG="$SANDBOX/composer.log"
   export PHP_MOCK_LOG="$SANDBOX/php.log"
@@ -86,9 +90,26 @@ snapshot_tree() {
   )
 }
 
+# A survey-shaped input tree: ondewo-survey-api vendors the whole googleapis
+# checkout, so `import "google/api/annotations.proto";` lives one level down in
+# googleapis/ and there is no google/ at the proto root at all.
+seed_googleapis_layout() {
+  write_proto "$IN/api/googleapis/google/api/annotations.proto" google.api
+  write_proto "$IN/api/googleapis/google/protobuf/empty.proto" google.protobuf
+  write_proto "$IN/api/ondewo/survey/survey.proto" ondewo.survey \
+    "google/api/annotations.proto" "google/protobuf/empty.proto"
+}
+
 # grep -c aborts a bats test when the count is zero; this never does.
 count_matches() {
   grep -c -- "$1" "$2" 2>/dev/null || true
+}
+
+# How often a WHOLE argv token appears in the protoc log. grep -c counts matching
+# LINES, and the whole invocation is one line, so the argv is split first - and
+# `wc -l` is avoided because BSD pads its output with leading spaces.
+count_tokens() {
+  tr ' ' '\n' < "$PROTOC_MOCK_LOG" | grep -c -- "^$1\$" || true
 }
 
 # A composer shim ahead of the mock on PATH that records the working directory
@@ -758,6 +779,174 @@ EOF
   [ "$status" -eq 0 ]
   run grep -Fq -- "google/protobuf/empty.proto" "$PROTOC_MOCK_LOG"
   [ "$status" -ne 0 ]
+}
+
+# =====================================================================
+# Extra protoc include roots (the ondewo-survey-api googleapis/ layout)
+# =====================================================================
+#
+# The ONDEWO APIs do not vendor their google/* imports at the same depth: nlu, csi
+# and vtsi put them at <protos_root>/google/..., ondewo-survey-api vendors the
+# whole googleapis checkout, so the identical `import "google/api/annotations.proto";`
+# resolves only from <protos_root>/googleapis. EXTRA_PROTO_DIRS is the extra `-I`
+# list; its default auto-detects that layout, and both protoc AND the dependency
+# resolver have to search it - the resolver is what turns an import into the file
+# list protoc is handed, so a root only one of them knows about fails either as
+# "File not found." (protoc) or as "Failed to resolve dependency" (resolver).
+
+@test "php extra include: a nested googleapis/ layout is auto-detected for protoc and the resolver" {
+  seed_googleapis_layout
+  stage_php
+
+  run bash ./compile-proto-2-php.sh api ondewo
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Detected a nested googleapis/ layout in '$IN/api'"* ]]
+  [[ "$output" == *"Using extra proto include root: $IN/api/googleapis"* ]]
+  # the resolver followed the import into the extra root (this is the whole bug:
+  # without it the run dies as "google/api/annotations.proto: File not found.")
+  [[ "$output" == *"Consuming 2 .proto files"* ]]
+
+  # the proto root stays the primary -I; the googleapis tree is appended to it
+  run grep -Fq -- "-I $IN/api " "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+  run grep -Fq -- "-I $IN/api/googleapis " "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+
+  run grep -Fq -- " google/api/annotations.proto" "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+  # and it is named relative to the include root it was FOUND under, i.e. exactly
+  # as the import statement spells it. The googleapis/-prefixed spelling resolves
+  # too (via the primary -I), and handing protoc both would compile the same file
+  # twice and redefine every symbol it declares.
+  run grep -Fq -- "googleapis/google/api/annotations.proto" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+
+  # the well-known-type exclusion is untouched by any of this
+  run grep -Fq -- "google/protobuf/empty.proto" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+}
+
+@test "php extra include: an unscoped run over that layout still names each proto once" {
+  # The entry-set find sweeps the vendored googleapis tree itself, so the same
+  # file arrives from two directions - as an entry and as survey.proto's import.
+  # Both have to produce the one name protoc can dedupe on.
+  seed_googleapis_layout
+  write_proto "$IN/api/test.proto" example
+  stage_php
+
+  run bash ./compile-proto-2-php.sh api
+  [ "$status" -eq 0 ]
+
+  # test.proto, ondewo/survey/survey.proto and the vendored annotations.proto;
+  # googleapis/google/protobuf/empty.proto is filtered out of the entry set
+  [[ "$output" == *"Found 3 .proto files"* ]]
+  [[ "$output" == *"Consuming 3 .proto files"* ]]
+  [ "$(count_tokens 'google/api/annotations.proto')" -eq 1 ]
+  run grep -Fq -- "googleapis/google/api/annotations.proto" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+  run grep -Fq -- "google/protobuf/empty.proto" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+}
+
+@test "php extra include: an api with google/ at the proto root keeps its single -I" {
+  # The conservative half of the auto-detection: a root that resolves its google
+  # imports on its own is left with exactly the one -I it always had, even when a
+  # googleapis/ directory happens to sit beside it.
+  write_proto "$IN/api/google/api/annotations.proto" google.api
+  write_proto "$IN/api/googleapis/google/api/annotations.proto" google.api
+  write_proto "$IN/api/ondewo/nlu/session.proto" ondewo.nlu "google/api/annotations.proto"
+  stage_php
+
+  run bash ./compile-proto-2-php.sh api ondewo
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Detected a nested googleapis/ layout"* ]]
+  [[ "$output" != *"Using extra proto include root"* ]]
+
+  [ "$(count_tokens '-I')" -eq 1 ]
+  run grep -Fq -- "-I $IN/api " "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+  run grep -Fq -- "$IN/api/googleapis" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+  # the import was resolved from the root's own google/ tree
+  run grep -Fq -- " google/api/annotations.proto" "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+}
+
+@test "php extra include: an api with no googleapis/ at all keeps its single -I" {
+  # The 36 product/language combinations that already work: nothing to detect,
+  # nothing added, byte-identical protoc argv.
+  seed_default_protos
+  stage_php
+
+  run bash ./compile-proto-2-php.sh protos
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Detected a nested googleapis/ layout"* ]]
+  [[ "$output" != *"Using extra proto include root"* ]]
+  [ "$(count_tokens '-I')" -eq 1 ]
+  run grep -Fq -- "-I $IN/protos " "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+}
+
+@test "php extra include: EXTRA_PROTO_DIRS is env-overridable and takes a list of roots" {
+  # A layout that is neither shape: two vendored trees the auto-detection cannot
+  # guess. Each import is named relative to the root it was found under.
+  write_proto "$IN/api/third-party/google/api/annotations.proto" google.api
+  write_proto "$IN/api/vendor-protos/acme/extra.proto" acme
+  write_proto "$IN/api/ondewo/survey/survey.proto" ondewo.survey \
+    "google/api/annotations.proto" "acme/extra.proto"
+  stage_php
+  export EXTRA_PROTO_DIRS="$IN/api/third-party $IN/api/vendor-protos"
+
+  run bash ./compile-proto-2-php.sh api ondewo
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Using extra proto include root: $IN/api/third-party"* ]]
+  [[ "$output" == *"Using extra proto include root: $IN/api/vendor-protos"* ]]
+  [[ "$output" == *"Consuming 3 .proto files"* ]]
+
+  run grep -Fq -- "-I $IN/api/third-party " "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+  run grep -Fq -- "-I $IN/api/vendor-protos " "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+  run grep -Fq -- " google/api/annotations.proto" "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+  run grep -Fq -- " acme/extra.proto" "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+  run grep -Fq -- "third-party/google" "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+}
+
+@test "php extra include: an explicit EXTRA_PROTO_DIRS wins over the auto-detection" {
+  seed_googleapis_layout
+  # a second copy of the import, in a root the caller names explicitly
+  write_proto "$IN/api/vendored/google/api/annotations.proto" google.api
+  stage_php
+  export EXTRA_PROTO_DIRS="$IN/api/vendored"
+
+  run bash ./compile-proto-2-php.sh api ondewo
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Detected a nested googleapis/ layout"* ]]
+
+  run grep -Fq -- "-I $IN/api/vendored " "$PROTOC_MOCK_LOG"
+  [ "$status" -eq 0 ]
+  run grep -Fq -- "-I $IN/api/googleapis " "$PROTOC_MOCK_LOG"
+  [ "$status" -ne 0 ]
+}
+
+@test "php extra include: a non-existent include root fails by name before protoc runs" {
+  # Left to protoc, this surfaces as the generic "File not found." for whatever
+  # import the root was meant to satisfy - never as the mis-set variable.
+  seed_default_protos
+  stage_php
+  export EXTRA_PROTO_DIRS="$SANDBOX/no-such-include-root"
+
+  run bash ./compile-proto-2-php.sh protos
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"extra proto include directory '$SANDBOX/no-such-include-root' does not exist"* ]]
+  [[ "$output" == *"EXTRA_PROTO_DIRS"* ]]
+  [[ "$output" == *"compile-proto-2-stubs.sh failed"* ]]
+  [ ! -s "$PROTOC_MOCK_LOG" ]
+  [ ! -s "$COMPOSER_MOCK_LOG" ]
+  [ ! -e "$OUT/composer.json" ]
 }
 
 # =====================================================================

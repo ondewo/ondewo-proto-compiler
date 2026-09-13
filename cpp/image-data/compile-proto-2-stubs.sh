@@ -35,6 +35,39 @@ if [ ! -d "$PROTOS_ROOT_DIR" ]; then
     exit 1
 fi
 
+# -------------- Extra protoc include directories
+#The ONDEWO product APIs do not all lay their google/ imports out the same way: nlu/csi/vtsi ship
+#them at <protos_root>/google/..., while ondewo-survey-api vendors the whole googleapis repo at
+#<protos_root>/googleapis/google/... - so `import "google/api/annotations.proto";` resolves against
+#the proto root for the former and against <protos_root>/googleapis for the latter.
+#EXTRA_PROTO_DIRS is the python target's EXTRA_PROTO_DIR knob generalised to a list: a
+#space-separated list of ADDITIONAL protoc include roots, each relative to the protos root.
+#Unset (the container default) => auto-detect: a vendored googleapis/ is added ONLY when the proto
+#root has no google/ of its own, so every layout that already resolves is left bit-for-bit alone.
+#Set it explicitly to override the detection ("" disables it).
+if [ -n "${EXTRA_PROTO_DIRS+set}" ]; then
+    echo "Extra proto include dirs (EXTRA_PROTO_DIRS): '$EXTRA_PROTO_DIRS'"
+elif [ -d "$PROTOS_ROOT_DIR/googleapis" ] && [ ! -d "$PROTOS_ROOT_DIR/google" ]; then
+    EXTRA_PROTO_DIRS="googleapis"
+    echo "Detected a vendored 'googleapis/' and no 'google/' at the protos root -> adding '$EXTRA_PROTO_DIRS' as an extra include dir"
+else
+    EXTRA_PROTO_DIRS=""
+fi
+
+#Absolute include roots + the matching protoc flags. A missing entry is rejected here rather than
+#left to protoc, which would report the unresolvable IMPORT instead of the bad include dir.
+EXTRA_INCLUDE_DIRS=""
+EXTRA_INCLUDE_ARGS=""
+# shellcheck disable=SC2086  # intentional word splitting of the include-dir list
+for EXTRA_PROTO_DIR in $EXTRA_PROTO_DIRS; do
+    if [ ! -d "$PROTOS_ROOT_DIR/$EXTRA_PROTO_DIR" ]; then
+        echo "ERROR: the extra proto include directory '$PROTOS_ROOT_DIR/$EXTRA_PROTO_DIR' does not exist - EXTRA_PROTO_DIRS entries are relative to the protos root '$PROTOS_ROOT_DIR' - exiting" >&2
+        exit 1
+    fi
+    EXTRA_INCLUDE_DIRS="$EXTRA_INCLUDE_DIRS $PROTOS_ROOT_DIR/$EXTRA_PROTO_DIR"
+    EXTRA_INCLUDE_ARGS="$EXTRA_INCLUDE_ARGS -I $PROTOS_ROOT_DIR/$EXTRA_PROTO_DIR"
+done
+
 #Find .protos in directory and count the occurances
 echo "Checking $PROTOS_SRC_DIR for .proto files"
 
@@ -74,8 +107,8 @@ echo "Source verified."
 #    C++ build is ~50 translation units instead of thousands. Do NOT "simplify" this into a
 #    `find "$PROTOS_ROOT_DIR" -name '*.proto'` glob - that is the obvious-looking change and it
 #    breaks the build in both of those ways at once.
-if ! ALL_PROTO_FILES=$(echoProtoDependencies "$PROTOS_ROOT_DIR" "$ENTRY_PROTO_FILES"); then
-    echo "ERROR: proto dependency resolution failed - an import above could not be resolved under the proto root '$PROTOS_ROOT_DIR'; is the proto submodule complete? - exiting" >&2
+if ! ALL_PROTO_FILES=$(echoProtoDependencies "$PROTOS_ROOT_DIR" "$ENTRY_PROTO_FILES" "$EXTRA_INCLUDE_DIRS"); then
+    echo "ERROR: proto dependency resolution failed - an import above could not be resolved under the proto root '$PROTOS_ROOT_DIR'${EXTRA_INCLUDE_DIRS:+ or the extra include dirs:$EXTRA_INCLUDE_DIRS}; is the proto submodule complete? - exiting" >&2
     exit 1
 fi
 ALL_PROTO_FILES=$(printf '%s\n' "$ALL_PROTO_FILES" | sort -u | tr "\n" " ")
@@ -100,12 +133,15 @@ cd "$PROTOS_ROOT_DIR" || exit 1
 #No --experimental_allow_proto3_optional: explicit presence has been stable since protobuf 3.15
 #and survives natively in C++ (has_x()/clear_x()), so no Angular-style presence codemod is needed.
 #protoc creates the nested output directories itself; only $STUBS_TARGET_DIR has to exist.
-# shellcheck disable=SC2086  # intentional word splitting of proto file list
+#The extra include dirs come AFTER the proto root, so the proto root keeps winning whenever an
+#import resolves under both - which is exactly the order the resolver searched them in.
+# shellcheck disable=SC2086  # intentional word splitting of the include-flag and proto file lists
 protoc \
 --cpp_out="$STUBS_TARGET_DIR" \
 --grpc_out="$STUBS_TARGET_DIR" \
 --plugin=protoc-gen-grpc="$GRPC_CPP_PLUGIN" \
 -I "$PROTOS_ROOT_DIR" \
+$EXTRA_INCLUDE_ARGS \
 $ALL_PROTO_FILES
 
 cd "$CWD" || exit 1

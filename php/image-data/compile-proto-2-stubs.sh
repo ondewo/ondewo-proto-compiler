@@ -30,6 +30,45 @@ echo "Stubs target dir: $STUBS_TARGET_DIR"
 echo "Protos root dir: $PROTOS_ROOT_DIR"
 echo "Protos src dir: $PROTOS_SRC_DIR"
 
+# -------------- Extra protoc include roots
+# Space-separated list of ADDITIONAL `-I` roots, on top of the proto root itself. Needed because
+# the ONDEWO APIs do not all vendor the google/* imports at the same depth: nlu/csi/vtsi/... put
+# them at <protos_root>/google/..., but ondewo-survey-api vendors the whole googleapis checkout,
+# so the very same `import "google/api/annotations.proto";` lives at
+# <protos_root>/googleapis/google/api/annotations.proto and is unresolvable from the root alone
+# ("google/api/annotations.proto: File not found."). This is the php analogue of the python
+# target's EXTRA_PROTO_DIR (python/Makefile), which mounts that directory as a second proto dir.
+#
+# The default AUTO-DETECTS that layout and is deliberately conservative: it fires only when the
+# root has a googleapis/ directory and NO google/ directory of its own, so the products that
+# already resolve their imports from the root keep exactly the single -I they had. Env-overridable
+# for a layout that is neither shape.
+EXTRA_PROTO_DIRS="${EXTRA_PROTO_DIRS:-}"
+if [ -z "$EXTRA_PROTO_DIRS" ] && [ -d "$PROTOS_ROOT_DIR/googleapis" ] && [ ! -d "$PROTOS_ROOT_DIR/google" ]; then
+    echo "Detected a nested googleapis/ layout in '$PROTOS_ROOT_DIR' - adding it as an extra include root"
+    EXTRA_PROTO_DIRS="$PROTOS_ROOT_DIR/googleapis"
+fi
+
+#Rejected early and by name: an unresolvable include root would otherwise surface as protoc's
+#generic "File not found." for whatever import it was meant to satisfy.
+#
+#PROTO_INCLUDE_DIRS is the whole `-I` search path, primary root FIRST, and it is what the
+#dependency resolver below searches too - an import protoc can resolve and the resolver cannot
+#(or vice versa) is exactly the failure mode this target's one-protoc-call shape cannot survive.
+PROTO_INCLUDE_DIRS="$PROTOS_ROOT_DIR"
+EXTRA_INCLUDE_FLAGS=""
+for EXTRA_PROTO_DIR in $EXTRA_PROTO_DIRS; do
+    if [ ! -d "$EXTRA_PROTO_DIR" ]; then
+        echo "ERROR: the extra proto include directory '$EXTRA_PROTO_DIR' does not exist - it is" >&2
+        echo "       taken from EXTRA_PROTO_DIRS (a space-separated list of additional protoc -I" >&2
+        echo "       roots) - exiting" >&2
+        exit 1
+    fi
+    echo "Using extra proto include root: $EXTRA_PROTO_DIR"
+    PROTO_INCLUDE_DIRS="$PROTO_INCLUDE_DIRS $EXTRA_PROTO_DIR"
+    EXTRA_INCLUDE_FLAGS="$EXTRA_INCLUDE_FLAGS -I $EXTRA_PROTO_DIR"
+done
+
 # -------------- Transitive .proto dependency resolution
 #
 # Carried over from js/image-data/dependecy-resolver.sh, inlined here because the file set of a
@@ -41,19 +80,40 @@ echo "Protos src dir: $PROTOS_SRC_DIR"
 # theirs and fatals without them. Do not "simplify" this away.
 
 # BSD/macOS realpath has no --relative-to: canonicalise both paths with cd+pwd
-# and strip the root prefix (resolved files are always under the proto root)
+# and strip the prefix of the include root the file lives under ($1 is the whole
+# space-separated -I search path, so a file below an extra include root is named
+# relative to THAT root - `google/api/annotations.proto`, never
+# `googleapis/google/api/annotations.proto`). That spelling is the one the import
+# statements use, so the same file cannot reach protoc under two names and
+# redefine every symbol it declares. Longest match wins, because an extra include
+# root is nested inside the primary one and both prefixes therefore match.
 relativeToRoot() {
-    _rtr_root=$(cd "$1" && pwd) || return 1
+    _rtr_rel=""
+    _rtr_len=0
     _rtr_dir=$(cd "$(dirname "$2")" && pwd) || return 1
     _rtr_abs="$_rtr_dir/$(basename "$2")"
-    printf '%s\n' "${_rtr_abs#"$_rtr_root"/}"
+    for _rtr_include in $1; do
+        _rtr_root=$(cd "$_rtr_include" && pwd) || continue
+        #The strip is its own test: it changes the path only when the include root really is a
+        #prefix of it, which is cheaper - and quoting-safe - compared to a `case` pattern.
+        _rtr_stripped="${_rtr_abs#"$_rtr_root"/}"
+        if [ "$_rtr_stripped" != "$_rtr_abs" ] && [ "${#_rtr_root}" -gt "$_rtr_len" ]; then
+            _rtr_len=${#_rtr_root}
+            _rtr_rel="$_rtr_stripped"
+        fi
+    done
+    [ -n "$_rtr_rel" ] || return 1
+    printf '%s\n' "$_rtr_rel"
 }
 
 echoDependencies() {
 
-    ROOT_DIR="$1"
+    INCLUDE_DIRS="$1"
     FILE_PATHS="$2"
     EXCLUDE_REGEX="$3"
+    #The primary proto root - the first include dir - is the one a root-relative entry is
+    #completed against below, exactly as before the extra include roots existed.
+    ROOT_DIR="${INCLUDE_DIRS%% *}"
 
     while IFS= read -r FILE_PATH; do
 
@@ -71,7 +131,7 @@ echoDependencies() {
             echo "ERROR: '$FILE_PATH' is not a readable .proto file - exiting" >&2
             exit 1
         fi
-        if ! RELATIVE=$(relativeToRoot "$ROOT_DIR" "$FILE_PATH"); then
+        if ! RELATIVE=$(relativeToRoot "$INCLUDE_DIRS" "$FILE_PATH"); then
             echo "ERROR: failed to resolve '$FILE_PATH' against the protos root '$ROOT_DIR' - exiting" >&2
             exit 1
         fi
@@ -83,7 +143,16 @@ echoDependencies() {
 
         while IFS= read -r IMPORT_PATH; do
 
-            ABS_PATH="$ROOT_DIR/$IMPORT_PATH"
+            #An import is looked up the way protoc looks it up: against every -I root, in the
+            #order they are passed. Only then comes the file-relative fallback below, which
+            #protoc does NOT have - it is kept because the target has always had it.
+            ABS_PATH=""
+            for INCLUDE_DIR in $INCLUDE_DIRS; do
+                if [ -f "$INCLUDE_DIR/$IMPORT_PATH" ]; then
+                    ABS_PATH="$INCLUDE_DIR/$IMPORT_PATH"
+                    break
+                fi
+            done
             REL_PATH="$(dirname "$FILE_PATH")/$IMPORT_PATH"
 
             # `|| true`: grep exits 1 on "no match", which is the normal case here
@@ -95,9 +164,9 @@ echoDependencies() {
             if [ -n "$IS_EXCLUDED" ]; then
                 printf ""
             elif [ -f "$ABS_PATH" ]; then
-                echoDependencies "$ROOT_DIR" "$ABS_PATH" "$EXCLUDE_REGEX"
+                echoDependencies "$INCLUDE_DIRS" "$ABS_PATH" "$EXCLUDE_REGEX"
             elif [ -f "$REL_PATH" ]; then
-                echoDependencies "$ROOT_DIR" "$REL_PATH" "$EXCLUDE_REGEX"
+                echoDependencies "$INCLUDE_DIRS" "$REL_PATH" "$EXCLUDE_REGEX"
             elif [ -n "$IMPORT_PATH" ]; then
                 echo "$FILE_PATH --> Failed to resolve dependency with root: '$ROOT_DIR' and import path: '$IMPORT_PATH'" >&2
                 exit 1
@@ -144,7 +213,7 @@ echo "Found $PROTO_FILES_CNT .proto files in directory: $PROTOS_SRC_DIR"
 echo "Source verified."
 
 # -------------- Resolve the entry set's transitive imports
-if ! ALL_PROTO_FILES=$(echoProtoDependencies "$PROTOS_ROOT_DIR" "$ENTRY_PROTO_FILES"); then
+if ! ALL_PROTO_FILES=$(echoProtoDependencies "$PROTO_INCLUDE_DIRS" "$ENTRY_PROTO_FILES"); then
     echo "ERROR: dependency resolution failed for the protos below '$PROTOS_SRC_DIR' - exiting" >&2
     exit 1
 fi
@@ -175,12 +244,15 @@ cd "$PROTOS_ROOT_DIR" || { echo "ERROR: failed to enter the protos root director
 #descriptor bootstrap). The `Client` suffix on the service stubs comes from grpc_php_plugin, whose
 #default class_suffix is kept; it would be overridable as --grpc_out=class_suffix=Stub:DIR.
 #Passing --grpc_out for a service-less .proto is a no-op with rc 0, so no partitioning is needed.
-# shellcheck disable=SC2086  # intentional word splitting of the resolved proto file list
+#$EXTRA_INCLUDE_FLAGS is empty for every api whose google/* imports resolve from the proto root
+#(all of them but survey), so those runs get the exact single -I they always had.
+# shellcheck disable=SC2086  # intentional word splitting of the extra -I flags and the resolved proto file list
 protoc \
 --php_out="$STUBS_TARGET_DIR" \
 --grpc_out="$STUBS_TARGET_DIR" \
 --plugin=protoc-gen-grpc="$GRPC_PHP_PLUGIN" \
 -I "$PROTOS_ROOT_DIR" \
+$EXTRA_INCLUDE_FLAGS \
 $ALL_PROTO_FILES
 
 echo ".proto compilation finished."

@@ -32,6 +32,45 @@ if [ ! -d "$PROTOS_ROOT_DIR" ]; then
     exit 1
 fi
 
+# -------------- Extra protoc import roots (-I) for apis that do not vendor google/ at the root
+# ondewo-survey-api keeps its googleapis checkout ONE LEVEL DOWN - `googleapis/google/api/...`
+# instead of the `google/api/...` that nlu/csi/vtsi carry at the protos root - so
+# `import "google/api/annotations.proto";` does not resolve against `-I <protos root>` alone and
+# every generation fails with "google/api/annotations.proto: File not found.". EXTRA_PROTO_DIRS is
+# a space-separated list of ADDITIONAL import roots, each relative to the protos root (an absolute
+# path is taken as-is) - the java analogue of python/Makefile's EXTRA_PROTO_DIR.
+#
+# The DEFAULT auto-detects that layout: `googleapis` exactly when the protos root carries it AND
+# does not already carry `google/` itself. So every api that resolves its google imports from the
+# root keeps an empty list and a byte-identical protoc command line, and a root that vendors both
+# is left resolving google/* from where it always did. `${VAR-...}` (no colon) so an explicit
+# EXTRA_PROTO_DIRS="" switches the auto-detection off without switching the whole knob off.
+if [ -d "$PROTOS_ROOT_DIR/googleapis" ] && [ ! -d "$PROTOS_ROOT_DIR/google" ]; then
+    AUTO_EXTRA_PROTO_DIRS="googleapis"
+else
+    AUTO_EXTRA_PROTO_DIRS=""
+fi
+EXTRA_PROTO_DIRS="${EXTRA_PROTO_DIRS-$AUTO_EXTRA_PROTO_DIRS}"
+
+# The auto-detected default can only ever name a directory that exists (it is produced by a `-d`
+# test), so a missing entry is always a typo in a caller's override. Refuse it here instead of
+# letting protoc fail later with an unrelated "File not found" that names the import, not the
+# import root. Unquoted on purpose: EXTRA_PROTO_DIRS is a space-separated LIST.
+EXTRA_INCLUDE_FLAGS=""
+for extra_dir in $EXTRA_PROTO_DIRS; do
+    case $extra_dir in
+        /*) extra_path=$extra_dir ;;
+        *) extra_path=$PROTOS_ROOT_DIR/$extra_dir ;;
+    esac
+    if [ ! -d "$extra_path" ]; then
+        echo "ERROR: the extra protoc import root '$extra_path' (EXTRA_PROTO_DIRS entry" >&2
+        echo "       '$extra_dir') does not exist - exiting" >&2
+        exit 1
+    fi
+    EXTRA_INCLUDE_FLAGS="$EXTRA_INCLUDE_FLAGS -I $extra_path"
+    echo "Extra protoc import root: $extra_path"
+done
+
 # The vendored google/ tree is an IMPORT PATH, never a compilation target: its java classes
 # ship in protobuf-java (google/protobuf/*) and proto-google-common-protos (google/api,
 # google/rpc, google/type), both pinned in the generated pom.xml. Sweeping it in would emit
@@ -91,12 +130,13 @@ echo "Consuming .proto files: $ALL_PROTO_FILES: "
 # A single protoc pass generates both the message classes (--java_out) and the service stubs
 # (--grpc-java_out). Unlike nodejs/typescript there is deliberately NO second "dependency"
 # pass and no proto-deps.txt: the java classes for the google/* imports come from jars.
-# shellcheck disable=SC2086  # intentional word splitting of proto file list
+# shellcheck disable=SC2086  # intentional word splitting of the extra -I flags and the proto file list
 protoc \
     --plugin=protoc-gen-grpc-java="$PROTOC_GEN_GRPC_JAVA" \
     --java_out="$STUBS_TARGET_DIR" \
     --grpc-java_out="$STUBS_TARGET_DIR" \
     -I "$PROTOS_ROOT_DIR" \
+    $EXTRA_INCLUDE_FLAGS \
     $ALL_PROTO_FILES
 
 echo ".proto compilation finished."

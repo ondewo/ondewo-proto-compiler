@@ -62,6 +62,27 @@ protoc_input_protos() {
   tr ' ' '\n' < "$PROTOC_MOCK_LOG" | grep '\.proto$' | sort
 }
 
+# The -I arguments protoc was handed, in order, as "-I <dir> -I <dir>". They are the
+# whole of the command line between the binary and the first plugin output flag.
+protoc_include_args() {
+  sed -n 's|^protoc \(.*\) --prost_out=.*|\1|p' "$PROTOC_MOCK_LOG"
+}
+
+# Lay out the ondewo-survey-api shape under $1 (default: the protos root): the google
+# protos are vendored under googleapis/google/... and there is NO google/ at the proto
+# root, so `import "google/api/annotations.proto";` resolves against <root>/googleapis
+# and nowhere else.
+make_googleapis_layout() {
+  local root="${1:-$IN/protos}"
+  mkdir -p "$root/googleapis/google/api" "$root/library"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage HttpRule { string get = 1; }\n' \
+    > "$root/googleapis/google/api/http.proto"
+  printf 'syntax = "proto3";\npackage google.api;\nimport "google/api/http.proto";\nmessage Annotations { HttpRule rule = 1; }\n' \
+    > "$root/googleapis/google/api/annotations.proto"
+  printf 'syntax = "proto3";\npackage library;\nimport "google/api/annotations.proto";\nmessage Test { google.api.Annotations a = 1; }\n' \
+    > "$root/library/test.proto"
+}
+
 # Install a purpose-built `protoc` ahead of the shared PATH mock for ONE test: the
 # shared mock always materialises the full prost + tonic + prost-crate output, so a
 # run in which ONE of the three plugins silently did not fire needs its own. The
@@ -90,6 +111,11 @@ shadow_cargo() {
 
 setup() {
   common_setup
+
+  # Script knob common_setup's prefix sweep does not cover. It has three-valued
+  # semantics (unset = auto-detect, set = verbatim, "" = off), so an ambient value on
+  # the host would silently switch the auto-detection under test off.
+  unset EXTRA_PROTO_DIRS
 
   # Mock knobs must be exported AFTER common_setup (it scrubs the toolchain namespaces).
   export PROTOC_MOCK_LOG="$SANDBOX/protoc.log"
@@ -568,6 +594,191 @@ ird.proto"
   [ ! -d "$OUT/src" ]
 }
 
+# --------------------------------------------------- extra protoc include directories
+#
+# ondewo-survey-api vendors its google protos under `googleapis/google/...` instead of
+# the `google/...` every other api ships at the proto root, so its
+# `import "google/api/annotations.proto";` resolves against <root>/googleapis alone.
+# What is pinned here: the auto-detection fires on exactly that shape and on nothing
+# else; the extra dir reaches BOTH protoc's -I list and the dependency resolver; and a
+# file found under it is spelled the way its importers spell it - the root-relative
+# spelling would be a second virtual path for one file, which makes protoc compile it
+# twice and collide on every symbol it declares.
+
+@test "rust extra includes: a googleapis/ layout without a google/ root adds the extra -I" {
+  make_googleapis_layout
+
+  run_rust protos library
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"adding 'googleapis' as an extra include directory"* ]]
+
+  run protoc_include_args
+  [ "$output" = "-I $IMG/src/protos -I $IMG/src/protos/googleapis" ]
+}
+
+@test "rust extra includes: a file under the extra dir is spelled relative to THAT dir" {
+  make_googleapis_layout
+
+  run_rust protos library
+  [ "$status" -eq 0 ]
+
+  # "google/api/annotations.proto", NOT "googleapis/google/api/annotations.proto":
+  # the latter is a second virtual path for the same file and duplicates every symbol.
+  run protoc_input_protos
+  echo "$output"
+  [ "$output" = "google/api/annotations.proto
+google/api/http.proto
+library/test.proto" ]
+  run grep -c "googleapis/google" "$PROTOC_MOCK_LOG"
+  [ "$output" = "0" ]
+}
+
+@test "rust extra includes: without a googleapis/ directory the -I list is unchanged" {
+  # the 36 product/language combinations that already worked: exactly one -I, and no
+  # mention of an extra include directory anywhere in the output
+  run_rust protos library
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"extra include directory"* ]]
+  [[ "$output" != *"Extra proto include dirs"* ]]
+
+  run protoc_include_args
+  [ "$output" = "-I $IMG/src/protos" ]
+}
+
+@test "rust extra includes: a google/ root beside googleapis/ switches auto-detection off" {
+  # the protos root already resolves `google/...` on its own - adding googleapis would
+  # give protoc a second, shadowing mapping for the very same import path
+  make_googleapis_layout
+  mkdir -p "$IN/protos/google/api"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage Annotations {}\n' \
+    > "$IN/protos/google/api/annotations.proto"
+
+  run_rust protos library
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"extra include directory"* ]]
+
+  run protoc_include_args
+  [ "$output" = "-I $IMG/src/protos" ]
+
+  # the ROOT copy is what got compiled: it imports nothing, so googleapis' http.proto
+  # is not in the closure
+  run protoc_input_protos
+  echo "$output"
+  [ "$output" = "google/api/annotations.proto
+library/test.proto" ]
+}
+
+@test "rust extra includes: EXTRA_PROTO_DIRS names a directory auto-detection cannot guess" {
+  mkdir -p "$IN/protos/vendor/google/api"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage Annotations {}\n' \
+    > "$IN/protos/vendor/google/api/annotations.proto"
+  printf 'syntax = "proto3";\npackage library;\nimport "google/api/annotations.proto";\nmessage Test { google.api.Annotations a = 1; }\n' \
+    > "$IN/protos/library/test.proto"
+
+  export EXTRA_PROTO_DIRS="vendor"
+  run_rust protos library
+  [ "$status" -eq 0 ]
+
+  run protoc_include_args
+  [ "$output" = "-I $IMG/src/protos -I $IMG/src/protos/vendor" ]
+
+  run protoc_input_protos
+  echo "$output"
+  [ "$output" = "google/api/annotations.proto
+library/test.proto" ]
+}
+
+@test "rust extra includes: EXTRA_PROTO_DIRS='' switches the auto-detection off" {
+  make_googleapis_layout
+
+  export EXTRA_PROTO_DIRS=""
+  run_rust protos library
+  # with googleapis off the -I list, the import resolves nowhere - which is exactly the
+  # failure this feature exists to fix, and proves the empty value really disabled it
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Failed to resolve dependency"* ]]
+  [[ "$output" == *"google/api/annotations.proto"* ]]
+
+  [ ! -s "$PROTOC_MOCK_LOG" ]
+  [ ! -s "$CARGO_MOCK_LOG" ]
+}
+
+@test "rust extra includes: several extra dirs are appended and searched in the given order" {
+  mkdir -p "$IN/protos/first/google/api" "$IN/protos/second/google/api" "$IN/protos/second/extra"
+  # the FIRST dir's copy pulls in a second file; the shadowed copy in the second dir
+  # does not - so the resolved closure says which of the two was used
+  printf 'syntax = "proto3";\npackage google.api;\nmessage HttpRule {}\n' \
+    > "$IN/protos/first/google/api/http.proto"
+  printf 'syntax = "proto3";\npackage google.api;\nimport "google/api/http.proto";\nmessage Annotations { HttpRule r = 1; }\n' \
+    > "$IN/protos/first/google/api/annotations.proto"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage Annotations {}\n' \
+    > "$IN/protos/second/google/api/annotations.proto"
+  printf 'syntax = "proto3";\npackage extra;\nmessage Thing {}\n' \
+    > "$IN/protos/second/extra/thing.proto"
+  printf 'syntax = "proto3";\npackage library;\nimport "google/api/annotations.proto";\nimport "extra/thing.proto";\nmessage Test {}\n' \
+    > "$IN/protos/library/test.proto"
+
+  export EXTRA_PROTO_DIRS="first second"
+  run_rust protos library
+  [ "$status" -eq 0 ]
+
+  run protoc_include_args
+  [ "$output" = "-I $IMG/src/protos -I $IMG/src/protos/first -I $IMG/src/protos/second" ]
+
+  run protoc_input_protos
+  echo "$output"
+  [ "$output" = "extra/thing.proto
+google/api/annotations.proto
+google/api/http.proto
+library/test.proto" ]
+}
+
+@test "rust extra includes: a non-existent extra include dir fails loudly before protoc" {
+  export EXTRA_PROTO_DIRS="nope"
+  run_rust protos library
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"the extra proto include directory 'nope' does not exist"* ]]
+  [[ "$output" == *"ERROR: compile-proto-2-stubs.sh failed"* ]]
+
+  [ ! -s "$PROTOC_MOCK_LOG" ]
+  [ ! -s "$CARGO_MOCK_LOG" ]
+}
+
+@test "rust extra includes: google/protobuf under an extra dir is still never recompiled" {
+  make_googleapis_layout
+  mkdir -p "$IN/protos/googleapis/google/protobuf"
+  printf 'syntax = "proto3";\npackage google.protobuf;\nmessage Empty {}\n' \
+    > "$IN/protos/googleapis/google/protobuf/empty.proto"
+  printf 'syntax = "proto3";\npackage library;\nimport "google/api/annotations.proto";\nimport "google/protobuf/empty.proto";\nmessage Test {}\n' \
+    > "$IN/protos/library/test.proto"
+
+  run_rust protos library
+  [ "$status" -eq 0 ]
+
+  # the well-known types stay mapped to ::prost_types, reachable through the extra -I
+  # for protoc's own resolution but never a compilation input
+  run grep -c "google/protobuf" "$PROTOC_MOCK_LOG"
+  [ "$output" = "0" ]
+  run protoc_input_protos
+  [ "$output" = "google/api/annotations.proto
+google/api/http.proto
+library/test.proto" ]
+}
+
+@test "rust extra includes: a package-less proto under an extra dir is rejected by name" {
+  # the pre-flight has to READ the file through the include dir it was resolved under,
+  # not blindly under the protos root
+  make_googleapis_layout
+  printf 'syntax = "proto3";\nmessage HttpRule {}\n' \
+    > "$IN/protos/googleapis/google/api/http.proto"
+
+  run_rust protos library
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"'google/api/http.proto' declares no 'package'"* ]]
+
+  [ ! -s "$PROTOC_MOCK_LOG" ]
+}
+
 # ------------------------------------------------------------------- no-protos guard
 
 @test "rust guard: an empty protos root fails loudly and never runs protoc or cargo" {
@@ -958,6 +1169,26 @@ MOCK
 }
 
 # ------------------------------------------------- sub-scripts driven directly (units)
+
+@test "rust unit: the resolver's well-known-type exclusion is per call, not built in" {
+  # echoProtoDependencies is what keeps google/protobuf/** off the rust command line;
+  # echoDependencies itself takes the exclusion as an argument and, handed none,
+  # resolves the well-known types like any other import.
+  mkdir -p "$IN/protos/google/protobuf"
+  printf 'syntax = "proto3";\npackage google.protobuf;\nmessage Empty {}\n' \
+    > "$IN/protos/google/protobuf/empty.proto"
+  printf 'syntax = "proto3";\npackage library;\nimport "google/protobuf/empty.proto";\nmessage Test {}\n' \
+    > "$IN/protos/library/test.proto"
+
+  run bash -c ". '$IMG/dependecy-resolver.sh'; echoDependencies '$IN/protos' '$IN/protos/library/test.proto' '' | sort -u"
+  [ "$status" -eq 0 ]
+  [ "$output" = "google/protobuf/empty.proto
+library/test.proto" ]
+
+  run bash -c ". '$IMG/dependecy-resolver.sh'; echoProtoDependencies '$IN/protos' '$IN/protos/library/test.proto' | sort -u"
+  [ "$status" -eq 0 ]
+  [ "$output" = "library/test.proto" ]
+}
 
 @test "rust unit: compile-proto-2-stubs.sh rejects missing arguments" {
   run bash "$IMG/compile-proto-2-stubs.sh" "$CRATE" "$IN/protos"

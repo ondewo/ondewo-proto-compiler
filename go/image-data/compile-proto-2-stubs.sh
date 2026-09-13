@@ -25,6 +25,64 @@ if [ ! -d "$PROTOS_ROOT_DIR" ]; then
     exit 1
 fi
 
+# -------------- Extra protoc include roots
+# Most ONDEWO APIs vendor the google protos as <protos root>/google/..., so `import
+# "google/api/annotations.proto"` resolves against the protos root alone. The survey API
+# instead keeps them under <protos root>/googleapis/google/..., where that same import
+# resolves against nothing and protoc aborts with "File not found".
+# EXTRA_PROTO_DIRS is a space separated list of directories BELOW the protos root that are
+# handed to protoc as additional -I roots (the same job python/Makefile's EXTRA_PROTO_DIR
+# does by mounting the directory a second time). It is env-overridable; its default
+# auto-detects the layout, and only the googleapis one is detected, so every root that
+# already resolved keeps exactly the flags it had.
+if [ -d "$PROTOS_ROOT_DIR/googleapis" ] && [ ! -d "$PROTOS_ROOT_DIR/google" ]; then
+    EXTRA_PROTO_DIRS_DEFAULT=googleapis
+else
+    EXTRA_PROTO_DIRS_DEFAULT=
+fi
+EXTRA_PROTO_DIRS="${EXTRA_PROTO_DIRS:-$EXTRA_PROTO_DIRS_DEFAULT}"
+
+EXTRA_INCLUDE_FLAGS=""
+#The same directories as a set of rel_proto prefixes, each with a trailing separator so a
+#sibling like "googleapis-fork/" cannot match the "googleapis" entry
+EXTRA_INCLUDE_PREFIXES=""
+# shellcheck disable=SC2086  # intentional word splitting of the space separated directory list
+for extra_dir in $EXTRA_PROTO_DIRS; do
+    #Same normalisation as the root itself: a trailing slash would double the separator in
+    #the -I path and leave a prefix of "googleapis//" that no rel_proto starts with
+    extra_dir=${extra_dir%/}
+    if [ ! -d "$PROTOS_ROOT_DIR/$extra_dir" ]; then
+        echo "ERROR: the extra include directory '$extra_dir' (EXTRA_PROTO_DIRS) does not exist below the protos root '$PROTOS_ROOT_DIR' - exiting" >&2
+        echo "       EXTRA_PROTO_DIRS names directories RELATIVE to the protos root, e.g. EXTRA_PROTO_DIRS=googleapis for a <protos root>/googleapis/google/api/... layout - exiting" >&2
+        exit 1
+    fi
+    EXTRA_INCLUDE_FLAGS="$EXTRA_INCLUDE_FLAGS -I $PROTOS_ROOT_DIR/$extra_dir"
+    EXTRA_INCLUDE_PREFIXES="$EXTRA_INCLUDE_PREFIXES $extra_dir/"
+done
+if [ -n "$EXTRA_INCLUDE_FLAGS" ]; then
+    echo "Extra protoc include roots:$EXTRA_INCLUDE_FLAGS"
+fi
+
+#A proto that is generated here has to be reachable under the import path protoc reports for
+#it, which is its path relative to the -I root it was resolved under. google/** is excluded
+#for the reasons spelled out at the import-mapping loop below; everything below an extra
+#include root is excluded for the same ones: those trees are vendored third-party protos
+#(google/api/..., google/type/...), protoc resolves them under that root - so their reported
+#file name is not the path this loop sees - and their go packages come from
+#google.golang.org/genproto, not from the client module.
+is_excluded_proto() {
+    case $1 in
+        google/*) return 0 ;;
+    esac
+    # shellcheck disable=SC2086  # intentional word splitting of the space separated prefix list
+    for excluded_prefix in $EXTRA_INCLUDE_PREFIXES; do
+        case $1 in
+            "$excluded_prefix"*) return 0 ;;
+        esac
+    done
+    return 1
+}
+
 echo "Make proto generation target directory: $STUBS_TARGET_DIR"
 #The source tree is a verbatim copy of the input volume, which for a go client is the repository
 #itself - so it may well already carry the api/ directory of a previous run. Those stale stubs
@@ -102,9 +160,9 @@ for protofile in $ALL_PROTO_FILES; do
     while [ "$rel_proto" != "${rel_proto#/}" ]; do
         rel_proto=${rel_proto#/}
     done
-    case $rel_proto in
-        google/*) continue ;;
-    esac
+    if is_excluded_proto "$rel_proto"; then
+        continue
+    fi
     rel_dir=$(dirname "$rel_proto")
     if [ "$rel_dir" = "." ]; then
         go_import_path=$GO_IMPORT_PREFIX
@@ -133,9 +191,9 @@ for protofile in $SELECTED_PROTO_FILES; do
     while [ "$rel_proto" != "${rel_proto#/}" ]; do
         rel_proto=${rel_proto#/}
     done
-    case $rel_proto in
-        google/*) continue ;;
-    esac
+    if is_excluded_proto "$rel_proto"; then
+        continue
+    fi
     COMPILE_PROTO_FILES="$COMPILE_PROTO_FILES $protofile"
 done
 
@@ -151,6 +209,7 @@ echo "Consuming .proto files: $COMPILE_PROTO_FILES: "
 # shellcheck disable=SC2086  # intentional word splitting of the option and proto file lists
 protoc \
 -I "$PROTOS_ROOT_DIR" \
+$EXTRA_INCLUDE_FLAGS \
 --go_out="$STUBS_TARGET_DIR" \
 --go_opt=paths=source_relative \
 --go-grpc_out="$STUBS_TARGET_DIR" \

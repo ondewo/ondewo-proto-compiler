@@ -15,6 +15,10 @@
 #   * argument handling: default protos dir, explicit protos dir, target subdir
 #   * the protoc command line: single -I root, --csharp_out/--grpc_out,
 #     base_namespace=, the grpc plugin flag
+#   * the EXTRA protoc -I roots: the googleapis/ auto-detection that makes
+#     ondewo-survey-api's vendored google/* imports resolvable, that it stays
+#     off for every root that already resolves them, and the EXTRA_PROTO_DIRS
+#     override
 #   * failure propagation from both sub-scripts, with the orchestrator's own
 #     error text on stderr
 #   * package identity resolution + validation, the five required MSBuild
@@ -70,6 +74,9 @@ stage() {
 # scrubs the NUGET_*, GRPC_* and Ondewo* namespaces, so they are (re)set here,
 # after it has run.
 subscript_env() {
+  # not in any namespace common_setup scrubs, and an ambient value would add an
+  # -I root (or abort the run) on the developer's machine only
+  unset EXTRA_PROTO_DIRS
   export NUGET_OFFLINE_FEED="$FEED"
   export GRPC_CSHARP_PLUGIN="$PLUGIN"
   export OndewoTargetFramework=netstandard2.0
@@ -509,6 +516,159 @@ MOCK
 
   refute_protoc_arg "google/api/annotations.proto"
   refute_protoc_arg "google/protobuf/empty.proto"
+}
+
+# ---------------------------------------------------------------------------
+# extra protoc -I roots (the ondewo-survey-api layout)
+# ---------------------------------------------------------------------------
+
+# ondewo-survey-api does not vendor its google/* imports at the proto root the
+# way nlu/csi/vtsi do: it carries a whole googleapis/ checkout, so the very same
+# `import "google/api/annotations.proto";` lives one level deeper and protoc
+# cannot resolve it from -I <root> alone.
+make_survey_layout() {
+  mkdir -p "$IN/ondewo-survey-api/ondewo/survey" \
+           "$IN/ondewo-survey-api/googleapis/google/api"
+  printf 'syntax = "proto3";\npackage ondewo.survey;\nimport "google/api/annotations.proto";\nmessage Survey { string name = 1; }\nservice Surveys { rpc GetSurvey (Survey) returns (Survey); }\n' \
+    > "$IN/ondewo-survey-api/ondewo/survey/survey.proto"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage Http {}\n' \
+    > "$IN/ondewo-survey-api/googleapis/google/api/annotations.proto"
+}
+
+@test "csharp extra -I: a nested googleapis/ root is auto-detected and added as a second -I" {
+  make_survey_layout
+  stage
+  run bash ./compile-proto-2-csharp.sh ondewo-survey-api ondewo Ondewo.Survey.Client
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Detected a nested googleapis/ layout in '$IN/ondewo-survey-api'"* ]]
+  [[ "$output" == *"Using extra proto include root: $IN/ondewo-survey-api/googleapis"* ]]
+
+  # the proto ROOT stays the first -I; the googleapis checkout is added on top
+  [ "$(protoc_token_count '-I')" -eq 2 ]
+  assert_protoc_arg "-I $IN/ondewo-survey-api "
+  assert_protoc_arg "-I $IN/ondewo-survey-api/googleapis "
+  # and the run really produces a package
+  [ -f "$OUT/api/Ondewo/Mock/Test.cs" ]
+  [ -f "$OUT/nupkg/Ondewo.Survey.Client.5.14.0.nupkg" ]
+}
+
+@test "csharp extra -I: the extra root is an IMPORT path, never a compilation target" {
+  # The google/** exclusion has to keep holding one level deeper, otherwise the
+  # documented-optional empty target subdir sweeps the ~440 vendored googleapis
+  # protos into the assembly, duplicating the NuGet-supplied Google.* types.
+  make_survey_layout
+  stage
+  run bash ./compile-proto-2-csharp.sh ondewo-survey-api "" Ondewo.Survey.Client
+  echo "$output"
+  [ "$status" -eq 0 ]
+
+  assert_protoc_arg "-I $IN/ondewo-survey-api/googleapis "
+  assert_protoc_arg "$IN/ondewo-survey-api/ondewo/survey/survey.proto"
+  refute_protoc_arg "googleapis/google/api/annotations.proto"
+}
+
+@test "csharp extra -I: a root that vendors google/ itself keeps its single -I" {
+  # every product except survey (nlu, csi, vtsi, ...): nothing may change for them
+  mkdir -p "$IN/ondewo-nlu-api/ondewo/nlu" "$IN/ondewo-nlu-api/google/api"
+  printf 'syntax = "proto3";\npackage ondewo.nlu;\nmessage S {}\n' \
+    > "$IN/ondewo-nlu-api/ondewo/nlu/session.proto"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage Http {}\n' \
+    > "$IN/ondewo-nlu-api/google/api/annotations.proto"
+
+  stage
+  run bash ./compile-proto-2-csharp.sh ondewo-nlu-api ondewo Ondewo.Nlu.Client
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"extra proto include root"* ]]
+  [ "$(protoc_token_count '-I')" -eq 1 ]
+  assert_protoc_arg "-I $IN/ondewo-nlu-api "
+}
+
+@test "csharp extra -I: a root with BOTH google/ and googleapis/ keeps its single -I" {
+  # the auto-detection is deliberately conservative: a root that already resolves
+  # its imports is left exactly as it was, whatever else sits next to it
+  make_survey_layout
+  mkdir -p "$IN/ondewo-survey-api/google/api"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage Http {}\n' \
+    > "$IN/ondewo-survey-api/google/api/annotations.proto"
+
+  stage
+  run bash ./compile-proto-2-csharp.sh ondewo-survey-api ondewo Ondewo.Survey.Client
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"extra proto include root"* ]]
+  [ "$(protoc_token_count '-I')" -eq 1 ]
+  refute_protoc_arg "-I $IN/ondewo-survey-api/googleapis "
+}
+
+@test "csharp extra -I: the default fixture (no googleapis/, no google/) stays at one -I" {
+  stage
+  run bash ./compile-proto-2-csharp.sh protos "" Ondewo.Test.Client
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"extra proto include root"* ]]
+  [ "$(protoc_token_count '-I')" -eq 1 ]
+}
+
+@test "csharp extra -I: EXTRA_PROTO_DIRS overrides the auto-detection" {
+  make_survey_layout
+  mkdir -p "$IN/vendor-protos/google/api"
+  printf 'syntax = "proto3";\npackage google.api;\nmessage Http {}\n' \
+    > "$IN/vendor-protos/google/api/annotations.proto"
+
+  stage
+  export EXTRA_PROTO_DIRS="$IN/vendor-protos"
+  run bash ./compile-proto-2-csharp.sh ondewo-survey-api ondewo Ondewo.Survey.Client
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Using extra proto include root: $IN/vendor-protos"* ]]
+  # the override replaces the auto-detected root, it is not added to it
+  [[ "$output" != *"Detected a nested googleapis/ layout"* ]]
+  [ "$(protoc_token_count '-I')" -eq 2 ]
+  assert_protoc_arg "-I $IN/vendor-protos "
+  refute_protoc_arg "-I $IN/ondewo-survey-api/googleapis "
+}
+
+@test "csharp extra -I: EXTRA_PROTO_DIRS takes a space-separated list of roots" {
+  mkdir -p "$IN/vendor-a/google/api" "$IN/vendor-b/google/rpc"
+
+  stage
+  export EXTRA_PROTO_DIRS="$IN/vendor-a $IN/vendor-b"
+  run bash ./compile-proto-2-csharp.sh protos "" Ondewo.Test.Client
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [ "$(protoc_token_count '-I')" -eq 3 ]
+  assert_protoc_arg "-I $IN/protos "
+  assert_protoc_arg "-I $IN/vendor-a "
+  assert_protoc_arg "-I $IN/vendor-b "
+}
+
+@test "csharp extra -I: a non-existent EXTRA_PROTO_DIRS entry aborts before protoc runs" {
+  # otherwise it surfaces as protoc's generic "File not found." for whichever
+  # import the include root was meant to satisfy
+  stage
+  export EXTRA_PROTO_DIRS="$IN/no-such-vendor"
+  run bash -c 'bash ./compile-proto-2-csharp.sh protos "" Ondewo.Test.Client 2>&1 >/dev/null'
+  echo "$output"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"extra proto include directory '$IN/no-such-vendor' does not exist"* ]]
+  [[ "$output" == *"EXTRA_PROTO_DIRS"* ]]
+  [ ! -s "$PROTOC_MOCK_LOG" ]
+  [ ! -s "$DOTNET_MOCK_LOG" ]
+}
+
+@test "csharp extra -I: the stubs script auto-detects from the -I root it is handed" {
+  # driven directly, without the orchestrator: the detection is anchored on
+  # <protos_root_dir>, not on the input volume or the compile directory
+  make_survey_layout
+  subscript_env
+  run bash "$REPO_ROOT/csharp/image-data/compile-proto-2-stubs.sh" \
+    "$SANDBOX/stubs-out" "$IN/ondewo-survey-api" "$IN/ondewo-survey-api/ondewo"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Using extra proto include root: $IN/ondewo-survey-api/googleapis"* ]]
+  assert_protoc_arg "-I $IN/ondewo-survey-api/googleapis "
+  [ -f "$SANDBOX/stubs-out/Ondewo/Mock/Test.cs" ]
 }
 
 # ---------------------------------------------------------------------------
