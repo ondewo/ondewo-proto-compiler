@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dependency;
+
+// java_package decouples the generated java namespace from the proto package, and
+// java_multiple_files makes protoc emit one file per top-level type instead of nesting
+// everything inside the outer class. java_outer_classname is set explicitly so the outer
+// class never has to be auto-disambiguated with protoc's "OuterClass" suffix.
+option java_package = "com.ondewo.example.dependency";
+option java_multiple_files = true;
+option java_outer_classname = "MyImportProto";
+
+message MyImport {
+    string name = 1;
+}
+
+service MyImportService {
+    rpc SendImport (MyImport) returns (MyImport);
+}

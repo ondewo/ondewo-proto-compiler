@@ -1,0 +1,22 @@
+{
+  "authors": [
+    {
+      "email": "office@ondewo.com",
+      "name": "ONDEWO GmbH"
+    }
+  ],
+  "autoload": {
+    "classmap": ["src/"]
+  },
+  "description": "gRPC client stubs generated from .proto definitions by the ONDEWO proto compiler",
+  "license": "Apache-2.0",
+  "name": "ondewo/proto-compiler-php-lib",
+  "require": {
+    "ext-grpc": "*",
+    "google/protobuf": "@GOOGLE_PROTOBUF_PHP_VERSION@",
+    "grpc/grpc": "@GRPC_PHP_VERSION@",
+    "php": ">=8.1.0"
+  },
+  "type": "library",
+  "version": "@ONDEWO_PROTO_COMPILER_VERSION@"
+}

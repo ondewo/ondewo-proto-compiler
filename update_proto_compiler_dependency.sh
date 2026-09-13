@@ -65,8 +65,18 @@ cd "$REPO_DIR" || {
   exit 1
 }
 
+# --- Node-family clients (and only those) ship a node-based Dockerfile.utils carrying ENV NODE_VERSION.
+# The php/go/rust/cpp/java/csharp clients have no node toolchain, so the NODE_VERSION rewrite below and the
+# package.json merge further down both key off this single definition rather than drifting apart.
+IS_NODE_FAMILY=false
+case "$PROGRAMMING_LANGUAGE" in
+  angular|typescript|nodejs|js) IS_NODE_FAMILY=true ;;
+esac
+
 # --- Set NODE_VERSION in Dockerfile.utils from environment variable ---
-if [ -f "Dockerfile.utils" ]; then
+if [ "$IS_NODE_FAMILY" = "false" ]; then
+  log "${YELLOW}[SKIP]${NC} '$PROGRAMMING_LANGUAGE' has no node toolchain - not touching Dockerfile.utils"
+elif [ -f "Dockerfile.utils" ]; then
   if [ -z "${NODE_VERSION:-}" ]; then
     log "${RED}[ERROR]${NC} NODE_VERSION environment variable is not set"
     exit 1
@@ -100,10 +110,7 @@ git checkout "$VERSION"
 cd ..
 
 # --- Update the dependency in the project ---
-if [ "$PROGRAMMING_LANGUAGE" = "angular" ] || \
-   [ "$PROGRAMMING_LANGUAGE" = "typescript" ] || \
-   [ "$PROGRAMMING_LANGUAGE" = "nodejs" ] || \
-   [ "$PROGRAMMING_LANGUAGE" = "js" ]; then
+if [ "$IS_NODE_FAMILY" = "true" ]; then
 
   if [ "$PROGRAMMING_LANGUAGE" = "js" ]; then
     IMAGE_DATA_PKG="ondewo-proto-compiler/js/image-data/default-lib-files/package.json"

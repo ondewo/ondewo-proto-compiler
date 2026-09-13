@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Mock go (go target: `go build ./...` in compile-stubs-2-lib.sh). Logs argv and
+# honours failure injection. `go build` of a LIBRARY package writes no artifact,
+# so there is nothing to materialise - what it does model is the one precondition
+# the real tool enforces: a module cannot be built without its go.mod.
+#
+#   GO_MOCK_LOG   -> argv log (default /dev/null)
+#   GO_FAIL_MATCH -> if any argument contains this substring, exit GO_FAIL_RC
+#   GO_FAIL_RC    -> exit code for the injected failure (default 1)
+: "${GO_MOCK_LOG:=/dev/null}"
+printf 'go %s\n' "$*" >> "$GO_MOCK_LOG"
+
+if [ -n "${GO_FAIL_MATCH:-}" ]; then
+  for a in "$@"; do
+    case "$a" in
+      *"$GO_FAIL_MATCH"*)
+        echo "mock go: FAIL on '$a'" >&2
+        exit "${GO_FAIL_RC:-1}"
+        ;;
+    esac
+  done
+fi
+
+case "${1:-}" in
+  build|vet|test)
+    if [ ! -f go.mod ]; then
+      echo "go: go.mod file not found in current directory or any parent directory." >&2
+      exit 1
+    fi
+    ;;
+  *)
+    : # mod/env/version/...: log-only no-op
+    ;;
+esac
+exit 0

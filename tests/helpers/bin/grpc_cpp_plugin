@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Mock grpc_cpp_plugin (cpp target). The scripts never exec it - protoc does, and
+# the protoc mock emits the .grpc.pb.* pair itself - but
+# cpp/image-data/compile-proto-2-stubs.sh guards the codegen with
+#   command -v "$GRPC_CPP_PLUGIN"
+# and aborts when it resolves to nothing, so an executable of this name has to be
+# on PATH for the cpp pipeline to run on the host. Point the script at it with
+#   export GRPC_CPP_PLUGIN=grpc_cpp_plugin
+#
+#   GRPC_CPP_PLUGIN_MOCK_LOG -> argv log (default /dev/null)
+#   GRPC_CPP_PLUGIN_MOCK_RC  -> exit code (default 0), to inject a plugin failure
+#
+# stdin is deliberately NOT read: the real plugin consumes a CodeGeneratorRequest
+# from it, but nothing here writes one, and a blocking read would hang the suite.
+: "${GRPC_CPP_PLUGIN_MOCK_LOG:=/dev/null}"
+printf 'grpc_cpp_plugin %s\n' "$*" >> "$GRPC_CPP_PLUGIN_MOCK_LOG"
+exit "${GRPC_CPP_PLUGIN_MOCK_RC:-0}"

@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package library;
+
+// Resolved through protoc's -I root, which is the protos directory mounted at
+// /input-volume/<relative_protos_dir> - so the import path is relative to that root.
+import "dependency/myimport.proto";
+
+// See dependency/myimport.proto for why these three options are set.
+option java_package = "com.ondewo.example.library";
+option java_multiple_files = true;
+option java_outer_classname = "TestProto";
+
+message Test {
+    string name = 1;
+    dependency.MyImport my_import = 2;
+}
+
+service SimpleService {
+    rpc SendTest (Test) returns (Test);
+}

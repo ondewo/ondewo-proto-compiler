@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# Mock cargo (rust target: compile-stubs-2-lib.sh). Logs argv, honours failure
+# injection, and materialises the artifacts the rust pipeline then copies:
+# `cargo package` MUST leave a <name>-<version>.crate in $CARGO_TARGET_DIR/package,
+# or the orchestrator's copy-back has nothing to collect.
+#
+#   CARGO_MOCK_LOG   -> argv log (default /dev/null)
+#   CARGO_FAIL_MATCH -> if any argument contains this substring, exit CARGO_FAIL_RC
+#   CARGO_FAIL_RC    -> exit code for the injected failure (default 1)
+#
+# The crate name/version are read out of the Cargo.toml in the CWD, exactly like
+# the real tool, so the artifact is named after the manifest actually generated.
+: "${CARGO_MOCK_LOG:=/dev/null}"
+printf 'cargo %s\n' "$*" >> "$CARGO_MOCK_LOG"
+
+if [ -n "${CARGO_FAIL_MATCH:-}" ]; then
+  for a in "$@"; do
+    case "$a" in
+      *"$CARGO_FAIL_MATCH"*)
+        echo "mock cargo: FAIL on '$a'" >&2
+        exit "${CARGO_FAIL_RC:-1}"
+        ;;
+    esac
+  done
+fi
+
+# first non-flag argument = the subcommand
+sub=""
+for a in "$@"; do
+  case "$a" in -*) ;; *) sub="$a"; break ;; esac
+done
+
+case "$sub" in
+  build|package|check|test)
+    if [ ! -f Cargo.toml ]; then
+      echo "error: could not find \`Cargo.toml\` in \`$(pwd)\` or any parent directory" >&2
+      exit 101
+    fi
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+
+# value of a quoted key of the [package] table (the sed range stops at the next
+# section header, whose own "[" line cannot match the key pattern)
+package_field() {
+  sed -n '/^\[package\]/,/^\[/p' Cargo.toml \
+    | sed -n "s|^$1[[:space:]]*=[[:space:]]*\"\([^\"]*\)\".*|\1|p" \
+    | head -1
+}
+
+crate_name="$(package_field name)"
+[ -n "$crate_name" ] || crate_name="mock-crate"
+crate_version="$(package_field version)"
+[ -n "$crate_version" ] || crate_version="0.0.0"
+
+# cargo resolves a relative CARGO_TARGET_DIR against its own CWD; "target" is the default
+target_dir="${CARGO_TARGET_DIR:-target}"
+
+case "$sub" in
+  build)
+    # a library crate builds to an rlib named after the crate, with '-' normalised to '_'
+    profile="debug"
+    for a in "$@"; do
+      case "$a" in --release) profile="release" ;; esac
+    done
+    mkdir -p "$target_dir/$profile"
+    : > "$target_dir/$profile/lib$(printf '%s' "$crate_name" | tr '-' '_').rlib"
+    ;;
+  package)
+    # `cargo package` stages the crate tree and tars it up beside it
+    mkdir -p "$target_dir/package/$crate_name-$crate_version"
+    : > "$target_dir/package/$crate_name-$crate_version.crate"
+    ;;
+esac
+exit 0

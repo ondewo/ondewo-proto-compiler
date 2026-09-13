@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dependency;
+
+// csharp_namespace is what the generated file lands under when protoc is driven with
+// `base_namespace=` (see image-data/compile-proto-2-stubs.sh): without it the generator
+// would derive the namespace from the proto package and two same-named protos in different
+// packages would collide.
+option csharp_namespace = "Ondewo.Example.Dependency";
+
+message MyImport {
+    string name = 1;
+}
+
+service MyImportService {
+    rpc SendImport (MyImport) returns (MyImport);
+}

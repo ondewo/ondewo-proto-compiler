@@ -17,7 +17,9 @@ setup() {
   REPO="$SANDBOX/repo"
   mkdir -p "$REPO"
   cp "$REPO_ROOT/Makefile" "$REPO/Makefile"
-  for lang in angular js nodejs typescript python; do
+  # Every language listed in the Makefile's DOCKERFILES must be present: the target now fails
+  # loudly on a missing Dockerfile rather than letting perl warn and `git add` error out.
+  for lang in angular js nodejs typescript python php go rust cpp java csharp; do
     mkdir -p "$REPO/$lang"
     cp "$REPO_ROOT/$lang/Dockerfile" "$REPO/$lang/Dockerfile"
   done

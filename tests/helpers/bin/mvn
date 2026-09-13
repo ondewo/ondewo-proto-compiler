@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Mock mvn (java target: the `mvn ... package` in compile-stubs-2-lib.sh). Logs
+# argv, honours failure injection, and drops the packaged jars where the script
+# looks for them - target/<artifactId>-<version>.jar next to the pom, plus the
+# -sources.jar the maven-source-plugin attaches - because compile-stubs-2-lib.sh
+# aborts when target/ holds no *.jar.
+#
+#   MVN_MOCK_LOG   -> argv log (default /dev/null)
+#   MVN_FAIL_MATCH -> if any argument contains this substring, exit MVN_FAIL_RC
+#   MVN_FAIL_RC    -> exit code for the injected failure (default 1)
+#
+# The coordinates come from the pom itself (its first <artifactId>/<version>,
+# which is the project's own - dependency coordinates only appear further down),
+# so a test can assert the jar is named after the coordinates it passed in.
+: "${MVN_MOCK_LOG:=/dev/null}"
+printf 'mvn %s\n' "$*" >> "$MVN_MOCK_LOG"
+
+if [ -n "${MVN_FAIL_MATCH:-}" ]; then
+  for a in "$@"; do
+    case "$a" in
+      *"$MVN_FAIL_MATCH"*)
+        echo "mock mvn: FAIL on '$a'" >&2
+        exit "${MVN_FAIL_RC:-1}"
+        ;;
+    esac
+  done
+fi
+
+# -f/--file names the pom; without it maven uses ./pom.xml
+pom="pom.xml"
+want_pom=0
+goals=""
+for a in "$@"; do
+  if [ "$want_pom" -eq 1 ]; then
+    pom="$a"
+    want_pom=0
+    continue
+  fi
+  case "$a" in
+    -f|--file) want_pom=1 ;;
+    -*) ;;
+    *) goals="$goals $a" ;;
+  esac
+done
+
+if [ ! -f "$pom" ]; then
+  echo "mock mvn: The goal you specified requires a project to execute but there is no POM in $pom" >&2
+  exit 1
+fi
+
+case "$goals" in
+  *package*|*install*|*deploy*|*verify*) ;;
+  *) exit 0 ;;   # validate/clean/help/...: nothing is packaged
+esac
+
+pom_dir="$(dirname "$pom")"
+
+# first <tag> value in document order = the project's own coordinate
+pom_field() {
+  sed -n "s|.*<$1>\(.*\)</$1>.*|\1|p" "$pom" | head -1
+}
+
+artifact_id="$(pom_field artifactId)"
+[ -n "$artifact_id" ] || artifact_id="mock-artifact"
+version="$(pom_field version)"
+[ -n "$version" ] || version="0.0.0"
+
+mkdir -p "$pom_dir/target/classes"
+: > "$pom_dir/target/$artifact_id-$version.jar"
+: > "$pom_dir/target/$artifact_id-$version-sources.jar"
+echo "[INFO] BUILD SUCCESS (mock) -> $artifact_id-$version.jar"
+exit 0

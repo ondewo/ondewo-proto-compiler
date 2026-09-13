@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+// C++ needs no language-specific file option: protoc derives the namespace from the proto
+// package, so `package library;` generates everything under `namespace library`.
+package library;
+
+// Exercises the import path: the dependency resolver has to pull this file into the compiled
+// set even though it lives in a different directory of the proto root.
+import "dependency/myimport.proto";
+
+message Test {
+    string name = 1;
+    dependency.MyImport imported = 2;
+}
+
+service SimpleService {
+    rpc SendTest (Test) returns (Test);
+}

@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package example;
+
+option csharp_namespace = "Ondewo.Example";
+
+import "dependency/myimport.proto";
+
+message Test {
+    string name = 1;
+
+    // Exercises the import path: the generated Test.cs must reference the message emitted
+    // for dependency/myimport.proto.
+    dependency.MyImport imported = 2;
+}
+
+service SimpleService {
+    rpc SendTest (Test) returns (Test);
+}

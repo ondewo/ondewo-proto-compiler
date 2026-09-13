@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package ondewo.seed;
+
+import "google/protobuf/empty.proto";
+
+option java_package = "com.ondewo.seed";
+option java_multiple_files = true;
+option java_outer_classname = "SeedProto";
+
+// Compiled only while the docker image is built: it smoke-tests protoc and the grpc-java
+// plugin, and gives the maven local-repository pre-warming step a real project to package -
+// so the warm-up exercises exactly the compile classpath a customer run will use.
+// Nothing from this file ever reaches /output-volume.
+message SeedRequest {
+  string name = 1;
+}
+
+service SeedService {
+  rpc Ping(SeedRequest) returns (google.protobuf.Empty);
+}

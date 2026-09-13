@@ -1,0 +1,40 @@
+#
+# Image-build-time PRE-WARM manifest. Never shipped to a client and never used as a
+# gen_crate template - it exists only so that `docker build` downloads and compiles, into
+# $CARGO_HOME/registry + $CARGO_TARGET_DIR, everything a generated crate could need.
+#
+# The image bakes CARGO_NET_OFFLINE=true and the run-time build additionally passes
+# --offline, so a dependency that is NOT warmed here can never be fetched at generation
+# time. This list is therefore a deliberate SUPERSET of default-lib-files/Cargo.toml:
+# it also covers what ONDEWO clients add in their own mounted Cargo.toml (an async runtime,
+# streaming helpers and serde for the hand-written Keycloak/bearer auth surface).
+#
+# Adding a dependency to a client's Cargo.toml requires adding it here and REBUILDING the
+# ondewo-rust-proto-compiler image - compile-stubs-2-lib.sh pre-flights the crate's
+# dependencies against the warmed cache and says exactly that when one is missing.
+#
+[package]
+name = "ondewo-proto-compiler-prewarm"
+version = "0.0.0"
+edition = "2021"
+rust-version = "1.88"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# --- what the generated stubs themselves need (keep in sync with Cargo.toml)
+prost = "0.14"
+prost-types = "0.14"
+tonic-prost = "0.14"
+# --- tonic with the feature set a real client channel needs (TLS + compression)
+tonic = { version = "0.14", features = ["tls-ring", "gzip"] }
+# --- what a hand-written client surface on top of the stubs typically pulls in
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
+async-stream = "0.3"
+futures-core = "0.3"
+http = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

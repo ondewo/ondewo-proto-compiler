@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Default project file for the generated gRPC client package.
+
+       It is copied to $TEMP_SRC/<PackageId>.csproj by compile-proto-2-csharp.sh whenever the
+       input volume ships no <PackageId>.csproj of its own - the same "copy the default if the
+       client did not provide one" rule as tsconfig.json / public-api.* in the node targets.
+
+       The very same file is ALSO the warm-up project the Dockerfile restores and builds at
+       image-build time, which is what guarantees the pre-warmed offline NuGet feed contains
+       exactly the graph a generation run needs.
+
+       Every version below is an MSBuild property sourced from the image environment, which the
+       Dockerfile sets from its ARG lines (OndewoTargetFramework, OndewoPackageId,
+       OndewoPackageVersion, GoogleProtobufVersion, GrpcDotnetVersion,
+       GoogleApiCommonProtosVersion). Do NOT hard-code a version here: the Makefile release
+       targets rewrite the ARG lines, and a literal would silently drift out of sync with the
+       pre-warmed offline NuGet feed and fail restore with NU1101. -->
+  <PropertyGroup>
+    <TargetFramework>$(OndewoTargetFramework)</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>$(OndewoPackageId)</AssemblyName>
+    <RootNamespace>$(OndewoPackageId)</RootNamespace>
+    <PackageId>$(OndewoPackageId)</PackageId>
+    <Version>$(OndewoPackageVersion)</Version>
+    <Authors>ONDEWO GmbH</Authors>
+    <Company>ONDEWO GmbH</Company>
+    <Description>gRPC client stubs generated from the ONDEWO protobuf API definitions.</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <!-- The condition has to match the <None Include="README.md"> item below: declaring the
+         property unconditionally makes `dotnet pack` fail with NU5039 ("the readme file
+         'README.md' does not exist in the package") whenever no readme was copied in. -->
+    <PackageReadmeFile Condition="Exists('README.md')">README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/ondewo/ondewo-proto-compiler</RepositoryUrl>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Deterministic>true</Deterministic>
+    <!-- generated stubs carry no XML docs on every member -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The SDK's default Compile glob is what makes hand-written client sources work: anything
+         the client ships in the input volume (e.g. auth/*.cs) is copied into the compile
+         directory and picked up automatically. C# needs no public-api barrel - the assembly IS
+         the barrel - so there is no csharp equivalent of generate-public-api.sh.
+
+         $(OndewoProtosDir) is exported by compile-proto-2-csharp.sh and holds the REAL proto
+         root passed as $1 (e.g. "ondewo-nlu-api"), not the literal "protos" default; the
+         condition keeps the glob from degenerating to "/**" when the property is unset. It only
+         keeps a stray .cs sitting beside the .proto files out of the assembly. -->
+    <Compile Remove="$(OndewoProtosDir)/**" Condition="'$(OndewoProtosDir)' != ''" />
+    <!-- lib/ is this target's own assembly directory. compile-stubs-2-lib.sh empties it before
+         restore, but when the output volume is nested in the input volume (the example mounts
+         <dir> and <dir>/lib) a previous run's lib/ is copied into the compile directory, and the
+         SDK's default Compile glob excludes only bin/ and obj/ - so every generated type would be
+         compiled twice (CS0101). Belt and braces for a client-supplied .csproj built on this one. -->
+    <Compile Remove="lib/**" />
+    <None Include="README.md" Pack="true" PackagePath="/" Condition="Exists('README.md')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="$(GoogleProtobufVersion)" />
+    <PackageReference Include="Grpc.Core.Api" Version="$(GrpcDotnetVersion)" />
+    <PackageReference Include="Grpc.Net.Client" Version="$(GrpcDotnetVersion)" />
+    <!-- Supplies the compiled descriptors for the google/api, google/rpc and google/type imports
+         the ONDEWO protos use, so those protos are never code-generated and the csharp target
+         needs no proto-deps.txt machinery. -->
+    <PackageReference Include="Google.Api.CommonProtos" Version="$(GoogleApiCommonProtosVersion)" />
+  </ItemGroup>
+
+</Project>

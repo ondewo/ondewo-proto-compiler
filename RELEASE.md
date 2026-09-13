@@ -2,6 +2,20 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.15.0
+
+### New Features
+
+* Six new language targets - **php**, **go**, **rust**, **cpp**, **java** and **csharp** - each built to the same shape as the existing five: a `Dockerfile` pinning its toolchain through `ARG` lines, a `build.sh`, a `<lang>/Makefile` with `build` / `run`, an `example/` tree with a service-bearing `test.proto` and an imported `dependency/myimport.proto`, and an `image-data/` pipeline of `compile-proto-2-<lang>.sh` → `compile-proto-2-stubs.sh` → `compile-stubs-2-lib.sh`. Every target copies `/input-volume` into an internal temp directory and compiles there, so the mounted input is never mutated, writes only to `/output-volume`, wipes its own generated output there before copying so a renamed or deleted proto leaves no orphan behind, and honours the `IMAGE_DATA_DIRECTORY` / `INPUT_VOLUME_FS` / `OUTPUT_VOLUME_FS` / `TEMP_SRC_DIRECTORY` overrides that let the bats suite drive the whole pipeline on the host without Docker. php generates with protoc's built-in `--php_out` plus `grpc_php_plugin` and packages with composer; go with `protoc-gen-go` + `protoc-gen-go-grpc` and `go build`; rust with `protoc-gen-prost` + `protoc-gen-tonic` + `protoc-gen-prost-crate` and `cargo build`; cpp with `--cpp_out` plus `grpc_cpp_plugin` and a CMake library target; java with `--java_out` plus `protoc-gen-grpc-java` and `mvn package`; csharp with `--csharp_out` plus `grpc_csharp_plugin` and `dotnet build`. Each image pre-warms its dependency cache at build time and runs its package build in the toolchain's offline mode (`GOPROXY=off`, `COMPOSER_DISABLE_NETWORK`, `mvn -o`, `--no-restore`, a vendored cargo registry), so generation needs no network once the image exists and a cache miss fails loudly instead of silently reaching out.
+* Windows batch wrappers for **every** target. `build.bat` sits beside each `build.sh` and `example/run-compile.bat` beside each `example/run-compile.sh`, with `build-all.bat` alongside `build-all.sh`. Each resolves its own directory from `%~dp0` rather than the caller's working directory and checks `errorlevel` after the docker invocation, so a failed build propagates instead of being masked by a trailing success message - the same silent-failure class that was fixed on the `sh` side.
+
+### Improvements
+
+* The release automation now propagates versions for all eleven targets. `release_version_update_in_dockerfiles` is driven by two Makefile lists - `DOCKERFILES` and `DOCKERFILE_ARGS` - instead of a hand-maintained `perl` line per `ARG`, so a new pin is wired up by adding one `NAME=VALUE` pair, and a Dockerfile listed but missing now fails loudly rather than letting `perl` warn and `git add` error out. A new `release_version_update_in_manifests` target covers the two manifests no `ARG` rewrite can reach: the rust crate's `[package] version` and the go module template's `grpc` / `protobuf` / `genproto` pins and `go` directive. The php, java and csharp manifests need nothing extra - they carry `@PLACEHOLDER@` tokens resolved from their Dockerfile `ARG`s at image-build time.
+* `release_update_proto_compiler_dependency` fans out to the six new languages as well, and `update_proto_compiler_dependency.sh` no longer aborts on a client repo that has no node toolchain: the `Dockerfile.utils` `ENV NODE_VERSION` rewrite and the `package.json` dependency merge now key off a single `IS_NODE_FAMILY` definition instead of two separate language lists that could drift apart.
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.14.0
 
 ### Bug Fixes

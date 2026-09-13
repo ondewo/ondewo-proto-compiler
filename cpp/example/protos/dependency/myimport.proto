@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// C++ needs no language-specific file option: protoc derives the namespace from the proto
+// package, so `package dependency;` generates everything under `namespace dependency`.
+package dependency;
+
+message MyImport {
+    string name = 1;
+}
+
+service MyImportService {
+    rpc SendImport (MyImport) returns (MyImport);
+}

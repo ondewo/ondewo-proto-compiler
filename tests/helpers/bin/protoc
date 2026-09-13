@@ -16,6 +16,47 @@ if [ "$has_proto" -eq 0 ]; then
   exit 1
 fi
 
+# -------------- Pre-pass over the WHOLE argv, before anything is written.
+#
+# --grpc_out is spelled identically by three targets that mean three different
+# plugins: php (grpc_php_plugin -> <Service>Client.php), cpp (grpc_cpp_plugin ->
+# .grpc.pb.h/.grpc.pb.cc) and csharp (grpc_csharp_plugin -> <Name>Grpc.cs). Real
+# protoc tells them apart by the --plugin=protoc-gen-grpc=<binary> it is handed;
+# resolving that here would mean exec'ing a plugin the host does not have, so the
+# companion language _out flag in the SAME invocation is used instead - it is
+# unambiguous (no target passes two of them) and stable (each target's single
+# protoc call is the unit of disambiguation). With no companion flag the branch
+# falls back to the historical default output, so any pre-existing caller keeps
+# byte-identical behaviour.
+grpc_flavour=""
+# protoc-gen-prost-crate writes its include file and its Cargo.toml from
+# --prost-crate_opt values that appear AFTER --prost-crate_out in the argv, so
+# they have to be collected before the per-flag pass below runs.
+prost_crate_include="src/api/mod.rs"
+prost_crate_manifest=""
+for a in "$@"; do
+  case "$a" in
+    --php_out=*)    grpc_flavour="php" ;;
+    --cpp_out=*)    grpc_flavour="cpp" ;;
+    --csharp_out=*) grpc_flavour="csharp" ;;
+    --prost-crate_opt=*)
+      # comma-separated plugin options; peeled one at a time so "$@" stays intact
+      opts="${a#--prost-crate_opt=}"
+      while [ -n "$opts" ]; do
+        opt="${opts%%,*}"
+        case "$opts" in
+          *,*) opts="${opts#*,}" ;;
+          *)   opts="" ;;
+        esac
+        case "$opt" in
+          include_file=*) prost_crate_include="${opt#include_file=}" ;;
+          gen_crate=*)    prost_crate_manifest="${opt#gen_crate=}" ;;
+        esac
+      done
+      ;;
+  esac
+done
+
 for a in "$@"; do
   case "$a" in
     --descriptor_set_out=*)
@@ -33,6 +74,47 @@ for a in "$@"; do
         --ng_out=*)       : > "$dir/mock_pb.ts" ;;
         --ts_out=*)       : > "$dir/mock_pb.d.ts" ;;
         --grpc-web_out=*) : > "$dir/mock_grpc_web_pb.js"; : > "$dir/mock_grpc_web_pb.d.ts" ;;
+        # php: messages/enums plus the GPBMetadata descriptor bootstrap, laid out by
+        # PHP namespace. src/Google/Protobuf is deliberately never written - the
+        # well-known types ship inside the google/protobuf composer package.
+        --php_out=*)      mkdir -p "$dir/GPBMetadata/Mock" "$dir/Mock"; : > "$dir/GPBMetadata/Mock/Test.php"; : > "$dir/Mock/TestMessage.php" ;;
+        # go: protoc-gen-go / protoc-gen-go-grpc. The real pair mirrors the .proto
+        # tree (paths=source_relative); the mock writes flat names - assert on the
+        # suffixes and on the -opt mappings in the log, not on a mirrored tree.
+        --go_out=*)       : > "$dir/mock.pb.go" ;;
+        --go-grpc_out=*)  : > "$dir/mock_grpc.pb.go" ;;
+        # rust: one <proto.package>.rs per package from protoc-gen-prost, and the
+        # tonic services appended per package by protoc-gen-tonic.
+        --prost_out=*)    : > "$dir/mock.package.rs" ;;
+        --tonic_out=*)    : > "$dir/mock.package.tonic.rs" ;;
+        --prost-crate_out=*)
+          # protoc-gen-prost-crate emits the crate manifest (copied from the
+          # gen_crate= template, so the real dependency table reaches the build)
+          # plus the module include file named by include_file=.
+          mkdir -p "$dir/$(dirname "$prost_crate_include")"
+          : > "$dir/$prost_crate_include"
+          if [ -n "$prost_crate_manifest" ] && [ -f "$prost_crate_manifest" ]; then
+            cp "$prost_crate_manifest" "$dir/Cargo.toml"
+          else
+            : > "$dir/Cargo.toml"
+          fi
+          ;;
+        --cpp_out=*)      : > "$dir/mock.pb.h"; : > "$dir/mock.pb.cc" ;;
+        # java: nested in the java_package directories, because the java target
+        # sweeps stale stubs per LEAF package directory - flat output at the source
+        # root would skip that sweep entirely and hide the behaviour under test.
+        --java_out=*)      mkdir -p "$dir/com/ondewo/mock"; : > "$dir/com/ondewo/mock/Test.java"; : > "$dir/com/ondewo/mock/TestOrBuilder.java" ;;
+        --grpc-java_out=*) mkdir -p "$dir/com/ondewo/mock"; : > "$dir/com/ondewo/mock/TestGrpc.java" ;;
+        # csharp: nested by C# namespace (that is what base_namespace= does)
+        --csharp_out=*)    mkdir -p "$dir/Ondewo/Mock"; : > "$dir/Ondewo/Mock/Test.cs" ;;
+        --grpc_out=*)
+          case "$grpc_flavour" in
+            php)    mkdir -p "$dir/Mock"; : > "$dir/Mock/TestServiceClient.php" ;;
+            cpp)    : > "$dir/mock.grpc.pb.h"; : > "$dir/mock.grpc.pb.cc" ;;
+            csharp) mkdir -p "$dir/Ondewo/Mock"; : > "$dir/Ondewo/Mock/TestGrpc.cs" ;;
+            *)      : > "$dir/mock_pb.js" ;;
+          esac
+          ;;
         *)                : > "$dir/mock_pb.js" ;;
       esac
       ;;

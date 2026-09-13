@@ -265,6 +265,42 @@ To confirm a compiler change generates valid client stubs **without dirtying any
   in a `RUN` is safe; declared `ARG`/`ENV` values are injected as env vars into the `RUN` shell.
 - Generation needs **no network** once the image is built (node deps are `npm install`-ed at image-build time).
 
+## The six compiled-language targets (5.15.0+)
+
+`php`, `go`, `rust`, `cpp`, `java`, `csharp` were added in 5.15.0 with the same shape as `typescript`/`nodejs`
+(`Dockerfile` + `build.sh` + `build.bat` + `<lang>/Makefile` + `example/` + `image-data/` with
+`compile-proto-2-<lang>.sh` → `compile-proto-2-stubs.sh` → `compile-stubs-2-lib.sh`). What differs from the
+node targets, and what to watch out for:
+
+- **They really build the package**, not just the stubs: `composer install` / `go build ./...` / `cargo build`
+  / `cmake --build` / `mvn package` / `dotnet build`. That build runs **offline** - each image pre-warms its
+  dependency cache at build time and the run-time build is pinned to the toolchain's offline mode
+  (`GOPROXY=off`, `COMPOSER_DISABLE_NETWORK=1`, `mvn -o`, `--no-restore`, a vendored cargo registry). A cache
+  miss is therefore a loud failure, which is the point - never "fix" it by re-enabling the network.
+- **The entrypoint arg lists are NOT uniform.** `php`, `rust`, `java` take `<protos_dir> [<target_subdir>]`
+  like the node targets, but `go` additionally needs the **module path**, `cpp` the **CMake target name**, and
+  `csharp` the **NuGet package id** as a third argument - the generated package cannot be named without them.
+  Check `<lang>/example/run-compile.sh` for the authoritative contract before wiring a client.
+- **Manifest version propagation is split.** `php`/`java`/`csharp` manifests carry `@PLACEHOLDER@` tokens
+  resolved from Dockerfile `ARG`s at image-build time, so the `DOCKERFILE_ARGS` rewrite covers them. The rust
+  `Cargo.toml` and the go `go.mod.template` carry literal versions instead and are handled by the separate
+  `release_version_update_in_manifests` target. Adding a pin to one of the former needs only a new
+  `NAME=VALUE` pair in `DOCKERFILE_ARGS`; adding one to the latter needs a new `perl` rule.
+- **`go.mod.template`, not `go.mod`** - a literal `go.mod` in the repo tree would be picked up by the host's
+  Go tooling as a second, broken module. Same reasoning behind `prewarm-Cargo.toml` on the rust side.
+- **`cpp` deliberately does not use `PROTOC_VERSION`.** It links against Debian's prebuilt
+  `protobuf-compiler-grpc` pair (`PROTOBUF_VERSION`/`GRPC_VERSION`), because protobuf C++ has no
+  cross-version gencode/runtime tolerance. `release_version_update_in_dockerfiles` is a deliberate no-op for
+  `PROTOC_VERSION` on `cpp/Dockerfile`.
+- **`--grpc_out` is ambiguous across targets**: php drives `grpc_php_plugin` with it (emits `.php`) and cpp
+  drives `grpc_cpp_plugin` with it (emits `.grpc.pb.h`/`.grpc.pb.cc`). The bats `protoc` mock disambiguates on
+  the sibling `--php_out`/`--cpp_out` flag in the same argv - keep that branch intact.
+- **Windows wrappers exist for all eleven targets**: `build.bat` beside every `build.sh`,
+  `example/run-compile.bat` beside every `example/run-compile.sh`, plus `build-all.bat`. They resolve their
+  own directory from `%~dp0` and must check `if errorlevel 1` after the docker call - a wrapper that swallows
+  a failed build is the silent-failure bug `orch-1`/`orch-2` fixed on the `sh` side. `tests/windows_wrappers.bats`
+  guards this statically, since `.bat` cannot be executed on the CI runners.
+
 ## Git Commits
 
 - **Never include Claude as author or co-author** in commit messages, PR descriptions, or any other text. Do not add
