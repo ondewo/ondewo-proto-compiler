@@ -43,7 +43,11 @@ scrub_toolchain_env() {
 
 # Create an isolated sandbox dir and put the mock bins first on PATH.
 common_setup() {
-  SANDBOX="$(mktemp -d "${BATS_TEST_TMPDIR:-/tmp}/otc.XXXXXX")"
+  # `pwd -P` resolves the sandbox to its PHYSICAL path. On macOS mktemp hands back
+  # /var/folders/..., which is a symlink to /private/var/folders/..., and a Makefile's
+  # $(shell pwd) reports the resolved form - so an assertion comparing a docker mount
+  # against $SANDBOX fails there while passing on Linux, where the two are identical.
+  SANDBOX="$(cd "$(mktemp -d "${BATS_TEST_TMPDIR:-/tmp}/otc.XXXXXX")" && pwd -P)"
   PATH="$MOCK_BIN:$PATH"
   scrub_toolchain_env
   export PATH SANDBOX REPO_ROOT TESTS_DIR FIXTURES
