@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+// Every proto compiled by the rust target MUST declare a package: prost derives the crate
+// module path from it, and protoc-gen-prost-crate panics on the 0-part root module.
+// No language-specific `option` is needed - prost/tonic take the module path from `package`.
+package library;
+
+import "dependency/myimport.proto";
+
+message Test {
+    string name = 1;
+    dependency.MyImport my_import = 2;
+}
+
+service SimpleService {
+    rpc SendTest (Test) returns (Test);
+}

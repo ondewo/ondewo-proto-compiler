@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package test;
+
+// The go import path of the generated package is NOT declared here: the compiler passes an
+// `M<proto>=<import path>;<package name>` flag per file to both go plugins, built from the go
+// module path handed to the image. That mechanism has to exist anyway (most ONDEWO protos carry
+// no `option go_package`, and the ones forked from Dialogflow carry a wrong one), and the M
+// flags take precedence over a `go_package` option in the source - so declaring one here would
+// only be misleading.
+import "dependency/myimport.proto";
+
+message Test {
+    string name = 1;
+    dependency.MyImport my_import = 2;
+}
+
+service SimpleService {
+    rpc SendTest (Test) returns (Test);
+}

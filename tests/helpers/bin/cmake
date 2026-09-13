@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+# Mock cmake (cpp target: compile-stubs-2-lib.sh calls it three times - configure,
+# --build, --install). Logs argv, honours failure injection, and models the one
+# piece of real cmake behaviour the pipeline depends on: the configure step
+# persists -S / -B / -D... in a CMakeCache.txt, and `--install` (which is handed
+# nothing but the build directory) reads the install prefix and the library name
+# back out of that cache and materialises the install tree the orchestrator
+# copies to the output volume.
+#
+#   CMAKE_MOCK_LOG   -> argv log (default /dev/null)
+#   CMAKE_FAIL_MATCH -> if any argument contains this substring, exit CMAKE_FAIL_RC
+#   CMAKE_FAIL_RC    -> exit code for the injected failure (default 1)
+#
+# Install tree produced (mirrors cpp/image-data/default-lib-files/CMakeLists.txt):
+#   <prefix>/include/<name>/public-api.h + one flattened *.pb.h per generated header
+#   <prefix>/lib/lib<name>.a
+#   <prefix>/lib/cmake/<name>/<name>-config.cmake (+ -config-version/-targets/-targets-release)
+: "${CMAKE_MOCK_LOG:=/dev/null}"
+printf 'cmake %s\n' "$*" >> "$CMAKE_MOCK_LOG"
+
+if [ -n "${CMAKE_FAIL_MATCH:-}" ]; then
+  for a in "$@"; do
+    case "$a" in
+      *"$CMAKE_FAIL_MATCH"*)
+        echo "mock cmake: FAIL on '$a'" >&2
+        exit "${CMAKE_FAIL_RC:-1}"
+        ;;
+    esac
+  done
+fi
+
+mode="configure"
+src_dir=""
+build_dir=""
+prefix_override=""
+defines=""
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --build)   mode="build";   build_dir="${2:-}"; shift 2 || shift ;;
+    --install) mode="install"; build_dir="${2:-}"; shift 2 || shift ;;
+    --prefix)  prefix_override="${2:-}"; shift 2 || shift ;;
+    --parallel) shift 2 || shift ;;
+    -S)  src_dir="${2:-}";   shift 2 || shift ;;
+    -S*) src_dir="${1#-S}";   shift ;;
+    -B)  build_dir="${2:-}"; shift 2 || shift ;;
+    -B*) build_dir="${1#-B}"; shift ;;
+    -D*) defines="$defines
+${1#-D}"; shift ;;
+    *)   [ -n "$src_dir" ] || src_dir="$1"; shift ;;
+  esac
+done
+
+# value of a "KEY:TYPE=VALUE" entry of the persisted cache
+cache_get() {
+  [ -f "$build_dir/CMakeCache.txt" ] || return 0
+  sed -n "s|^$1:[^=]*=\(.*\)$|\1|p" "$build_dir/CMakeCache.txt" | head -1
+}
+
+if [ -z "$build_dir" ]; then
+  echo "mock cmake: no build directory given" >&2
+  exit 1
+fi
+
+case "$mode" in
+  configure)
+    if [ ! -f "$src_dir/CMakeLists.txt" ]; then
+      echo "CMake Error: The source directory \"$src_dir\" does not appear to contain CMakeLists.txt." >&2
+      exit 1
+    fi
+    mkdir -p "$build_dir"
+    {
+      printf 'CMAKE_HOME_DIRECTORY:INTERNAL=%s\n' "$src_dir"
+      printf '%s\n' "$defines" | while IFS= read -r def; do
+        [ -n "$def" ] || continue
+        printf '%s:STRING=%s\n' "${def%%=*}" "${def#*=}"
+      done
+    } > "$build_dir/CMakeCache.txt"
+    echo "-- Configuring done (mock)"
+    ;;
+
+  build)
+    if [ ! -f "$build_dir/CMakeCache.txt" ]; then
+      echo "CMake Error: The build directory \"$build_dir\" was not configured." >&2
+      exit 1
+    fi
+    lib_name="$(cache_get ONDEWO_LIBRARY_NAME)"
+    [ -n "$lib_name" ] || lib_name="ondewo_grpc_client"
+    : > "$build_dir/lib$lib_name.a"
+    echo "-- Building done (mock)"
+    ;;
+
+  install)
+    if [ ! -f "$build_dir/CMakeCache.txt" ]; then
+      echo "CMake Error: The build directory \"$build_dir\" was not configured." >&2
+      exit 1
+    fi
+    prefix="$prefix_override"
+    [ -n "$prefix" ] || prefix="$(cache_get CMAKE_INSTALL_PREFIX)"
+    if [ -z "$prefix" ]; then
+      echo "mock cmake: no CMAKE_INSTALL_PREFIX in '$build_dir/CMakeCache.txt'" >&2
+      exit 1
+    fi
+    lib_name="$(cache_get ONDEWO_LIBRARY_NAME)"
+    [ -n "$lib_name" ] || lib_name="ondewo_grpc_client"
+    lib_version="$(cache_get ONDEWO_LIBRARY_VERSION)"
+    [ -n "$lib_version" ] || lib_version="0.0.0"
+    src_dir="$(cache_get CMAKE_HOME_DIRECTORY)"
+
+    mkdir -p "$prefix/include/$lib_name" "$prefix/lib/cmake/$lib_name"
+
+    # the public headers: the umbrella header plus every generated *.pb.h
+    if [ -n "$src_dir" ] && [ -f "$src_dir/public-api.h" ]; then
+      cp "$src_dir/public-api.h" "$prefix/include/$lib_name/public-api.h"
+    else
+      : > "$prefix/include/$lib_name/public-api.h"
+    fi
+    if [ -n "$src_dir" ] && [ -d "$src_dir/api" ]; then
+      find "$src_dir/api" -type f -name "*.pb.h" -exec cp {} "$prefix/include/$lib_name" \;
+    fi
+
+    # the static archive built above
+    if [ -f "$build_dir/lib$lib_name.a" ]; then
+      cp "$build_dir/lib$lib_name.a" "$prefix/lib/lib$lib_name.a"
+    else
+      : > "$prefix/lib/lib$lib_name.a"
+    fi
+
+    # the consumable CMake package
+    printf 'include("${CMAKE_CURRENT_LIST_DIR}/%s-targets.cmake")\n' "$lib_name" \
+      > "$prefix/lib/cmake/$lib_name/$lib_name-config.cmake"
+    printf 'set(PACKAGE_VERSION "%s")\n' "$lib_version" \
+      > "$prefix/lib/cmake/$lib_name/$lib_name-config-version.cmake"
+    printf 'add_library(ondewo::%s STATIC IMPORTED)\n' "$lib_name" \
+      > "$prefix/lib/cmake/$lib_name/$lib_name-targets.cmake"
+    printf '# mock release target properties for %s\n' "$lib_name" \
+      > "$prefix/lib/cmake/$lib_name/$lib_name-targets-release.cmake"
+    echo "-- Install configuration: mock -> $prefix"
+    ;;
+esac
+exit 0

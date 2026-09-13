@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# Mock dotnet (csharp target: restore / build / pack in compile-stubs-2-lib.sh).
+# Logs argv, honours failure injection, and materialises what the script then
+# collects: bin/Release/<tfm>/ (it aborts when that directory is missing) and the
+# .nupkg/.snupkg pair in the -o directory.
+#
+#   DOTNET_MOCK_LOG   -> argv log (default /dev/null)
+#   DOTNET_FAIL_MATCH -> if any argument contains this substring, exit DOTNET_FAIL_RC
+#   DOTNET_FAIL_RC    -> exit code for the injected failure (default 1)
+#
+# The .csproj template carries no literal TargetFramework/Version - both are
+# MSBuild properties the image supplies as environment variables - so the mock
+# resolves them the same way: $OndewoTargetFramework / $OndewoPackageVersion
+# first, a literal in the project file second, a plain default last.
+: "${DOTNET_MOCK_LOG:=/dev/null}"
+printf 'dotnet %s\n' "$*" >> "$DOTNET_MOCK_LOG"
+
+if [ -n "${DOTNET_FAIL_MATCH:-}" ]; then
+  for a in "$@"; do
+    case "$a" in
+      *"$DOTNET_FAIL_MATCH"*)
+        echo "mock dotnet: FAIL on '$a'" >&2
+        exit "${DOTNET_FAIL_RC:-1}"
+        ;;
+    esac
+  done
+fi
+
+verb="${1:-}"
+[ "$#" -gt 0 ] && shift
+
+# the project file is the first non-flag argument of the verb; -o names the
+# output directory of `dotnet pack`
+project=""
+out_dir=""
+want_out=0
+for a in "$@"; do
+  if [ "$want_out" -eq 1 ]; then
+    out_dir="$a"
+    want_out=0
+    continue
+  fi
+  case "$a" in
+    -o|--output) want_out=1 ;;
+    -*) ;;
+    *) [ -n "$project" ] || project="$a" ;;
+  esac
+done
+
+case "$verb" in
+  restore|build|pack|publish|test) ;;
+  *) exit 0 ;;
+esac
+
+[ -n "$project" ] || project="$(find . -maxdepth 1 -name "*.csproj" | head -1)"
+if [ -z "$project" ] || [ ! -f "$project" ]; then
+  echo "MSBUILD : error MSB1003: Specify a project or solution file. (mock dotnet)" >&2
+  exit 1
+fi
+
+project_dir="$(dirname "$project")"
+package_id="$(basename "$project" .csproj)"
+
+# a literal <Tag>value</Tag> in the project file; the grep drops the
+# "<Tag>$(Property)</Tag>" indirection the shipped template uses
+csproj_field() {
+  sed -n "s|.*<$1>\([^<]*\)</$1>.*|\1|p" "$project" | grep -v '[$](' | head -1
+}
+
+tfm="${OndewoTargetFramework:-}"
+[ -n "$tfm" ] || tfm="$(csproj_field TargetFramework)"
+[ -n "$tfm" ] || tfm="net8.0"
+
+version="${OndewoPackageVersion:-}"
+[ -n "$version" ] || version="$(csproj_field Version)"
+[ -n "$version" ] || version="1.0.0"
+
+case "$verb" in
+  restore)
+    mkdir -p "$project_dir/obj"
+    printf '{"version":3,"targets":{}}\n' > "$project_dir/obj/project.assets.json"
+    ;;
+  build|publish)
+    mkdir -p "$project_dir/obj" "$project_dir/bin/Release/$tfm"
+    : > "$project_dir/bin/Release/$tfm/$package_id.dll"
+    : > "$project_dir/bin/Release/$tfm/$package_id.pdb"
+    : > "$project_dir/bin/Release/$tfm/$package_id.xml"
+    ;;
+  pack)
+    [ -n "$out_dir" ] || out_dir="$project_dir/bin/Release"
+    mkdir -p "$out_dir"
+    : > "$out_dir/$package_id.$version.nupkg"
+    : > "$out_dir/$package_id.$version.snupkg"
+    ;;
+esac
+echo "mock dotnet $verb: $package_id ($tfm) -> OK"
+exit 0

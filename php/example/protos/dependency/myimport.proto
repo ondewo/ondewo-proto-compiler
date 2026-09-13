@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dependency;
+
+// PHP namespace of the generated messages/enums and of the service stub.
+// The descriptor bootstrap namespace is deliberately left at its default
+// (GPBMetadata\<PascalCasedPath>), so every generated descriptor lands under src/GPBMetadata/.
+option php_namespace = "Ondewo\\Example\\Dependency";
+
+message MyImport {
+    string name = 1;
+}
+
+service MyImportService {
+    rpc SendImport (MyImport) returns (MyImport);
+}

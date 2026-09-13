@@ -6,7 +6,7 @@ echo "##########################################################"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-for lang in python angular js nodejs typescript; do
+for lang in python angular js nodejs typescript php go rust cpp java csharp; do
   echo ""
   echo ">>> Building ${lang} ..."
   cd "${SCRIPT_DIR}/${lang}" || { echo "❌ missing dir ${lang}" >&2; exit 1; }

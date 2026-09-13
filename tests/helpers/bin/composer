@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Mock composer (php target: compile-stubs-2-lib.sh + the auth/ re-dump in
+# compile-proto-2-php.sh). Logs argv, honours failure injection, and materialises
+# the vendor tree the php pipeline then inspects.
+#
+#   COMPOSER_MOCK_LOG   -> argv log (default /dev/null)
+#   COMPOSER_FAIL_MATCH -> if any argument contains this substring, exit COMPOSER_FAIL_RC
+#   COMPOSER_FAIL_RC    -> exit code for the injected failure (default 1)
+#
+# Subcommands modelled:
+#   validate       - fails when there is no composer.json in the CWD, like the real one
+#   update         - writes composer.lock and installs vendor/ (+ the autoloader)
+#   dump-autoload  - (re)writes vendor/composer/autoload_classmap.php
+: "${COMPOSER_MOCK_LOG:=/dev/null}"
+printf 'composer %s\n' "$*" >> "$COMPOSER_MOCK_LOG"
+
+if [ -n "${COMPOSER_FAIL_MATCH:-}" ]; then
+  for a in "$@"; do
+    case "$a" in
+      *"$COMPOSER_FAIL_MATCH"*)
+        echo "mock composer: FAIL on '$a'" >&2
+        exit "${COMPOSER_FAIL_RC:-1}"
+        ;;
+    esac
+  done
+fi
+
+# first non-flag argument = the subcommand
+sub=""
+for a in "$@"; do
+  case "$a" in -*) ;; *) sub="$a"; break ;; esac
+done
+
+# Every subcommand below needs the manifest of the package it operates on.
+if [ ! -f composer.json ]; then
+  echo "mock composer: Composer could not find a composer.json file in $(pwd)" >&2
+  exit 1
+fi
+
+write_autoloader() {
+  mkdir -p vendor/composer
+  printf '<?php\n// mock composer autoloader\n' > vendor/autoload.php
+  printf '<?php\nreturn array();\n' > vendor/composer/autoload_classmap.php
+}
+
+case "$sub" in
+  update|install)
+    # the lock is what `composer update` resolves and writes; vendor/ is what it installs
+    printf '{"_readme":"mock composer.lock","packages":[]}\n' > composer.lock
+    mkdir -p vendor/composer
+    printf '{"packages":[]}\n' > vendor/composer/installed.json
+    write_autoloader
+    ;;
+  dump-autoload)
+    write_autoloader
+    ;;
+  *)
+    : # validate / anything else: log-only no-op
+    ;;
+esac
+exit 0

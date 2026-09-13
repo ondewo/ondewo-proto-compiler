@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package example;
+
+// Resolved against the protos root directory (protoc's -I), i.e. against example/protos/
+import "dependency/myimport.proto";
+
+// PHP namespace of the generated messages/enums and of the service stub.
+// The descriptor bootstrap namespace is deliberately left at its default
+// (GPBMetadata\<PascalCasedPath>), so every generated descriptor lands under src/GPBMetadata/.
+option php_namespace = "Ondewo\\Example";
+
+message Test {
+    string name = 1;
+    dependency.MyImport my_import = 2;
+}
+
+service SimpleService {
+    rpc SendTest (Test) returns (Test);
+}

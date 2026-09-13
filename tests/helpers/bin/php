@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Mock php (php target: the "do the generated stubs actually load?" heredoc at the
+# end of compile-stubs-2-lib.sh). Logs argv and, for the heredoc form, the script
+# it was fed, so a test can prove the load verification really ran.
+#
+#   PHP_MOCK_LOG       -> argv log (default /dev/null)
+#   PHP_MOCK_STDIN_LOG -> the script read from stdin (default /dev/null)
+#   PHP_FAIL_MATCH     -> if any argument contains this substring, exit PHP_FAIL_RC
+#   PHP_FAIL_RC        -> exit code for the injected failure (default 1)
+#   PHP_MOCK_RC        -> exit code of the stdin (heredoc) form, so a test can make
+#                         the stub-load verification fail (default 0)
+: "${PHP_MOCK_LOG:=/dev/null}"
+: "${PHP_MOCK_STDIN_LOG:=/dev/null}"
+printf 'php %s\n' "$*" >> "$PHP_MOCK_LOG"
+
+if [ -n "${PHP_FAIL_MATCH:-}" ]; then
+  for a in "$@"; do
+    case "$a" in
+      *"$PHP_FAIL_MATCH"*)
+        echo "mock php: FAIL on '$a'" >&2
+        exit "${PHP_FAIL_RC:-1}"
+        ;;
+    esac
+  done
+fi
+
+# The script under test invokes `php <<'PHP' ... PHP` - no arguments at all. Drain
+# that script (so the writing shell never takes a SIGPIPE) and record it. Guarded
+# on both "no arguments" and "stdin is not a terminal" so an interactive or
+# file-argument invocation can never block waiting for input.
+if [ "$#" -eq 0 ] && [ ! -t 0 ]; then
+  cat >> "$PHP_MOCK_STDIN_LOG"
+  exit "${PHP_MOCK_RC:-0}"
+fi
+exit 0
