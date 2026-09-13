@@ -35,7 +35,7 @@ ARG MAVEN_SOURCE_PLUGIN_VERSION=3.4.0
 # Bytecode floor of the published client SDK, independent of the JDK that builds it.
 ARG JAVA_RELEASE=11
 # Default <version> of the generated library when the caller passes no explicit version.
-ARG ONDEWO_PROTO_COMPILER_VERSION=5.14.0
+ARG ONDEWO_PROTO_COMPILER_VERSION=5.15.0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates parallel unzip tree wget \
