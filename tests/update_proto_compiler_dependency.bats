@@ -81,3 +81,38 @@ run_update() {
   # the bump never happened -> no captured target file
   [ ! -f "$CAPTURE_DIR/src/package.json" ]
 }
+
+@test "rel-4: the client's ONDEWO_PROTO_COMPILER_GIT_BRANCH is repinned to the new tag" {
+  # Moving only the submodule gitlink leaves the client's own pin naming the PREVIOUS
+  # release, and its update_submodules target then checks that older ref back out -
+  # silently undoing the bump. Both have to move together.
+  fixture="$SANDBOX/repo"
+  mkdir -p "$fixture/ondewo-proto-compiler"
+  printf 'ONDEWO_NLU_VERSION=7.1.0\nONDEWO_PROTO_COMPILER_GIT_BRANCH=tags/5.14.0\n' > "$fixture/Makefile"
+  printf 'ENV NODE_VERSION=20.0.0\n' > "$fixture/Dockerfile.utils"
+
+  REPO_FIXTURE="$fixture" CAPTURE_DIR="$SANDBOX/staged" \
+    run sh "$REPO_ROOT/update_proto_compiler_dependency.sh" 9.9.9 python 24.14.0 ondewo-nlu-client
+  echo "$output"
+  [ "$status" -eq 0 ]
+  run grep -Fxq "ONDEWO_PROTO_COMPILER_GIT_BRANCH=tags/9.9.9" "$SANDBOX/staged/Makefile"
+  [ "$status" -eq 0 ]
+  # the unrelated variable is untouched
+  run grep -Fxq "ONDEWO_NLU_VERSION=7.1.0" "$SANDBOX/staged/Makefile"
+  [ "$status" -eq 0 ]
+  # portable in-place edit leaves no backup behind
+  run bash -c "find '$SANDBOX' -name 'Makefile.bak' | grep -c ."
+  [ "$output" = "0" ]
+}
+
+@test "rel-4: a client Makefile without the pin is left alone, not corrupted" {
+  fixture="$SANDBOX/repo"
+  mkdir -p "$fixture/ondewo-proto-compiler"
+  printf 'ONDEWO_NLU_VERSION=7.1.0\n' > "$fixture/Makefile"
+  printf 'ENV NODE_VERSION=20.0.0\n' > "$fixture/Dockerfile.utils"
+
+  REPO_FIXTURE="$fixture" CAPTURE_DIR="$SANDBOX/staged" \
+    run sh "$REPO_ROOT/update_proto_compiler_dependency.sh" 9.9.9 python 24.14.0 ondewo-nlu-client
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"nothing to repin"* ]]
+}

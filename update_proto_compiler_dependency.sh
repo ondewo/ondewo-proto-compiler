@@ -173,6 +173,19 @@ else
   log "${YELLOW}[WARN]${NC} Programming language '$PROGRAMMING_LANGUAGE' does not require package.json update."
 fi
 
+# --- Point the client's own pin at the release too. Moving only the submodule gitlink leaves
+# ONDEWO_PROTO_COMPILER_GIT_BRANCH naming the PREVIOUS release, and the client's
+# update_submodules target then checks that older ref back out - silently undoing this bump.
+if [ -f "Makefile" ] && grep -q '^ONDEWO_PROTO_COMPILER_GIT_BRANCH=' Makefile; then
+  # -i.bak (not bare -i) keeps this working with both GNU and BSD/macOS sed
+  sed -i.bak "s|^ONDEWO_PROTO_COMPILER_GIT_BRANCH=.*|ONDEWO_PROTO_COMPILER_GIT_BRANCH=tags/${VERSION}|" Makefile
+  rm -f Makefile.bak
+  git add Makefile
+  log "${BLUE}[INFO]${NC} Set ONDEWO_PROTO_COMPILER_GIT_BRANCH to tags/${VERSION} in Makefile"
+else
+  log "${YELLOW}[SKIP]${NC} No ONDEWO_PROTO_COMPILER_GIT_BRANCH in Makefile - nothing to repin"
+fi
+
 log "${BLUE}[INFO]${NC} Diff of updated git repo ${REPO_DIR}:"
 git --no-pager diff .
 
