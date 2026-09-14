@@ -22,7 +22,7 @@ ARG GRPC_VERSION=1.51.1
 # ONDEWO_PROTO_COMPILER_VERSION; the cpp analogue of the other targets' image-data/package.json
 # "version". Stamped into the generated CMake package as project(VERSION ...) and
 # <name>-config-version.cmake. Kept in sync by the Makefile release targets.
-ARG LIB_VERSION=5.15.0
+ARG LIB_VERSION=5.15.1
 
 # --------------- Installing protoc, grpc_cpp_plugin and the C++ build toolchain
 # build-essential          -> g++ + make (the package build)

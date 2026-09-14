@@ -23,7 +23,7 @@ ARG PROTOC_VERSION=32.0
 ARG GOOGLE_PROTOBUF_PHP_VERSION=4.33.6
 ARG GRPC_PHP_VERSION=1.82.0
 # Default <version> of the generated library, bumped by the release targets.
-ARG ONDEWO_PROTO_COMPILER_VERSION=5.15.0
+ARG ONDEWO_PROTO_COMPILER_VERSION=5.15.1
 
 # --------------- Installing the OS toolchain
 # protobuf-compiler-grpc ships a PREBUILT /usr/bin/grpc_php_plugin (Debian trixie 1.51.1-6);

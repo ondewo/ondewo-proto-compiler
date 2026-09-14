@@ -16,7 +16,7 @@ ARG GRPC_DOTNET_VERSION=2.83.0
 ARG GOOGLE_API_COMMONPROTOS_VERSION=2.17.0
 ARG DOTNET_TARGET_FRAMEWORK=netstandard2.0
 ARG ONDEWO_PACKAGE_ID=Ondewo.Grpc.Client
-ARG ONDEWO_PROTO_COMPILER_VERSION=5.15.0
+ARG ONDEWO_PROTO_COMPILER_VERSION=5.15.1
 
 # MSBuild reads environment variables as properties. OndewoPackageId is what drives
 # AssemblyName / RootNamespace / PackageId / DocumentationFile - leaving it unset makes the
