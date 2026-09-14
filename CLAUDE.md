@@ -313,6 +313,19 @@ node targets, and what to watch out for:
   looks like `OND211-2418`. Writing the prefix manually produces a duplicate like `[OND211-2418] [OND211-2418] feat: …`.
   Write the subject as plain Conventional Commits (`feat: …`, `fix(scope): …`, `docs: …`) and let the hook add the
   prefix on commit.
+- **The commit-msg hook order is load-bearing.** `conventional-pre-commit` is declared **before** `giticket` in
+  `.pre-commit-config.yaml`, and pre-commit runs commit-msg hooks in declaration order over the same message file.
+  The validator anchors its regex at `^`, so it must judge your plain `feat: …` subject _before_ giticket prepends the
+  ticket. Declared the other way round, every commit on a ticket branch was rejected with
+  `[Bad commit message] >> [OND211-2418] feat: …` — measured on a throwaway repo with both hooks installed.
+  `tests/precommit_hooks.bats` pins the order; do not swap them.
+- **Re-validating an already-prefixed subject fails by design.** `git commit --amend --no-edit` on a commit whose
+  subject already carries `[OND211-2418]` is rejected, because a bracketed ticket prefix is not Conventional Commits
+  and the hook has no option to tolerate one (checked against `conventional_pre_commit/hook.py` — only `--types`,
+  `--scopes`, `--force-scope`, `--strict`, `--verbose`). Amend with `--no-verify`, or restore the plain subject and
+  let giticket re-add the prefix. Note giticket's own "already has a ticket" bail-out does not fire there either: its
+  idempotency check reuses the branch regex, whose tail demands a `-` or `_` right after the ticket, and the closing
+  bracket of an existing prefix is neither — which is also why a hand-written prefix duplicates rather than merges.
 
 ## General Principles
 
@@ -330,6 +343,8 @@ node targets, and what to watch out for:
 - **Codegen `docker run` must not use `-it`** — it breaks every non-interactive caller (`cannot attach stdin to a TTY-enabled container because stdin is not a terminal`). Drop `-it` from codegen invocations in the example scripts/docs; keep it only on `--entrypoint /bin/bash` debug commands.
 - **Version propagation is automatic.** The `release` / `ondewo_release` targets set `ONDEWO_PROTO_COMPILER_VERSION` into every `*/image-data/package.json` + Dockerfile `ARG` and commit that for you — you only bump the Makefile version and add a `RELEASE.md` entry (MINOR bump for a fix/improvement).
 - The token-bearing `docker run` in `release_to_github_via_docker_image` is correctly prefixed with `@` — do **not** regress that (it keeps `GITHUB_GH_TOKEN` out of the logs). Downstream client release Makefiles are _not_ as careful.
+- **`release` pre-flights before it pushes anything.** `check_release_credentials`, `check_release_notes` and `spc` are the first three prerequisites, because every later step is public and not cleanly undoable (three commits pushed to the current branch, then a pushed release branch, then a pushed tag). `login_to_gh` and `build_gh_release` repeat the two checks, since `push_to_gh` also runs them on its own inside the utils image where the host pre-flight has no reach.
+- **`CURRENT_RELEASE_NOTES` is a `perl` flip-flop range and both ends are anchored on purpose.** The terminator is `^\*{5}` (the `*****` separator); it used to be `\*\*`, which ends the range at the first **bold** span _inside_ the notes — the 5.15.0 section sliced down to 3 lines that way. The opener is `^## Release ONDEWO Proto Compiler \Q<version>\E$` so the dots are literal and a prefix version (`1.1.1` vs `1.1.10`) cannot open the range on the wrong, newer section. Run `make check_release_notes` before cutting a release.
 
 ## Release notes
 
@@ -339,7 +354,7 @@ node targets, and what to watch out for:
 
 ## Pre-commit upgraded (language-agnostic hook set)
 
-Pre-commit here uses only the language-agnostic hooks — **markdownlint-cli2, pre-commit-hooks hygiene, giticket, conventional-pre-commit** — no ruff/mypy/uv (there is no Python). Generated docs (`docs/`) and any generated code are excluded via the top-level `exclude:`.
+Pre-commit here uses only the language-agnostic hooks — **markdownlint-cli2, pre-commit-hooks hygiene, conventional-pre-commit, giticket** (that last pair in that order, see "Git Commits" above) — no ruff/mypy/uv (there is no Python). Generated docs (`docs/`) and any generated code are excluded via the top-level `exclude:`.
 
 - **markdownlint MD053 is disabled** (its auto-fix deletes `[comment]: <>` reference-definition markers).
 - **markdownlint RELEASE.md reformatting is content-safe**: it only strips trailing whitespace and adds blank lines around headings — the `## Release … <VERSION>` headings and `*****` separators that `ondewo_release` greps for remain intact. (Confirmed: the 6.5.0 release notes sliced correctly after the reformat.)

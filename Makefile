@@ -26,15 +26,19 @@ export
 # =====================================================================================
 
 # ---------------- BEFORE RELEASE ----------------
-# 1 - Update Version Number
-# 2 - Update RELEASE.md
-# 3 - make update_setup
-# -------------- Release Process Steps --------------
-# 1 - Get Credentials from devops-accounts repo
-# 2 - Create Release Branch and push
-# 3 - Create Release Tag and push
-# 4 - GitHub Release
-# 5 - PyPI Release
+# 1 - Bump ONDEWO_PROTO_COMPILER_VERSION below (MINOR for a fix/improvement)
+# 2 - Add the matching `## Release ONDEWO Proto Compiler <version>` section to RELEASE.md
+# 3 - make test               # shellcheck gate + bats suite
+# 4 - make check_release_notes  # confirm the GitHub release body will not be empty
+# -------------- Release Process Steps (the `release` prerequisite chain) --------------
+# 0 - Pre-flight: credentials present, release notes present, branch+tag still free
+#     (all three run BEFORE the first push - everything after this point is public)
+# 1 - Propagate the version into the Dockerfile ARGs, the package.json files and the
+#     rust/go manifests, committing and pushing each
+# 2 - Create the release branch and push
+# 3 - Create the release tag and push
+# 4 - GitHub Release (built and published from the utils docker image)
+# 5 - Bump the compiler dependency in every ONDEWO client repo
 
 ########################################################
 # 		Variables
@@ -166,8 +170,16 @@ CLIENT_REPOS = \
 GITHUB_GH_TOKEN?=ENTER_YOUR_TOKEN_HERE
 
 # Release notes for the current version, sliced out of RELEASE.md for the GitHub release body.
+# Both ends of the flip-flop range are anchored on purpose:
+#   start - `^## Release ... <version>$` with \Q..\E, so the dots in the version are literal and
+#           a version that is a prefix of a newer one (1.1.1 vs 1.1.10) cannot open the range on
+#           the wrong section, which - RELEASE.md being newest-first - would be the newer one.
+#   end   - `^\*{5}` matches the ***** separator between sections. The previous terminator was
+#           `\*\*`, which ends the range on the first **bold** span inside the notes instead:
+#           the 5.15.0 section sliced down to 3 lines because its first bullet says **php**.
+# Verify with `make check_release_notes` (a prerequisite of `release`) before cutting a release.
 CURRENT_RELEASE_NOTES=`cat RELEASE.md \
-	| perl -ne 'print if /Release ONDEWO Proto Compiler ${ONDEWO_PROTO_COMPILER_VERSION}/../\*\*/'`
+	| perl -ne 'print if /^\#\# Release ONDEWO Proto Compiler \Q${ONDEWO_PROTO_COMPILER_VERSION}\E$$/../^\*{5}/'`
 
 # GitHub repo, the devops-accounts credentials repo, and the utils image tag used by the release flow.
 GH_REPO="https://github.com/ondewo/ondewo-proto-compiler"
@@ -275,7 +287,37 @@ test: lint ## Run the shellcheck gate and the bats test suite (no Docker require
 ########################################################
 #		Release
 
-release: release_version_update_in_dockerfiles release_version_update_in_packages_json_files release_version_update_in_manifests create_release_branch create_release_tag build_and_release_to_github_via_docker release_update_proto_compiler_dependency ## Automate the entire release process
+# Pre-flight guards. Everything from `release_version_update_in_dockerfiles` onwards is
+# public and not cleanly undoable - three commits pushed to the current branch, then a
+# pushed release branch, then a pushed tag - so the three cheap, read-only checks below run
+# first. The GitHub token used to be validated only inside the utils image at step 4, i.e.
+# after the branch and the tag were already on origin, which left a half-finished release
+# behind whenever GITHUB_GH_TOKEN was unset. `spc` was likewise only wired into
+# `ondewo_release`, so a direct `make release` discovered an already-used version at
+# `git checkout -b` - again after three pushes to the current branch.
+check_release_credentials: ## Fail before any push if GITHUB_GH_TOKEN is missing or still the placeholder
+	@if [ -z "${GITHUB_GH_TOKEN}" ] || [ "${GITHUB_GH_TOKEN}" = "ENTER_YOUR_TOKEN_HERE" ]; then \
+		echo "$(RED)[ERROR]$(NC) GITHUB_GH_TOKEN is not set - create one at https://github.com/settings/tokens"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)[SUCCESS]$(NC) GITHUB_GH_TOKEN is set"
+
+# Guards the body of the GitHub release. CURRENT_RELEASE_NOTES slices RELEASE.md between the
+# version heading and the next ***** separator; with no section for the current version that
+# slice is empty and `gh release create -n ""` happily publishes a release with no notes at
+# all. Counting only the lines that are neither the heading nor the separator also catches a
+# heading that was added without any bullets under it.
+check_release_notes: ## Fail before any push if RELEASE.md carries no notes for the current version
+	@notes="${CURRENT_RELEASE_NOTES}"; \
+	body=`printf '%s\n' "$$notes" | grep -v '^## Release ONDEWO Proto Compiler' | grep -v '^\*\*\*\*\*' | grep -c '[^[:space:]]' || true`; \
+	if [ "$$body" -eq 0 ]; then \
+		echo "$(RED)[ERROR]$(NC) RELEASE.md has no notes under '## Release ONDEWO Proto Compiler ${ONDEWO_PROTO_COMPILER_VERSION}'"; \
+		echo "$(RED)[ERROR]$(NC) the GitHub release would be published with an empty body - add the section first"; \
+		exit 1; \
+	fi; \
+	echo "$(GREEN)[SUCCESS]$(NC) RELEASE.md carries $$body line(s) of notes for ${ONDEWO_PROTO_COMPILER_VERSION}"
+
+release: check_release_credentials check_release_notes spc release_version_update_in_dockerfiles release_version_update_in_packages_json_files release_version_update_in_manifests create_release_branch create_release_tag build_and_release_to_github_via_docker release_update_proto_compiler_dependency ## Automate the entire release process
 	@echo "Release Finished"
 
 release_version_update_in_packages_json_files: ## Set ONDEWO_PROTO_COMPILER_VERSION in every package.json, then commit and push
@@ -450,14 +492,13 @@ create_release_tag: ## Create Release Tag and push it to origin
 	git tag -a ${ONDEWO_PROTO_COMPILER_VERSION} -m "release/${ONDEWO_PROTO_COMPILER_VERSION}"
 	git push origin ${ONDEWO_PROTO_COMPILER_VERSION}
 
-login_to_gh: ## Login to Github CLI with Access Token
-	@if [ -z "${GITHUB_GH_TOKEN}" ] || [ "${GITHUB_GH_TOKEN}" = "ENTER_YOUR_TOKEN_HERE" ]; then \
-		echo "$(RED)[ERROR]$(NC) GITHUB_GH_TOKEN is not set - create one at https://github.com/settings/tokens"; \
-		exit 1; \
-	fi
+# Both guards are repeated here rather than only in `release`, because these two targets are
+# what actually log in and publish - they also run on their own inside the utils image (see
+# push_to_gh), where the host-side pre-flight has no reach.
+login_to_gh: check_release_credentials ## Login to Github CLI with Access Token
 	@echo "${GITHUB_GH_TOKEN}" | gh auth login -p ssh --with-token
 
-build_gh_release: ## Generate Github Release with CLI
+build_gh_release: check_release_notes ## Generate Github Release with CLI
 	gh release create --repo $(GH_REPO) "$(ONDEWO_PROTO_COMPILER_VERSION)" -n "$(CURRENT_RELEASE_NOTES)" -t "Release ${ONDEWO_PROTO_COMPILER_VERSION}"
 
 ########################################################

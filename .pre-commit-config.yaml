@@ -37,6 +37,17 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
 
+  # ORDER MATTERS - both of the hooks below run at the commit-msg stage, and pre-commit runs
+  # commit-msg hooks in declaration order on the SAME message file. conventional-pre-commit
+  # anchors its regex at ^, so it must judge the developer's message BEFORE giticket prepends
+  # the `[OND211-2418] ` ticket - with the two the other way round every commit on a ticket
+  # branch was rejected as "[Bad commit message] >> [OND211-2418] feat: ...". Do not swap them.
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [ commit-msg ]
+
   - repo: https://github.com/milin/giticket
     rev: '1.92'
     hooks:
@@ -44,9 +55,3 @@ repos:
         args: [ '--regex=(?:(?:feature|bugfix|support|hotfix)/)?(OND[0-9]{3}-[0-9]{1,5})[_-][\w-]+',
                 '--format=[{ticket}] {commit_msg}',
                 '--mode=regex_match' ]
-
-  - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v4.4.0
-    hooks:
-      - id: conventional-pre-commit
-        stages: [ commit-msg ]
