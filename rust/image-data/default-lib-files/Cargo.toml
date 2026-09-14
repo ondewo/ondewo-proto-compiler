@@ -2,7 +2,7 @@
 # Mount your own Cargo.toml in the input volume to publish under a client-specific name.
 [package]
 name = "ondewo-proto-stubs"
-version = "5.15.0"
+version = "5.15.1"
 edition = "2021"
 rust-version = "1.88"
 description = "gRPC client stubs generated from ONDEWO protocol buffer definitions"
