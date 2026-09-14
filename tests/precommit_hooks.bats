@@ -1,11 +1,14 @@
 #!/usr/bin/env bats
 # Static guard over .pre-commit-config.yaml's commit-msg stage.
 #
-# Two hooks run there - conventional-pre-commit (validates the subject) and giticket
-# (prepends "[OND211-2418] " read out of the branch name). pre-commit runs commit-msg
-# hooks in DECLARATION ORDER over the same message file, and conventional-pre-commit
-# anchors its regex at ^, so the validator has to see the developer's plain subject
-# before giticket rewrites it.
+# THREE hooks run there, in declaration order over the same message file:
+#   strip-ticket-prefix (local) -> conventional-pre-commit -> giticket
+# conventional-pre-commit anchors its regex at ^, so the validator has to see the
+# developer's PLAIN subject. giticket prepends "[OND211-2418] " read out of the branch
+# name, and the strip hook removes such a prefix left by an EARLIER run - without it an
+# amend/reword re-validates the decorated subject and is rejected, and giticket's own
+# idempotency guard never fires (its branch regex demands a - or _ after the ticket, and
+# the closing bracket of an existing prefix is neither), so the prefix would double.
 #
 # Measured on a throwaway repo (both hooks installed via `pre-commit install
 # --hook-type commit-msg`, branch feature/OND221-2830-something, subject
@@ -73,4 +76,48 @@ line_of() {
   [ "$status" -eq 0 ]
   run grep -Fq 'OND[0-9]{3}-[0-9]{1,5}' "$CFG"
   [ "$status" -eq 0 ]
+}
+
+@test "precommit-6: strip-ticket-prefix is declared FIRST of the three commit-msg hooks" {
+  # Order is load-bearing: the strip hook must normalise the message before
+  # conventional-pre-commit judges it, and before giticket decorates it again.
+  cfg="$REPO_ROOT/.pre-commit-config.yaml"
+  strip=$(grep -n 'id: strip-ticket-prefix' "$cfg" | cut -d: -f1)
+  conv=$(grep -n 'id: conventional-pre-commit' "$cfg" | cut -d: -f1)
+  tick=$(grep -n 'id: giticket' "$cfg" | cut -d: -f1)
+  [ -n "$strip" ] && [ -n "$conv" ] && [ -n "$tick" ]
+  [ "$strip" -lt "$conv" ]
+  [ "$conv" -lt "$tick" ]
+}
+
+@test "precommit-6: the strip hook exists, is executable and runs at commit-msg" {
+  [ -x "$REPO_ROOT/.hooks/strip-ticket-prefix.py" ]
+  run grep -A5 'id: strip-ticket-prefix' "$REPO_ROOT/.pre-commit-config.yaml"
+  [[ "$output" == *"stages: [ commit-msg ]"* ]]
+  [[ "$output" == *".hooks/strip-ticket-prefix.py"* ]]
+}
+
+@test "precommit-7: the strip hook removes exactly one ticket prefix and nothing else" {
+  msg="${BATS_TEST_TMPDIR}/msg.txt"
+  # a decorated subject is reduced to the developer's own
+  printf '[OND211-2418] feat: add a thing\n' > "$msg"
+  run python3 "$REPO_ROOT/.hooks/strip-ticket-prefix.py" "$msg"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$msg")" = "feat: add a thing" ]
+
+  # an undecorated subject is passed through untouched
+  printf 'feat: add a thing\n' > "$msg"
+  python3 "$REPO_ROOT/.hooks/strip-ticket-prefix.py" "$msg"
+  [ "$(cat "$msg")" = "feat: add a thing" ]
+
+  # only the LEADING prefix goes; a ticket mentioned in the body survives
+  printf 'feat: add a thing\n\nRelates to [OND211-2418] in the tracker.\n' > "$msg"
+  python3 "$REPO_ROOT/.hooks/strip-ticket-prefix.py" "$msg"
+  run grep -Fq 'Relates to [OND211-2418] in the tracker.' "$msg"
+  [ "$status" -eq 0 ]
+
+  # a doubled prefix loses exactly one, so the pipeline converges rather than oscillating
+  printf '[OND211-2418] [OND211-2418] feat: add a thing\n' > "$msg"
+  python3 "$REPO_ROOT/.hooks/strip-ticket-prefix.py" "$msg"
+  [ "$(cat "$msg")" = "[OND211-2418] feat: add a thing" ]
 }

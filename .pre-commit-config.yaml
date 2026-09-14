@@ -37,11 +37,22 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
 
-  # ORDER MATTERS - both of the hooks below run at the commit-msg stage, and pre-commit runs
-  # commit-msg hooks in declaration order on the SAME message file. conventional-pre-commit
-  # anchors its regex at ^, so it must judge the developer's message BEFORE giticket prepends
-  # the `[OND211-2418] ` ticket - with the two the other way round every commit on a ticket
-  # branch was rejected as "[Bad commit message] >> [OND211-2418] feat: ...". Do not swap them.
+  # ORDER MATTERS - all three hooks below run at the commit-msg stage, and pre-commit runs
+  # them in declaration order on the SAME message file.
+  #   1. strip-ticket-prefix removes a `[OND211-2418] ` that a PREVIOUS run added, so an
+  #      amend/reword validates the developer's own subject instead of the decorated one,
+  #      and so the ticket cannot be prepended twice.
+  #   2. conventional-pre-commit anchors at ^ and must judge that bare subject.
+  #   3. giticket then prepends the ticket read from the branch name.
+  # Swapping any of the three breaks commits on ticket branches - see .hooks/strip-ticket-prefix.py.
+  - repo: local
+    hooks:
+      - id: strip-ticket-prefix
+        name: strip a previously applied [TICKET] prefix
+        entry: .hooks/strip-ticket-prefix.py
+        language: python
+        stages: [ commit-msg ]
+
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v4.4.0
     hooks:

@@ -313,19 +313,20 @@ node targets, and what to watch out for:
   looks like `OND211-2418`. Writing the prefix manually produces a duplicate like `[OND211-2418] [OND211-2418] feat: …`.
   Write the subject as plain Conventional Commits (`feat: …`, `fix(scope): …`, `docs: …`) and let the hook add the
   prefix on commit.
-- **The commit-msg hook order is load-bearing.** `conventional-pre-commit` is declared **before** `giticket` in
-  `.pre-commit-config.yaml`, and pre-commit runs commit-msg hooks in declaration order over the same message file.
-  The validator anchors its regex at `^`, so it must judge your plain `feat: …` subject _before_ giticket prepends the
-  ticket. Declared the other way round, every commit on a ticket branch was rejected with
-  `[Bad commit message] >> [OND211-2418] feat: …` — measured on a throwaway repo with both hooks installed.
-  `tests/precommit_hooks.bats` pins the order; do not swap them.
-- **Re-validating an already-prefixed subject fails by design.** `git commit --amend --no-edit` on a commit whose
-  subject already carries `[OND211-2418]` is rejected, because a bracketed ticket prefix is not Conventional Commits
-  and the hook has no option to tolerate one (checked against `conventional_pre_commit/hook.py` — only `--types`,
-  `--scopes`, `--force-scope`, `--strict`, `--verbose`). Amend with `--no-verify`, or restore the plain subject and
-  let giticket re-add the prefix. Note giticket's own "already has a ticket" bail-out does not fire there either: its
-  idempotency check reuses the branch regex, whose tail demands a `-` or `_` right after the ticket, and the closing
-  bracket of an existing prefix is neither — which is also why a hand-written prefix duplicates rather than merges.
+- **The commit-msg hook order is load-bearing.** Three hooks run at that stage and pre-commit runs them in
+  declaration order over the same message file: `strip-ticket-prefix` (local), then `conventional-pre-commit`,
+  then `giticket`. The validator anchors its regex at `^`, so it must judge your plain `feat: …` subject; the
+  strip hook guarantees it sees one even when the message already carries a ticket. Declared with giticket
+  first, every commit on a ticket branch was rejected with `[Bad commit message] >> [OND211-2418] feat: …` —
+  measured on a throwaway repo with the hooks installed. `tests/precommit_hooks.bats` pins the order; do not
+  swap them.
+- **Amending is safe.** `.hooks/strip-ticket-prefix.py` removes a `[OND211-2418] ` that a previous run added,
+  so `git commit --amend`, `--no-edit`, a rebase reword and `-C HEAD` all re-validate your own subject and end
+  up with exactly one ticket prefix. Verified end to end against real git + pre-commit + giticket: a fresh
+  commit, two successive amends and a non-conventional message all behave (one prefix, one prefix, one prefix,
+  rejected). This also neutralises giticket's missing idempotency guard — its "already has a ticket" bail-out
+  reuses the branch regex, whose tail demands a `-` or `_` right after the ticket, and the closing bracket of
+  an existing prefix is neither, so without the strip hook it would double the prefix rather than skip.
 
 ## General Principles
 
