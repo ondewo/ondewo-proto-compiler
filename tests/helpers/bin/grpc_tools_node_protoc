@@ -14,7 +14,10 @@ if [ "$has_proto" -eq 0 ]; then
   exit 1
 fi
 
+# PROTOC_MOCK_NO_STUBS: honoured exactly like the protoc mock does - log the call, exit 0,
+# write nothing, so a target's "the generator produced no output" guard can be driven.
 for a in "$@"; do
+  [ -z "${PROTOC_MOCK_NO_STUBS:-}" ] || continue
   case "$a" in
     --*_out=*)
       dir="${a#*=}"

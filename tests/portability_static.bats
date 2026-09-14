@@ -1,19 +1,35 @@
 #!/usr/bin/env bats
-# Static guard against macOS/BSD-hostile constructs in the production shell
-# scripts. These patterns behave differently (or fail) on BSD/macOS userland;
-# some only surface at runtime on the macos-latest CI leg, so this cheap grep
-# gate catches regressions on the Linux leg too. Scope: tracked *.sh outside
-# tests/ (the PATH-mocks under tests/helpers/bin are Linux-only test doubles).
+# Static guard against macOS/BSD-hostile constructs in the repo's shell sources.
+# These patterns behave differently (or fail) on BSD/macOS userland; some only
+# surface at runtime on the macos-latest CI leg, so this cheap grep gate catches
+# regressions on the Linux leg too.
+#
+# Scope: every tracked shell source - the production *.sh, AND the bats suite
+# itself (*.bats, tests/helpers/setup.bash) AND the extension-less PATH-mocks
+# under tests/helpers/bin. The suite is not exempt: .github/workflows/ci.yml
+# runs `bats tests/` on a macos-latest runner, where the suite and its mocks
+# execute against the BSD userland exactly like a production script does, so a
+# GNU-ism in a test double breaks that leg just as hard. The one exclusion is
+# THIS file, which is the catalogue of the forbidden patterns - every rule below
+# would otherwise match its own definition.
 #
 # NOTE: like tests/shellcheck.bats, this file deliberately does NOT call
 # common_setup - it needs the REAL git on PATH, not the mock, whose `ls-files`
 # answers with silence and would turn every scan below into a vacuous pass.
-# There is a test at the bottom that fails if the discovery ever goes empty.
+# There are tests at the bottom that fail if the discovery ever goes empty.
 
 load 'helpers/setup'
 
 prod_scripts() {
   ( cd "$REPO_ROOT" && git ls-files '*.sh' | grep -v '^tests/' )
+}
+
+# Everything the rules below are enforced over: production scripts plus the
+# suite (see the scope note in the header), minus this file.
+scanned_scripts() {
+  ( cd "$REPO_ROOT" \
+      && git ls-files '*.sh' '*.bash' '*.bats' 'tests/helpers/bin/*' \
+      | grep -v '^tests/portability_static\.bats$' )
 }
 
 # Every language target directory: a top-level dir that ships a build.sh and a
@@ -27,12 +43,30 @@ lang_targets() {
   done | sort
 }
 
-# scan_for <extended-regex> : echo every "file:line:match" hit (ignoring comment lines)
+# scan_for <extended-regex> : echo every "file:line:match" hit.
+#
+# Comment lines are ignored, and so are `@test "..." {` title lines: the only
+# code on such a line is the braces, while the title routinely spells out the
+# very construct the guard forbids ("never with BSD-padded 'wc -l'").
 scan_for() {
   local re="$1" f
   cd "$REPO_ROOT" || return 1
-  for f in $(prod_scripts); do
-    grep -nE "$re" "$f" 2>/dev/null | grep -vE '^[[:space:]]*[0-9]+:[[:space:]]*#' | sed "s|^|$f:|"
+  for f in $(scanned_scripts); do
+    grep -nE "$re" "$f" 2>/dev/null | grep -vE '^[[:space:]]*[0-9]+:[[:space:]]*(#|@test )' | sed "s|^|$f:|"
+  done
+}
+
+# scan_for_without <extended-regex> <required-extended-regex> : like scan_for,
+# but a match only counts as a hit when the same line does NOT also match the
+# second regex. Used where portability is about what a line is MISSING (an
+# mktemp template) rather than about a token it contains.
+scan_for_without() {
+  local re="$1" required="$2" f
+  cd "$REPO_ROOT" || return 1
+  for f in $(scanned_scripts); do
+    grep -nE "$re" "$f" 2>/dev/null \
+      | grep -vE '^[[:space:]]*[0-9]+:[[:space:]]*(#|@test )' \
+      | grep -vE "$required" | sed "s|^|$f:|"
   done
 }
 
@@ -59,6 +93,32 @@ scan_for() {
   # the root orchestrator and the release script are in scope too
   echo "$scanned" | grep -Fxq 'build-all.sh'
   echo "$scanned" | grep -Fxq 'update_proto_compiler_dependency.sh'
+}
+
+@test "the scan covers the bats suite, its helpers and its PATH-mocks" {
+  local scanned count
+  scanned=$(scanned_scripts || true)
+  count=$(echo "$scanned" | grep -c . || true)
+  echo "scanned $count shell sources in total"
+  # the production scripts plus ~30 .bats files, the helper lib and the mocks
+  [ "$count" -ge 100 ]
+
+  # the suite runs on the macos-latest CI leg, so it is in scope
+  echo "$scanned" | grep -Fxq 'tests/helpers/setup.bash'
+  echo "$scanned" | grep -Fxq 'tests/auth_exports.bats'
+  # ... except this file: it is the catalogue of the patterns, not a user of them
+  ! echo "$scanned" | grep -Fxq 'tests/portability_static.bats'
+  # the PATH-mocks are shell scripts the scripts under test execute on that leg
+  echo "$scanned" | grep -Fxq 'tests/helpers/bin/docker'
+  echo "$scanned" | grep -Fxq 'tests/helpers/bin/protoc'
+  # ... and so are the maintenance scripts under tests/, which prod_scripts skips
+  echo "$scanned" | grep -Fxq 'tests/fixtures/presence/regenerate.sh'
+
+  # every production script stays in scope as well
+  local p
+  for p in $(prod_scripts); do
+    echo "$scanned" | grep -Fxq "$p"
+  done
 }
 
 # ---------------------------------------------------------------------------
@@ -92,6 +152,13 @@ scan_for() {
 @test "no bare mktemp without a template (BSD/macOS requires one)" {
   # portable form always has a XXXXXX template arg; flag the operand-less call
   run scan_for '\$\(mktemp\)|mktemp[[:space:]]*$'
+  echo "$output"
+  [ -z "$output" ]
+
+  # ... and the same holds once flags are in play: BSD mktemp prints its usage
+  # and exits 1 for `mktemp -d` / `mktemp -u` just as it does for bare `mktemp`,
+  # so require an XXXXXX template on EVERY line that invokes it.
+  run scan_for_without '(^|[[:space:]$(`])mktemp([[:space:]]|\)|$)' 'XXXXXX'
   echo "$output"
   [ -z "$output" ]
 }
@@ -154,6 +221,27 @@ scan_for() {
 
 @test "no \\s shorthand in a regex (BSD regex has no PCRE classes; use [[:space:]])" {
   run scan_for '\\s'
+  echo "$output"
+  [ -z "$output" ]
+}
+
+@test "no GNU-only BRE escapes (backslash pipe / plus / question mark)" {
+  # In a POSIX *basic* regex - what grep and sed take by default - \| \+ \? are
+  # undefined. GNU reads them as alternation and the +/? quantifiers; BSD/macOS
+  # matches the escaped character literally. So grep -c "spec\|test" counts
+  # "spec|test" on macOS and silently answers 0, turning an assertion into a
+  # vacuous pass instead of an error. Spell it grep -E / sed -E with plain
+  # | + ?, or use two patterns.
+  run scan_for '\\[|+?]'
+  echo "$output"
+  [ -z "$output" ]
+}
+
+@test "no 'wc -l' as a counter (BSD wc pads the count with leading spaces)" {
+  # n=$(... | wc -l) is "3" on GNU but "       3" on BSD/macOS, so a later
+  # string compare ([ "$n" = "3" ]) fails and a `test -eq` breaks outright under
+  # dash. The repo standard is `... | grep -c . || true`.
+  run scan_for 'wc[[:space:]]+-[a-zA-Z]*l'
   echo "$output"
   [ -z "$output" ]
 }

@@ -33,35 +33,6 @@ if [ -z "$2" ]; then
 fi
 echo "$COMPILE_SELECTED_PROTOS_DIR"
 
-#Create lib dir for output if no output specified
-if [ ! -d "$OUTPUT_VOLUME_FS" ]; then
-  echo "Destination volume not specified/ does not exist -> creating output in sourcevolume/lib directory"
-  OUTPUT_VOLUME_FS=$INPUT_VOLUME_FS/lib
-  mkdir -p "$OUTPUT_VOLUME_FS"
-fi
-
-#Clean output volume if exists
-echo "Clean output volume (remove everything except src-folder and dot prefixed files/dirs)"
-CURRENT_DIR=$(pwd)
-shopt -s extglob # needed to allow pattern matching on rm
-cd "$OUTPUT_VOLUME_FS" || exit 1
-# rm -r !(".*"|"src")
-rm -rf bundles
-rm -rf esm2015
-rm -rf fesm2015
-rm -rf esm2022
-rm -rf fesm2022
-rm -rf node_modules
-rm -rf npm
-rm -rf src/node_modules
-rm -rf ondewo-vtsi-client-angular.d.ts
-rm -rf ondewo-vtsi-client-angular.metadata.json
-rm -rf ondewo-vtsi-client-angular.d.ts.map
-rm -rf package.json
-rm -rf public-api.d.ts
-rm -rf public-api.ts
-cd "$CURRENT_DIR" || exit 1
-
 # -------------- Check if all the requirements are there and exist if not
 echo "Checking if all the source requirements are fulfilled ..."
 
@@ -113,6 +84,38 @@ echo "START: Executing \"compile-stubs-2-lib.sh\"..."
 bash ./compile-stubs-2-lib.sh "$IMAGE_DATA_DIRECTORY" "$TEMP_SRC_DIRECTORY"
 echo "DONE: Executing \"compile-stubs-2-lib.sh\"..."
 
+# -------------- Prepare the output volume
+#Everything above this line writes into $TEMP_SRC_DIRECTORY only: the output volume is not
+#touched until the compilation has actually produced a library to put there. That ordering is
+#load-bearing. For every angular client the output volume is the client REPOSITORY ROOT
+#(-v ${PWD}:/input-volume -v ${PWD}/..:/output-volume) and the clean below removes its
+#package.json, public-api.*, npm/ and bundle directories - i.e. the whole previously generated
+#library. Run before the requirement checks, as it used to be, every abort (a missing README.md,
+#a protos directory that does not exist, a typo'd target sub-directory, a failing ng build) left
+#that repository with its library deleted and nothing to restore it from.
+
+#Create lib dir for output if no output specified
+if [ ! -d "$OUTPUT_VOLUME_FS" ]; then
+  echo "Destination volume not specified/ does not exist -> creating output in sourcevolume/lib directory"
+  OUTPUT_VOLUME_FS=$INPUT_VOLUME_FS/lib
+  mkdir -p "$OUTPUT_VOLUME_FS"
+fi
+
+#Clean output volume if exists
+echo "Clean output volume (remove everything except src-folder and dot prefixed files/dirs)"
+#Every entry is a plain name directly under the output volume, deleted through an absolute
+#${OUTPUT_VOLUME_FS:?} path. The list used to be rm'ed with the working directory changed to the
+#output volume and carried one NESTED entry, "src/node_modules": in the layout above "src" is the
+#mounted input volume, so that one deleted the client's own installed dependencies out of the
+#tree this script copies to $TEMP_SRC_DIRECTORY precisely so it never modifies it - and out of
+#the very folder this clean says it preserves. Top-level names only, and rm does not follow a
+#final symlink, so nothing here can reach outside the output volume.
+for stale in bundles esm2015 fesm2015 esm2022 fesm2022 node_modules npm \
+  ondewo-vtsi-client-angular.d.ts ondewo-vtsi-client-angular.metadata.json \
+  ondewo-vtsi-client-angular.d.ts.map package.json public-api.d.ts public-api.ts; do
+  rm -rf "${OUTPUT_VOLUME_FS:?}/$stale"
+done
+
 # -------------- Copy results back to mounted directory
 
 echo "Copying output files to mounted directory"
@@ -121,13 +124,13 @@ echo "Finished copying"
 
 # -------------- Copy api stubs to mounted directory
 echo "Copying api stubs to mounted directory"
-rm -rf "$OUTPUT_VOLUME_FS/api"
+rm -rf "${OUTPUT_VOLUME_FS:?}/api"
 cp -r "$TEMP_SRC_DIRECTORY/api" "$OUTPUT_VOLUME_FS/api"
 echo "Finished copying api stubs"
 
 # -------------- Copy public-api.ts to output volume (re-export from api stubs)
 echo "Generating public-api.ts from api stubs"
-PUBLIC_API_TS=$OUTPUT_VOLUME_FS/public-api.ts
+PUBLIC_API_TS=${OUTPUT_VOLUME_FS:?}/public-api.ts
 rm -f "$PUBLIC_API_TS"
 touch "$PUBLIC_API_TS"
 # "./src": this copy lands at the root of the output volume, one level above the mounted
@@ -144,10 +147,10 @@ echo "Finished generating public-api.ts"
 
 # -------------- Creating NPM folder
 echo "Copying files for NPM publish to NPM folder"
-rm -rf "$OUTPUT_VOLUME_FS/npm"
+rm -rf "${OUTPUT_VOLUME_FS:?}/npm"
 mkdir "$OUTPUT_VOLUME_FS/npm"
 cp -r "$TEMP_SRC_DIRECTORY"/lib/* "$OUTPUT_VOLUME_FS/npm"
-rm -rf "$OUTPUT_VOLUME_FS/npm/api"
+rm -rf "${OUTPUT_VOLUME_FS:?}/npm/api"
 cp -r "$TEMP_SRC_DIRECTORY/api" "$OUTPUT_VOLUME_FS/npm/api"
 # npm/ holds the ng-packagr output plus a copy of api/ -- no hand-written sources at any
 # depth -- so the barrel line that is correct at the output root would dangle here. Generate

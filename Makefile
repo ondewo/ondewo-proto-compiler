@@ -42,7 +42,7 @@ export
 
 # Single source of truth for the release version. MUST match the ONDEWO API in major and
 # minor version. Propagated into all package.json + Dockerfile ARGs by the release targets.
-ONDEWO_PROTO_COMPILER_VERSION=5.15.0
+ONDEWO_PROTO_COMPILER_VERSION=5.15.1
 
 # Toolchain versions baked into the docker images via each Dockerfile's ARG lines.
 # Change here and run the release targets so every image stays in sync.

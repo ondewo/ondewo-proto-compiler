@@ -99,20 +99,28 @@ fi
 # precedents editing the temp copy before protoc). `-i.bak` + delete, never bare `sed -i`, so
 # this works with both GNU and BSD/macOS sed.
 echo "Rewriting any inherited com.google.cloud.dialogflow.v2 java_package in the temporary copy"
-#`-type f` so a DIRECTORY named e.g. "vendor.proto" is skipped instead of aborting the run
-#with sed's obscure "couldn't edit ...: not a regular file".
+#`-exec test -f {} \;` rather than find's own `-type f`, the same filter compile-proto-2-stubs.sh
+#applies to the compile set: a DIRECTORY named e.g. "vendor.proto" is still skipped (`-type f`
+#skipped it too, and without the filter sed aborts the run with its obscure "couldn't edit ...:
+#not a regular file"), but `test -f` FOLLOWS a symlink while -type f does not - and a proto the
+#client symlinked into its protos dir is copied here as a link by the `cp -r` above. Skipped, it
+#would be compiled WITHOUT this rewrite and its stubs would ship in com.google.cloud.dialogflow.v2
+#after all, which is the whole failure this block exists to prevent.
 #The vendored google/ tree is excluded here for the same reason it is excluded as a protoc
 #input in compile-proto-2-stubs.sh: it is somebody else's namespace. A googleapis checkout
 #carries google/cloud/dialogflow/v2/*.proto, whose java_package IS the literal replaced here -
 #repackaging those into com.ondewo.nlu would make an ondewo proto that imports one generate
 #references to com.ondewo.nlu classes that no jar provides. `!` (not `-not`) and an explicit
 #start path, for GNU/BSD portability.
-find "$TEMP_SRC_DIRECTORY" -type f -name "*.proto" ! -path "*/google/*" -exec sed -i.bak \
+find "$TEMP_SRC_DIRECTORY" -name "*.proto" ! -path "*/google/*" -exec test -f {} \; -exec sed -i.bak \
     's|^option java_package = "com.google.cloud.dialogflow.v2";|option java_package = "com.ondewo.nlu";|' {} +
 #Deliberately NOT narrowed to the set above: this deletes sed's backups, and a broad sweep also
 #clears any left behind in a reused temp copy by an earlier run (the image runs once per
 #container, a local or test run does not). Only the throwaway copy is ever touched.
-find "$TEMP_SRC_DIRECTORY" -type f -name "*.proto.bak" -delete
+#`! -type d` rather than `-type f`: sed -i.bak renames the ORIGINAL out of the way, so the backup
+#of a symlinked proto is itself a symlink and `-type f` would leave it behind. A directory is
+#excluded because -delete cannot remove a non-empty one and would fail the run.
+find "$TEMP_SRC_DIRECTORY" ! -type d -name "*.proto.bak" -delete
 
 # -------------- Check if all the requirements are there and exist if not
 echo "Checking if all the source requirements are fulfilled ..."

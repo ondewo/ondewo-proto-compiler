@@ -51,7 +51,7 @@ cd "$ONDEWO_TMP_DIR" || {
 # --- Clean up existing clone if present ---
 if [ -d "$TMP_DIR" ]; then
   log "${YELLOW}[WARN]${NC} Removing existing temporary directory: ${TMP_DIR}"
-  rm -rf "$TMP_DIR"
+  rm -rf "${TMP_DIR:?}"
 fi
 
 # --- Clone repository ---
@@ -144,7 +144,10 @@ if [ "$IS_NODE_FAMILY" = "true" ]; then
   trap 'rm -f "$TMP_PKG"' EXIT
   log "${BLUE}[INFO]${NC} Updating only existing dependency versions..."
 
-  jq --argjson imageDeps "$IMAGE_DEPS" '
+  # NOT an `jq ... && mv ...` AND-OR list: `set -e` is specified to ignore the failure of
+  # every command of such a list except the last, so a failing jq would be swallowed and the
+  # script would go on to commit and push a manifest it never updated.
+  if ! jq --argjson imageDeps "$IMAGE_DEPS" '
     def update_existing(section):
       if .[section] then
         .[section] |= with_entries(
@@ -162,7 +165,19 @@ if [ "$IS_NODE_FAMILY" = "true" ]; then
     update_existing("dependencies") |
     update_existing("devDependencies") |
     update_existing("peerDependencies")
-  ' "$TARGET_PKG" > "$TMP_PKG" && mv "$TMP_PKG" "$TARGET_PKG"
+  ' "$TARGET_PKG" > "$TMP_PKG"; then
+    log "${RED}[ERROR]${NC} Failed to update dependency versions in $TARGET_PKG - leaving it untouched" >&2
+    exit 1
+  fi
+
+  # jq exits 0 and writes nothing for an empty or whitespace-only input, so the exit status
+  # alone would still let a 0-byte package.json be installed, committed and pushed.
+  if [ ! -s "$TMP_PKG" ]; then
+    log "${RED}[ERROR]${NC} Refusing to install an empty $TARGET_PKG (is $IMAGE_DATA_PKG / $TARGET_PKG valid JSON?)" >&2
+    exit 1
+  fi
+
+  mv "$TMP_PKG" "$TARGET_PKG"
 
   if [ -n "$TARGET_PKG" ]; then
     log "${BLUE}[INFO]${NC} Adding updated package.json to staging area: ${TARGET_PKG} ..."
@@ -207,7 +222,7 @@ fi
 # --- Cleanup ---
 if [ "${CLEAN_UP:-true}" = "true" ]; then
   log "${BLUE}[INFO]${NC} Cleaning up temporary files for ${TMP_DIR} ..."
-  rm -rf "${TMP_DIR}"
+  rm -rf "${TMP_DIR:?}"
   log "${GREEN}[DONE]${NC} Update process completed successfully for ${TMP_DIR}."
 else
   log "${YELLOW}[SKIP]${NC} Skipping cleanup as per user request."

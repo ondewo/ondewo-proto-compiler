@@ -75,9 +75,6 @@ if [ ! -d "$PROTOS_SRC_DIR" ]; then
     echo "ERROR: No proto files were found - the protos source directory '$PROTOS_SRC_DIR' does not exist - exiting" >&2
     exit 1
 fi
-#`-type f` matters: a DIRECTORY named e.g. "session.proto" would otherwise satisfy the guard
-#below and then be handed to protoc as an input file, replacing this script's own diagnosis with
-#an opaque "Missing input file." from protoc.
 #google/protobuf/** is filtered out for the same reason echoProtoDependencies excludes it on the
 #IMPORT side: those types are already compiled into libprotobuf, so a client that vendors a copy
 #under its proto root would get them compiled into the archive too and the link would fail on
@@ -85,7 +82,29 @@ fi
 #type under the compiled sub-tree is an ENTRY proto, which never passes through that filter.
 #`|| true` keeps `set -e` happy when the filter empties the list - the guard below reports that
 #far more descriptively.
-ENTRY_PROTO_FILES=$(find "$PROTOS_SRC_DIR" -type f -iname "*.proto" | grep -v '/google/protobuf/' || true)
+#Matched by NAME and then filtered with `test -f` - never with find's own `-type f`. This is the
+#`[ -f ]` filter angular/ and go/ apply, written in find's own syntax so that a path containing a
+#newline reaches the resolver whole instead of being re-split by a shell loop:
+#  * `-type f` does not follow a symlink, and the input volume is staged with `cp -r`, which
+#    keeps links verbatim - so a .proto a client symlinked into its protos dir was silently
+#    dropped from the compile set (measured: find -type f returns 1 of 2). `test -f` follows it.
+#  * the name alone is not enough either: a DIRECTORY named e.g. "session.proto" would satisfy
+#    the no-protos guard below and then be handed to protoc as a positional input, which aborts
+#    with an opaque "Missing input file." instead of this script's own diagnosis.
+#  * NOT `find -L ... -type f`: that spelling has to put the flag BEFORE the start path, which
+#    the BSD-portability gate over these scripts rejects, and -L makes find DESCEND into
+#    symlinked directories, where a link loop can hang the run. Plain find never descends one,
+#    so a looping link is just a link that fails `test -f` and is reported by the guard below.
+ENTRY_PROTO_FILES=$(find "$PROTOS_SRC_DIR" -iname "*.proto" -exec test -f {} \; -print | grep -v '/google/protobuf/' || true)
+#A .proto symlink that resolves to nothing (or to a directory) drops out of the set above without
+#a word - and a silently missing proto is a silently missing service in the client. `sed`+`tr`
+#join the hits onto the message line exactly the way angular/ and go/ spell it.
+DANGLING_PROTO_LINKS=$(find "$PROTOS_SRC_DIR" -type l -iname "*.proto" -exec test ! -f {} \; -print | grep -v '/google/protobuf/' | sed 's|^| |' | tr -d '\n')
+if [ -n "$DANGLING_PROTO_LINKS" ]; then
+    echo "ERROR: these .proto symlinks do not resolve to a file:$DANGLING_PROTO_LINKS" >&2
+    echo "       the mounted input volume is staged with 'cp -r', which keeps symlinks verbatim, so a link that leaves that volume (an absolute path, or a relative one reaching above it) dangles in the copy - point it inside the mounted directory or materialise the file - exiting" >&2
+    exit 1
+fi
 #`grep -c . || true` instead of `wc -l`: BSD/macOS wc pads its output with spaces, and grep -c
 #exits 1 on an empty list, which must not abort the script before the guard below reports it
 PROTO_FILES_CNT=$(printf '%s\n' "$ENTRY_PROTO_FILES" | grep -c . || true)

@@ -24,6 +24,15 @@ echoDependencies(){
         if [ ! -f "$FILE_PATH" ]; then
             FILE_PATH="$ROOT_DIR/$FILE_PATH"
         fi
+        # Still not a readable file => the caller's list was mangled, most often by a
+        # proto whose NAME contains a newline, which `while read` splits into two bogus
+        # fragments. Fail loudly: the alternative is silently dropping the real proto,
+        # compiling the fragment and exiting 0 with an incomplete library. `exit` (not
+        # `return`) is the one construct the caller's `if ! VAR=$(...)` can observe.
+        if [ ! -f "$FILE_PATH" ]; then
+            echo "ERROR: '$FILE_PATH' is not a readable .proto file - exiting" >&2
+            exit 1
+        fi
         RELATIVE=$(relativeToRoot "$ROOT_DIR" "$FILE_PATH")
         echo "$RELATIVE"
 

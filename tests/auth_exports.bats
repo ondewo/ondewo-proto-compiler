@@ -57,7 +57,10 @@ run_append() {
   run_append typescript
   [ "$status" -eq 0 ]
 
-  run grep -c "spec\|test" "$OUT/public-api.d.ts"
+  # grep -E: \| alternation is a GNU BRE extension. BSD/macOS grep matches the
+  # escaped pipe literally, so "spec\|test" looks for the string "spec|test",
+  # finds nothing, and this assertion passes even on a regressed script.
+  run grep -cE "spec|test" "$OUT/public-api.d.ts"
   [ "$output" = "0" ]
 }
 

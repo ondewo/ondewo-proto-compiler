@@ -31,7 +31,7 @@ docker run --rm \
   "$IMAGE" -c '
 set -e
 cd /image-data
-work=$(mktemp -d)
+work=$(mktemp -d "${TMPDIR:-/tmp}/presence-fixture.XXXXXX")
 cp /fixture/presence.proto "$work/presence.proto"
 protoc --descriptor_set_out=/fixture/presence.descriptor.bin -I "$work" "$work/presence.proto"
 sed -i.bak "s/^\([[:space:]]*\)optional /\1/" "$work/presence.proto" && rm -f "$work/presence.proto.bak"

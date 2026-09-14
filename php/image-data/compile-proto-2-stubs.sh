@@ -200,10 +200,29 @@ fi
 # other source. (For an imported google proto the entry filter is irrelevant either way: the
 # resolver above adds it, and its exclusion is `google/protobuf/` too.)
 #
-# `-type f`, because a DIRECTORY named e.g. "vendor.proto" otherwise enters the set and makes the
-# resolver's `cd`/`sed` fail on a garbage path. `!` (not `-not`) and an explicit start path, for
-# GNU/BSD portability.
-ENTRY_PROTO_FILES=$(find "$PROTOS_SRC_DIR" -type f -iname "*.proto" ! -path "*/google/protobuf/*")
+# `!` (not `-not`) and an explicit start path, for GNU/BSD portability.
+#Matched by NAME and then filtered with `test -f` - never with find's own `-type f`. This is the
+#`[ -f ]` filter angular/ and go/ apply, written in find's own syntax so that a path containing a
+#newline reaches the resolver whole instead of being re-split by a shell loop:
+#  * `-type f` does not follow a symlink, and the input volume is staged with `cp -r`, which
+#    keeps links verbatim - so a .proto a client symlinked into its protos dir was silently
+#    dropped from the compile set (measured: find -type f returns 1 of 2). `test -f` follows it.
+#  * the name alone is not enough either: a DIRECTORY named e.g. "vendor.proto" would enter the
+#    set and make the resolver's `cd`/`sed` fail on a garbage path.
+#  * NOT `find -L ... -type f`: that spelling has to put the flag BEFORE the start path, which
+#    the BSD-portability gate over these scripts rejects, and -L makes find DESCEND into
+#    symlinked directories, where a link loop can hang the run. Plain find never descends one,
+#    so a looping link is just a link that fails `test -f` and is reported by the guard below.
+ENTRY_PROTO_FILES=$(find "$PROTOS_SRC_DIR" -iname "*.proto" ! -path "*/google/protobuf/*" -exec test -f {} \; -print)
+#A .proto symlink that resolves to nothing (or to a directory) drops out of the set above without
+#a word - and a silently missing proto is a silently missing service in the client. `sed`+`tr`
+#join the hits onto the message line exactly the way angular/ and go/ spell it.
+DANGLING_PROTO_LINKS=$(find "$PROTOS_SRC_DIR" -type l -iname "*.proto" ! -path "*/google/protobuf/*" -exec test ! -f {} \; -print | sed 's|^| |' | tr -d '\n')
+if [ -n "$DANGLING_PROTO_LINKS" ]; then
+    echo "ERROR: these .proto symlinks do not resolve to a file:$DANGLING_PROTO_LINKS" >&2
+    echo "       the mounted input volume is staged with 'cp -r', which keeps symlinks verbatim, so a link that leaves that volume (an absolute path, or a relative one reaching above it) dangles in the copy - point it inside the mounted directory or materialise the file - exiting" >&2
+    exit 1
+fi
 if [ -z "$ENTRY_PROTO_FILES" ]; then
     echo "ERROR: No proto files were found in the '$PROTOS_SRC_DIR' directory, but are required to build a library from - exiting" >&2
     exit 1

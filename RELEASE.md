@@ -2,6 +2,27 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.15.1
+
+### Bug Fixes
+
+* Nodejs: the shipped example compiled again - and with it every client whose protos import another proto. The proto-dependency list was parsed by column position (`cut -c 8-`), so `dependency/myimport.proto` reached protoc as `ncy/myimport.proto` and the run died with "Could not make proto path relative". The same positional parsing mangled an indented import, a legal `import public` / `import weak`, and any path a client had pre-seeded into its own `proto-deps.txt`. Imports are now matched as statements with a single anchored expression, so only the quoted path is ever extracted. Two further defects in the same block went with it: the de-duplication built an unanchored `grep` pattern out of each chopped token, so a commented-out `// import "google/...";` yielded the token `ort`, matched every other line and deleted the rest of the dependency list; and the final collapse used `sort | uniq -u`, which prints only lines occurring exactly once and therefore *dropped* a dependency instead of de-duplicating it. Typescript carried the identical block and is fixed the same way.
+* Angular: a failed run no longer destroys the client's existing library. The output volume was wiped - `package.json`, `public-api.ts`, `public-api.d.ts`, `npm/`, `api/` and nine more entries - *before* any input requirement was checked, so a missing `package.json`, a protos directory that does not exist or a typo'd target sub-directory deleted the previous output and left nothing to restore from. All seven angular clients mount their own repository root as the output volume. Validation now runs first and the wipe only once the run is committed to producing output; every `rm -rf` in the target also gained the `${VAR:?}` guard the other targets already used.
+* Javascript: a proto whose filename contains a newline is rejected instead of silently dropped. `while IFS= read -r` split such a name into two fragments, neither a file; the root-prefix fixup then built a nonsense path and both `relativeToRoot` and `sed` failed on stderr while the function still returned 0. Measured against the real image: the run exited 0, webpack reported "compiled successfully", and the shipped bundle contained no trace of the dropped proto's messages. The resolver now asserts the path is a readable file and exits non-zero, as the cpp and rust copies already did.
+* All eleven targets: a directory whose name ends in `.proto` is no longer mistaken for an input file, and a *symlinked* proto is compiled again. Adding `-type f` to the discovery `find` in 5.15.0 fixed the first and quietly introduced the second, because `-type f` tests the link rather than its target. Discovery is now spelled the same way everywhere - match by name, then keep what `test -f` accepts - and a `.proto` symlink that resolves to nothing is a named error rather than a silent omission. Symlink loops terminate with the same error instead of hanging.
+* All eleven targets: a generator that exits 0 having written nothing is now a failure everywhere. Angular, js, nodejs, typescript and go computed a generated-stub count, printed it and ignored it, so "protoc reported success but produced no output" passed silently in exactly the targets that have shipped longest. One of them counted the whole staged input volume rather than the generated tree, which made the number meaningless.
+* Python: the entry-proto list is no longer word-split or glob-expanded. `for f in $files` broke a path containing a space into two bogus arguments, dropped a proto named e.g. `[a].proto` through pathname expansion, and split a newline-bearing name in two. The `run` target additionally mounted the caller's whole working directory when `PROTO_DIR`, `OUTPUT_DIR` or `EXTRA_PROTO_DIR` was empty, and never checked that its mount sources exist.
+* Release automation: a `jq` failure can no longer commit an empty `package.json` to a client repository. `jq … > "$TMP" && mv "$TMP" "$TARGET"` is an AND-OR list, which `set -e` is specified not to act on, so a failing `jq` left the already-truncated temp file to be installed over the client's manifest - and the script then committed and pushed it.
+* Release automation: `update_proto_compiler_dependency.sh` also rewrites the client's own `ONDEWO_PROTO_COMPILER_GIT_BRANCH`. It previously moved only the submodule gitlink, so the client's `update_submodules` target checked the *previous* compiler back out and silently undid the bump.
+* Tests: the suite passes on the `macos-latest` CI leg again. `mktemp -d` returns a symlinked path there (`/var/folders` → `/private/var/folders`) while a Makefile's `$(shell pwd)` reports the resolved form, so assertions comparing a docker mount against the sandbox path failed on macOS while passing on Linux.
+
+### Improvements
+
+* The portability gate scans the bats suite itself, not just the production scripts, and gained rules for `wc -l` used as a counter, template-less `mktemp`, and GNU-only basic-regex escapes (`\|`, `\+`, `\?`) - one of which was already being used in an existing assertion, where BSD grep would have interpreted it as a literal.
+* `tests/consistency.bats` pins the three cross-cutting properties above across **all eleven** targets from one table, and fails if that table ever stops matching the target directories on disk - so a twelfth target cannot be added without satisfying them.
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.15.0
 
 ### New Features

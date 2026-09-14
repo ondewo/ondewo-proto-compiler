@@ -31,7 +31,9 @@ if [ ! -f "$PUBLIC_API_FILE" ]; then
     export POSTFIX="';"
 
     #find api -iname "*.ts" -printf "$PREFIX%p$POSTFIX\n" >> $PUBLIC_API_FILE
-    find api -iname "*$FILE_EXTENSION" -exec bash -c 'printf "$PREFIX./%s$POSTFIX\n" "${@%.*}"' _ {} + >> "$PUBLIC_API_FILE"
+    # `-type f`: a DIRECTORY named "*.d.ts"/"*.js" is not a stub, and star-exporting a folder emits
+    # a barrel line that resolves to nothing (TS2307) and takes the consumer's build down with it.
+    find api -type f -iname "*$FILE_EXTENSION" -exec bash -c 'printf "$PREFIX./%s$POSTFIX\n" "${@%.*}"' _ {} + >> "$PUBLIC_API_FILE"
 
     # A star export alone is not enough. Two protos in different packages may legitimately
     # declare the same top-level symbol -- ondewo.nlu and ondewo.s2t both declare
@@ -47,7 +49,7 @@ if [ ! -f "$PUBLIC_API_FILE" ]; then
     SYMBOL_INDEX=$(mktemp "${TMPDIR:-/tmp}/public-api-symbols.XXXXXX")
     trap 'rm -f "$SYMBOL_INDEX"' EXIT
 
-    find api -iname "*$FILE_EXTENSION" | sort | while IFS= read -r stub; do
+    find api -type f -iname "*$FILE_EXTENSION" | sort | while IFS= read -r stub; do
         awk -v mod="./${stub%.*}" '
       /^export / {
         for (i = 2; i <= NF; i++) {

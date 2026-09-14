@@ -57,7 +57,18 @@ for a in "$@"; do
   esac
 done
 
+# PROTOC_MOCK_NO_STUBS: exit 0 having written no *_out file at all - real protoc does exactly
+# that for an input set nothing is generated from, and it is the only way to drive each target's
+# "protoc reported success but produced nothing" guard. The descriptor set is still written: it
+# is a named FILE the caller passes in (the angular presence codemod reads it), not generated
+# output, and skipping it would make angular fail on the codemod instead of on the guard.
 for a in "$@"; do
+  if [ -n "${PROTOC_MOCK_NO_STUBS:-}" ]; then
+    case "$a" in
+      --descriptor_set_out=*) ;;
+      --*_out=*) continue ;;
+    esac
+  fi
   case "$a" in
     --descriptor_set_out=*)
       # A descriptor set is a FILE, not an output directory. Write the smallest valid

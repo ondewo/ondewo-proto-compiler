@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Mock python (used for `python -m grpc_tools.protoc ...` in python/Makefile).
-#   PY_FAIL_MATCH -> if any arg contains this substring, exit PY_FAIL_RC (default 1)
+#   PY_FAIL_MATCH     -> if any arg contains this substring, exit PY_FAIL_RC (default 1)
+#   PY_MOCK_NO_STUBS  -> log and exit 0 WITHOUT materialising any output file, i.e. the
+#                        "protoc reported success but generated nothing" case
 : "${PY_MOCK_LOG:=/dev/null}"
 printf 'python %s\n' "$*" >> "$PY_MOCK_LOG"
 
@@ -11,4 +13,47 @@ if [ -n "${PY_FAIL_MATCH:-}" ]; then
     esac
   done
 fi
+
+[ -z "${PY_MOCK_NO_STUBS:-}" ] || exit 0
+
+# Materialise what grpc_tools.protoc really writes: three files per .proto - <name>_pb2.py
+# (--python_out), <name>_pb2_grpc.py (--grpc_python_out) and <name>_pb2.pyi (--mypy_out) -
+# each at the input's path RELATIVE to the -I root, mirrored below the output dir. The
+# python target's post-condition checks for the _pb2.py, so a mock that logs and writes
+# nothing would make every run look like a generator that silently produced no stubs.
+proto_root=""
+python_out=""
+grpc_python_out=""
+mypy_out=""
+proto=""
+prev=""
+for a in "$@"; do
+  case "$prev" in
+    -I) proto_root="$a" ;;
+  esac
+  case "$a" in
+    --python_out=*)      python_out="${a#*=}" ;;
+    --grpc_python_out=*) grpc_python_out="${a#*=}" ;;
+    --mypy_out=*)        mypy_out="${a#*=}" ;;
+    *.proto)             proto="$a" ;;
+  esac
+  prev="$a"
+done
+
+[ -n "$proto" ] || exit 0
+
+rel="${proto#"$proto_root"/}"
+base="${rel%.proto}"
+
+write_stub() {
+  # $1 output dir (empty => that generator was not asked for), $2 file suffix
+  [ -n "$1" ] || return 0
+  mkdir -p "$1/$(dirname "$base")"
+  : > "$1/$base$2"
+}
+
+write_stub "$python_out" "_pb2.py"
+write_stub "$grpc_python_out" "_pb2_grpc.py"
+write_stub "$mypy_out" "_pb2.pyi"
+
 exit 0

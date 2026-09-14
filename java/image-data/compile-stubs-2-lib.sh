@@ -36,7 +36,9 @@ mvn --batch-mode --offline \
 
 # -------------- Assemble the shippable tree (the java analogue of the node targets' lib/)
 LIB_DIRECTORY=$MAVEN_PROJECT_DIR/lib
-rm -rf "$LIB_DIRECTORY"
+#`${VAR:?}` like every other rm -rf in the repo: an unset/empty $MAVEN_PROJECT_DIR would make
+#this `rm -rf /lib` instead of aborting
+rm -rf "${LIB_DIRECTORY:?}"
 mkdir -p "$LIB_DIRECTORY/src/main/java" "$LIB_DIRECTORY/target"
 
 echo "Copying generated sources and the build descriptor into $LIB_DIRECTORY"

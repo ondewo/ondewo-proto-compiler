@@ -28,8 +28,9 @@ fi
 
 #mktemp always with an XXXXXX template (portable across GNU and BSD)
 SEED_DIR=$(mktemp -d "${TMPDIR:-/tmp}/maven-seed.XXXXXX")
-#Single-quoted so $SEED_DIR is expanded when the trap fires, not when it is installed
-trap 'rm -rf "$SEED_DIR"' EXIT
+#Single-quoted so $SEED_DIR is expanded when the trap fires, not when it is installed; `${VAR:?}`
+#like every other rm -rf in the repo, so an unset value aborts the cleanup instead of widening it
+trap 'rm -rf "${SEED_DIR:?}"' EXIT
 
 mkdir -p "$SEED_DIR/src/main/java" "$MAVEN_REPO_LOCAL"
 

@@ -58,24 +58,65 @@ if [ ! -f "$TEMP_SRC_DIRECTORY/package.json" ]; then
     exit 1
 fi
 
+# proto-deps.txt holds one bare proto path per line. The client may pre-seed it through the input
+# volume (it is copied in with the rest of the mount - the target's own example ships one), so
+# `touch` must not truncate it and the lines already there must survive verbatim.
 touch "$TEMP_SRC_DIRECTORY/proto-deps.txt"
-# shellcheck disable=SC2044  # intentional iteration over find-listed proto files (paths have no spaces)
-for protofile in $(find "$COMPILE_SELECTED_PROTOS_DIR" -iname "*.proto")
+#-print0 + `read -d ''` instead of `for protofile in $(find ...)`: the unquoted command
+#substitution word-split every path on whitespace, so a proto below a directory with a space in
+#its name was never read and every google/ import it declares was silently dropped from
+#proto-deps.txt - the dependency protos are then never compiled and the shipped library imports
+#stubs that do not exist.
+#Matched by NAME and filtered with `[ -f ]` below - never with find's own `-type f`, the same
+#filter compile-proto-2-stubs.sh applies to the very same directory: `-type f` does not follow a
+#symlink, so a symlinked .proto was skipped here and lost its google/ imports in exactly the way
+#described above. `[ -f ]` follows the link; a DIRECTORY named e.g. "vendor.proto" still fails
+#it. NOT `find -L`: that flag has to precede the start path, which the BSD-portability gate
+#rejects, and it makes find descend into symlinked directories, where a link loop can hang.
+find "$COMPILE_SELECTED_PROTOS_DIR" -iname "*.proto" -print0 | while IFS= read -r -d '' protofile
 do
+    [ -f "$protofile" ] || continue
     echo "ONDEWO: For loop: $protofile"
     # FIXME: this does not work since it might be that the proto which is referenced references again another proto
-    # grep exits 1 when a proto has no google/ import; that is normal, so do not abort under set -e
-    cat "$protofile" | grep import | grep "google/" >> "$TEMP_SRC_DIRECTORY/proto-deps.txt" || true
+    # Pull the quoted path out of each google/ import statement. Parsing the statement instead of
+    # chopping a fixed number of leading characters off the line (`cut -c 8-`) is what makes an
+    # indented import, a legal `import public` / `import weak`, and a client-supplied bare path
+    # all come out intact; the `^[[:space:]]*import` anchor is what keeps a commented-out
+    # `// import "google/...";` out of the list. grep exits 1 when a proto has no google/ import;
+    # that is normal, so do not abort under set -e.
+    sed -n 's|^[[:space:]]*import[[:space:]][[:space:]]*\(public[[:space:]][[:space:]]*\)\{0,1\}\(weak[[:space:]][[:space:]]*\)\{0,1\}"\([^"]*\)"[[:space:]]*;.*$|\3|p' "$protofile" \
+        | grep "google/" >> "$TEMP_SRC_DIRECTORY/proto-deps.txt" || true
 done
 
-# shellcheck disable=SC2044  # intentional iteration over find-listed proto files (paths have no spaces)
-for protofile in $(find "$COMPILE_SELECTED_PROTOS_DIR/../google" -iname "*.proto" | grep -E "api|rpc|type" | grep -vE "streetview|storagetransfer|spanner|vision|monitoring|automl|bigquery|dataproc|dialogflow|appengine|bigtable|datastore|firestore|genomics|home|googleads|experimental|devtools|experimental|servicecontrol|servicemanagement")
-do
-    echo "Google: For loop: $protofile"
-    # workaround: since it might be that the proto which is referenced references again another proto
-    # grep exits 1 when a proto has no google/ import; that is normal, so do not abort under set -e
-    cat "$protofile" | grep import | grep "google/" >> "$TEMP_SRC_DIRECTORY/proto-deps.txt" || true
-done
+#The well-known / API protos the compiled tree imports live in a sibling google/ directory. A proto
+#set that ships none is legitimate (the example's protos/ has no google/), so the directory is
+#checked up front: find used to fail with "No such file or directory" on stderr, which reads like a
+#build error, while the loop was skipped and the run carried on regardless - loud and useless in the
+#one case, and no diagnostic at all about the dependency scan not having run.
+GOOGLE_PROTOS_DIR=$COMPILE_SELECTED_PROTOS_DIR/../google
+if [ ! -d "$GOOGLE_PROTOS_DIR" ]; then
+    echo "No google protos directory at '$GOOGLE_PROTOS_DIR' -> skipping the google dependency scan"
+else
+    #Same NAME match + `[ -f ]` filter as the entry-set scan above, for the same reasons
+    find "$GOOGLE_PROTOS_DIR" -iname "*.proto" -print0 | while IFS= read -r -d '' protofile
+    do
+        [ -f "$protofile" ] || continue
+        #the include/exclude filters used to be greps over find's output; applying them to one path
+        #at a time is the same test on the same string and keeps the NUL-delimited stream intact
+        if ! printf '%s\n' "$protofile" | grep -qE "api|rpc|type"; then
+            continue
+        fi
+        if printf '%s\n' "$protofile" | grep -qE "streetview|storagetransfer|spanner|vision|monitoring|automl|bigquery|dataproc|dialogflow|appengine|bigtable|datastore|firestore|genomics|home|googleads|experimental|devtools|experimental|servicecontrol|servicemanagement"; then
+            continue
+        fi
+        echo "Google: For loop: $protofile"
+        # workaround: since it might be that the proto which is referenced references again another proto
+        # Same statement parser as the entry-set scan above (see the comment there); the transitive
+        # dependencies feed the very same list, so they have to be normalised the very same way.
+        sed -n 's|^[[:space:]]*import[[:space:]][[:space:]]*\(public[[:space:]][[:space:]]*\)\{0,1\}\(weak[[:space:]][[:space:]]*\)\{0,1\}"\([^"]*\)"[[:space:]]*;.*$|\3|p' "$protofile" \
+            | grep "google/" >> "$TEMP_SRC_DIRECTORY/proto-deps.txt" || true
+    done
+fi
 
 
 #for protofile in $(find $COMPILE_SELECTED_PROTOS_DIR -iname "*.proto")
@@ -107,36 +148,14 @@ done
 #    rm $TEMP_SRC_DIRECTORY/tmp_rec_1.txt
 #done
 
-echo "Google Protos Dependencies:"
-sort "$TEMP_SRC_DIRECTORY/proto-deps.txt" | uniq > "$TEMP_SRC_DIRECTORY/proto-deps-unique.txt"
-mv "$TEMP_SRC_DIRECTORY/proto-deps-unique.txt" "$TEMP_SRC_DIRECTORY/proto-deps.txt"
-cat "$TEMP_SRC_DIRECTORY/proto-deps.txt"
-
-
-REMOVE_LINES=""
-for import in $(cat "$TEMP_SRC_DIRECTORY/proto-deps.txt" | grep "\"" | cut -c 7- )
-do
-    OCCURENCES=$(cat "$TEMP_SRC_DIRECTORY/proto-deps.txt" | grep "$import" | wc -l)
-    if [ "$OCCURENCES" -gt 1 ]; then
-        for line in $(cat "$TEMP_SRC_DIRECTORY/proto-deps.txt" | grep -n "$import" | cut -d':' -f1 | tail -n +2)
-        do
-            REMOVE_LINES=$REMOVE_LINES";$line""d"
-        done
-    fi
-done
-REMOVE_LINES=$(echo "$REMOVE_LINES" | cut -c 2-)
-
-# -i.bak (not bare -i) keeps this working with both GNU and BSD/macOS sed
-if [ -n "$REMOVE_LINES" ]; then
-    sed -i.bak -e "$REMOVE_LINES" "$TEMP_SRC_DIRECTORY/proto-deps.txt"
-    rm -f "$TEMP_SRC_DIRECTORY/proto-deps.txt.bak"
-fi
-
-REMOVE_IMPORT=$(cat "$TEMP_SRC_DIRECTORY/proto-deps.txt"  | cut -c 8- | sed 's/\"//g' | sed 's/\;//')
-echo "$REMOVE_IMPORT" > "$TEMP_SRC_DIRECTORY/proto-deps.txt"
-
-REMOVE_DUPLICATES=$(sort "$TEMP_SRC_DIRECTORY/proto-deps.txt" | uniq -u)
-echo "$REMOVE_DUPLICATES" > "$TEMP_SRC_DIRECTORY/proto-deps.txt"
+# Collapse the list. `sort -u`, never `sort | uniq -u`: -u on uniq prints only the lines that occur
+# EXACTLY once, so a dependency imported by two protos was dropped from the list altogether rather
+# than listed once, and protoc never generated its stubs. The entries are already bare paths - the
+# statement parser above emits nothing else - so there is no positional post-processing left to do:
+# the `cut -c 8-` that used to run here mangled every line the parser now hands over intact, and the
+# substring-regex line deletion it fed could take the whole list with it.
+sort -u "$TEMP_SRC_DIRECTORY/proto-deps.txt" | grep '[^[:space:]]' > "$TEMP_SRC_DIRECTORY/proto-deps.txt.tmp" || true
+mv "$TEMP_SRC_DIRECTORY/proto-deps.txt.tmp" "$TEMP_SRC_DIRECTORY/proto-deps.txt"
 
 echo "Google Protos Dependencies:"
 cat "$TEMP_SRC_DIRECTORY/proto-deps.txt"

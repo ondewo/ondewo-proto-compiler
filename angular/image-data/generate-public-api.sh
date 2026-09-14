@@ -39,7 +39,12 @@ fi
 OUTPUT_FILE=$(cd "$(dirname "$OUTPUT_FILE")" && pwd)/$(basename "$OUTPUT_FILE")
 cd "$SRC_ROOT" || exit 1
 
+# `[ -f ]`, not -iname alone and not find's own -type f: a DIRECTORY under api/ whose name ends
+# in .ts would be emitted as an `export * from` line pointing at nothing, breaking the CONSUMER's
+# build with TS2307 rather than ours; while a symlinked stub is a real module and must keep its
+# export, which -type f (it does not follow links) would silently drop.
 find api -iname "*.ts" | sort | while IFS= read -r stub; do
+  [ -f "$stub" ] || continue
   echo "export * from './${stub%.*}';"
 done >>"$OUTPUT_FILE"
 
@@ -66,6 +71,9 @@ SYMBOL_INDEX=$(mktemp "${TMPDIR:-/tmp}/public-api-symbols.XXXXXX")
 trap 'rm -f "$SYMBOL_INDEX"' EXIT
 
 find api -iname "*.ts" | sort | while IFS= read -r stub; do
+  # same `[ -f ]` filter as the star-export pass above, for the same two reasons - and here a
+  # directory would additionally be handed to awk as an input file
+  [ -f "$stub" ] || continue
   awk -v mod="./${stub%.*}" '
     /^export / {
       for (i = 2; i <= NF; i++) {

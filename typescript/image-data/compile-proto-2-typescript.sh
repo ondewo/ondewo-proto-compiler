@@ -52,37 +52,38 @@ if [ ! -f "$TEMP_SRC_DIRECTORY/package.json" ]; then
     exit 1
 fi
 
+# proto-deps.txt holds one bare proto path per line. The client may pre-seed it through the input
+# volume (it is copied in with the rest of the mount), so `touch` must not truncate it and the
+# lines already there must survive verbatim.
 touch "$TEMP_SRC_DIRECTORY/proto-deps.txt"
+
+#Matched by NAME and filtered with `[ -f ]` below - never with find's own `-type f`, the same
+#filter compile-proto-2-stubs.sh applies to the very same directory: `-type f` does not follow a
+#symlink, so a .proto a client symlinked into its protos dir was skipped here and every google/
+#import it declares silently dropped from proto-deps.txt - the dependency stubs are then never
+#generated and the shipped library imports modules that do not exist. `[ -f ]` follows the link;
+#a DIRECTORY named "*.proto" still fails it (feeding one to the scan only produces an "Is a
+#directory" error on stderr). NOT `find -L`: that flag has to precede the start path, which the
+#BSD-portability gate rejects, and it makes find descend into symlinked directories, where a
+#link loop can hang the run.
 find "$COMPILE_SELECTED_PROTOS_DIR" -iname "*.proto" -print0 | while IFS= read -r -d '' protofile
 do
-    # grep exits 1 when a proto has no google/ import; that is normal, so do not abort under set -e
-    cat "$protofile" | grep import | grep "google/" >> "$TEMP_SRC_DIRECTORY/proto-deps.txt" || true
+    [ -f "$protofile" ] || continue
+    # Pull the quoted path out of each google/ import statement. Parsing the statement instead of
+    # chopping a fixed number of leading characters off the line is what makes an indented import,
+    # an `import public` / `import weak`, and a client-supplied bare path all come out intact; the
+    # `^[[:space:]]*import` anchor is what keeps a commented-out `// import "google/..."` out of
+    # the list. grep exits 1 when a proto has no google/ import; that is normal, so do not abort
+    # under set -e.
+    sed -n 's|^[[:space:]]*import[[:space:]][[:space:]]*\(public[[:space:]][[:space:]]*\)\{0,1\}\(weak[[:space:]][[:space:]]*\)\{0,1\}"\([^"]*\)"[[:space:]]*;.*$|\3|p' "$protofile" \
+        | grep "google/" >> "$TEMP_SRC_DIRECTORY/proto-deps.txt" || true
 done
 
-REMOVE_LINES=""
-for import in $(cat "$TEMP_SRC_DIRECTORY/proto-deps.txt" | grep "\"" | cut -c 7- )
-do
-    OCCURENCES=$(cat "$TEMP_SRC_DIRECTORY/proto-deps.txt" | grep "$import" | wc -l)
-    if [ "$OCCURENCES" -gt 1 ]; then
-        for line in $(cat "$TEMP_SRC_DIRECTORY/proto-deps.txt" | grep -n "$import" | cut -d':' -f1 | tail -n +2)
-        do
-            REMOVE_LINES=$REMOVE_LINES";$line""d"
-        done
-    fi
-done
-REMOVE_LINES=$(echo "$REMOVE_LINES" | cut -c 2-)
-
-# -i.bak (not bare -i) keeps this working with both GNU and BSD/macOS sed
-if [ -n "$REMOVE_LINES" ]; then
-    sed -i.bak -e "$REMOVE_LINES" "$TEMP_SRC_DIRECTORY/proto-deps.txt"
-    rm -f "$TEMP_SRC_DIRECTORY/proto-deps.txt.bak"
-fi
-
-REMOVE_IMPORT=$(cat "$TEMP_SRC_DIRECTORY/proto-deps.txt"  | cut -c 8- | sed 's/\"//g' | sed 's/\;//')
-echo "$REMOVE_IMPORT" > "$TEMP_SRC_DIRECTORY/proto-deps.txt"
-
-REMOVE_DUPLICATES=$(sort "$TEMP_SRC_DIRECTORY/proto-deps.txt" | uniq -u)
-echo "$REMOVE_DUPLICATES" > "$TEMP_SRC_DIRECTORY/proto-deps.txt"
+# Collapse the list. `sort -u`, never `sort | uniq -u`: -u on uniq prints only the lines that occur
+# EXACTLY once, so a dependency imported by two protos was dropped from the list altogether rather
+# than listed once, and protoc never generated its stubs.
+sort -u "$TEMP_SRC_DIRECTORY/proto-deps.txt" | grep '[^[:space:]]' > "$TEMP_SRC_DIRECTORY/proto-deps.txt.tmp" || true
+mv "$TEMP_SRC_DIRECTORY/proto-deps.txt.tmp" "$TEMP_SRC_DIRECTORY/proto-deps.txt"
 
 echo "Google Protos Dependencies:"
 cat "$TEMP_SRC_DIRECTORY/proto-deps.txt"
@@ -98,8 +99,10 @@ bash ./compile-stubs-2-lib.sh "$TEMP_SRC_DIRECTORY" || { echo "ERROR: compile-st
 
 echo "Copying output files to mounted directory"
 #mkdir -p $INPUT_VOLUME_FS/lib
-#Remove previously generated stubs so protos deleted/renamed at source do not leave orphaned stubs behind
-rm -rf "$OUTPUT_VOLUME_FS/api"
+#Remove previously generated stubs so protos deleted/renamed at source do not leave orphaned stubs
+#behind. `${VAR:?}` like every other rm -rf in the repo: an empty $OUTPUT_VOLUME_FS would make
+#this `rm -rf /api` instead of aborting.
+rm -rf "${OUTPUT_VOLUME_FS:?}/api"
 cp -r "$TEMP_SRC_DIRECTORY"/lib/* "$OUTPUT_VOLUME_FS" || { echo "ERROR: failed to copy library to output volume" >&2; exit 1; }
 echo "Finished copying"
 
