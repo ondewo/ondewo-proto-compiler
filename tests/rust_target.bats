@@ -15,6 +15,8 @@
 #   * google/protobuf/** is never recompiled (it stays mapped to ::prost_types);
 #   * src/api is entirely generated - it is never seeded from the input volume and is
 #     wiped in the output volume, while hand-written modules beside it survive;
+#   * besides src/ and the manifest, the crate takes over exactly the readme /
+#     license-file the manifest names - `cargo package` refuses the crate without them;
 #   * the crate manifest template comes from the input volume when present, else from
 #     the image default, and the packaged <name>-<version>.crate is named after it;
 #   * the offline dependency pre-flight rejects anything the image did not pre-warm,
@@ -107,6 +109,24 @@ shadow_cargo() {
   chmod +x "$SANDBOX/shadow-bin/cargo"
   PATH="$SANDBOX/shadow-bin:$PATH"
   export PATH
+}
+
+# A cargo that, like the real one, refuses to `package` a crate whose manifest names a
+# readme / license-file missing from the crate directory (its CWD). The names are passed in
+# rather than parsed out of the manifest, so the mock does not re-implement the logic under
+# test; everything else falls through to the shared mock.
+shadow_cargo_requiring() {
+  shadow_cargo <<MOCK
+#!/usr/bin/env bash
+case " \$* " in
+  *" package "*)
+    for f in $*; do
+      [ -f "\$f" ] || { echo "error: '\$f' does not appear to exist (relative to '\$(pwd)')" >&2; exit 101; }
+    done
+    ;;
+esac
+exec "$MOCK_BIN/cargo" "\$@"
+MOCK
 }
 
 setup() {
@@ -344,6 +364,101 @@ run_rust() { run bash ./compile-proto-2-rust.sh "$@"; }
   [ ! -e "$CRATE/.cargo" ]
   [ ! -e "$OUT/rust-toolchain.toml" ]
   [ ! -e "$OUT/.cargo" ]
+}
+
+@test "rust crate assembly: the readme / license-file the manifest names are taken over, nothing else" {
+  cat > "$IN/Cargo.toml" <<'TOML'
+[package]
+name = "ondewo-nlu-client"
+version = "7.2.1"
+readme = "README.md"
+license-file = 'docs/LICENSE.txt'
+
+[package.metadata.docs]
+readme = "IGNORED.md"
+
+[dependencies]
+prost = "0.14"
+TOML
+  printf '# the crate page\n' > "$IN/README.md"
+  mkdir -p "$IN/docs"
+  printf 'license text\n' > "$IN/docs/LICENSE.txt"
+  printf 'named outside [package]\n' > "$IN/IGNORED.md"
+  printf 'named nowhere\n' > "$IN/NOTES.md"
+  shadow_cargo_requiring README.md docs/LICENSE.txt
+
+  run_rust protos
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"WARN: the manifest's"* ]]
+  [ -f "$OUT/crate-dist/ondewo-nlu-client-7.2.1.crate" ]
+
+  # the named files sit, unchanged, in the crate cargo packaged - and nothing else came along
+  diff "$IN/README.md" "$CRATE/README.md"
+  diff "$IN/docs/LICENSE.txt" "$CRATE/docs/LICENSE.txt"
+  [ ! -e "$CRATE/IGNORED.md" ]
+  [ ! -e "$CRATE/NOTES.md" ]
+  # the copy-back is unchanged: those files belong to the output volume, not to the image
+  [ ! -e "$OUT/README.md" ]
+  [ ! -e "$OUT/docs" ]
+}
+
+@test "rust crate assembly: 'readme = true' takes over README.md, 'readme = false' takes over nothing" {
+  printf '# the crate page\n' > "$IN/README.md"
+
+  printf '[package]\nname = "c"\nversion = "1.0.0"\nreadme = true\n' > "$IN/Cargo.toml"
+  run_rust protos
+  [ "$status" -eq 0 ]
+  diff "$IN/README.md" "$CRATE/README.md"
+
+  printf '[package]\nname = "c"\nversion = "1.0.0"\nreadme = false\n' > "$IN/Cargo.toml"
+  run_rust protos
+  [ "$status" -eq 0 ]
+  [ ! -e "$CRATE/README.md" ]
+}
+
+@test "rust crate assembly: a manifest that names no file takes nothing over, as before" {
+  # cargo auto-detects a README.md in the crate root, so copying one in unasked would change
+  # what an unchanged manifest packages. Workspace inheritance names no file either.
+  printf '# the crate page\n' > "$IN/README.md"
+  printf 'license text\n' > "$IN/LICENSE"
+
+  for manifest in \
+      '[package]\nname = "c"\nversion = "1.0.0"\nlicense = "Apache-2.0"\n' \
+      '[package]\nname = "c"\nversion = "1.0.0"\nreadme.workspace = true\nlicense-file = { workspace = true }\n'; do
+    printf '%b' "$manifest" > "$IN/Cargo.toml"
+    run_rust protos
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"WARN: the manifest's"* ]]
+    [[ "$output" != *"Taking over the manifest's"* ]]
+    [ ! -e "$CRATE/README.md" ]
+    [ ! -e "$CRATE/LICENSE" ]
+  done
+}
+
+@test "rust crate assembly: a named file missing from the input volume is not papered over" {
+  printf '[package]\nname = "c"\nversion = "1.0.0"\nreadme = "README.md"\n' > "$IN/Cargo.toml"
+  shadow_cargo_requiring README.md
+
+  run_rust protos
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"WARN: the manifest's readme names 'README.md', which is not a file in the mounted input volume"* ]]
+  [[ "$output" == *"ERROR: 'cargo package' failed"* ]]
+  [ ! -e "$CRATE/README.md" ]
+  [ ! -d "$OUT/src" ]
+}
+
+@test "rust crate assembly: a named path outside the input volume is not taken over" {
+  # TEMP_SRC is $IMG/src and the crate $IMG/crate, so "../README.md" would read and write
+  # one and the same file beside both
+  printf 'outside\n' > "$IMG/README.md"
+  printf '[package]\nname = "c"\nversion = "1.0.0"\nreadme = "../README.md"\n' > "$IN/Cargo.toml"
+
+  run_rust protos
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"WARN: the manifest's readme '../README.md' is not a path inside the mounted input volume"* ]]
+  [[ "$output" != *"Taking over the manifest's"* ]]
+  [ ! -e "$CRATE/README.md" ]
 }
 
 # ------------------------------------------------------------------ argument handling

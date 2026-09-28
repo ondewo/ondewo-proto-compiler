@@ -53,6 +53,8 @@ Then proceeds to package the result as a Go module and verifies it with `go buil
 Uses **protoc-gen-prost**, **protoc-gen-tonic** and **protoc-gen-prost-crate** to compile the .proto files of the
 source directory to `prost` message types and `tonic` gRPC clients.
 Then proceeds to package the result as a cargo crate and verifies it with `cargo build`.
+A `readme` or `license-file` that the input volume's `Cargo.toml` names is taken into the crate, so put that file
+in the input volume beside `Cargo.toml` - `cargo package` refuses the crate without it.
 
 ### C++ ###
 

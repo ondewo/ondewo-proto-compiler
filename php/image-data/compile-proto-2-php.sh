@@ -97,8 +97,10 @@ echo "Finished copying"
 #src/ is compiler-owned and wiped on every run, so hand-written client sources live in auth/ at the
 #output-volume root - identical to the documented nodejs/typescript contract. PHP has no compile
 #step, so "exporting" them just means making them reachable: add auth/ to the shipped classmap and
-#rebuild the optimized autoloader. Idempotent - jq's `unique` keeps a second run from duplicating
-#the entry - and a client without auth/ is left completely untouched.
+#rebuild the optimized autoloader. Idempotent - make-lib-entry-point.sh drops the entry from the
+#manifest the NEXT run stages (that package has no auth/, and composer would abort on it), this step
+#adds it back, and jq's `unique` keeps it from being duplicated - and a client without auth/ is left
+#completely untouched.
 if [ -d "$OUTPUT_VOLUME_FS/auth" ] && [ -f "$OUTPUT_VOLUME_FS/composer.json" ]; then
     echo "Found hand-written sources in '$OUTPUT_VOLUME_FS/auth' -> adding them to the library autoloader"
     AUTH_MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/composer-auth.XXXXXX")

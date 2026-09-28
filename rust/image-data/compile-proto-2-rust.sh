@@ -87,9 +87,10 @@ if [ ! -d "$OUTPUT_VOLUME_FS" ]; then
 fi
 
 # -------------- Assemble the crate the generated stubs are compiled into
-# Only src/ and Cargo.toml are taken over from the input volume - deliberately NOT a
-# rust-toolchain.toml or a .cargo/config.toml, which would repoint the toolchain or the
-# registry and cannot work under the image's baked CARGO_NET_OFFLINE=true.
+# Only src/ and Cargo.toml (plus the readme / license-file that manifest names, see below)
+# are taken over from the input volume - deliberately NOT a rust-toolchain.toml or a
+# .cargo/config.toml, which would repoint the toolchain or the registry and cannot work
+# under the image's baked CARGO_NET_OFFLINE=true.
 echo "Assembling the cargo crate in '$CRATE_DIRECTORY' ..."
 rm -rf "${CRATE_DIRECTORY:?}" "${DIST_DIRECTORY:?}"
 mkdir -p "$CRATE_DIRECTORY/src"
@@ -119,6 +120,44 @@ if [ ! -f "$MANIFEST_TEMPLATE" ]; then
     exit 1
 fi
 echo "Using crate manifest template: $MANIFEST_TEMPLATE"
+
+# -------------- Take over the files the manifest makes `cargo package` read
+# `cargo package` refuses a crate whose [package] `readme` or `license-file` names a file
+# that does not exist, and the crate assembled above holds only src/ and the manifest - so a
+# client manifest carrying `readme = "README.md"` failed every run. Exactly the named files
+# are copied from the private input copy, nothing else: a manifest without the keys gets a
+# crate as before (a README.md cargo would auto-detect is NOT added), and a named file the
+# input volume lacks is not papered over - `cargo package` then fails with its own error.
+# Spellings handled: a basic or literal string, and `readme = true` (cargo's alias for
+# README.md). `readme = false` names no file, and the `.workspace = true` inheritance
+# forms cannot resolve here anyway - the image builds a lone crate, never a workspace, and
+# cargo reports that itself. Keys of any other table than [package] are ignored.
+for manifestkey in readme license-file; do
+    #The raw value of the key (the sed range ends at the next table header)
+    manifestvalue=$(sed -n '/^\[package\]/,/^\[/p' "$MANIFEST_TEMPLATE" \
+        | sed -n "s|^[[:space:]]*${manifestkey}[[:space:]]*=[[:space:]]*||p" | head -n 1)
+    case "$manifestvalue" in
+        \"*) packagefile=$(printf '%s\n' "$manifestvalue" | sed -n 's|^"\([^"]*\)".*|\1|p') ;;
+        \'*) packagefile=$(printf '%s\n' "$manifestvalue" | sed -n "s|^'\([^']*\)'.*|\1|p") ;;
+        #only readme has a boolean form; cargo itself rejects one for license-file
+        true*) [ "$manifestkey" = "readme" ] || continue; packagefile="README.md" ;;
+        *) continue ;;
+    esac
+    #Never read from or write to outside the input copy and the crate
+    case "$packagefile" in
+        /*|..|../*|*/..|*/../*)
+            echo "WARN: the manifest's $manifestkey '$packagefile' is not a path inside the mounted input volume -> not taken over into the crate" >&2
+            continue
+            ;;
+    esac
+    if [ ! -f "$TEMP_SRC_DIRECTORY/$packagefile" ]; then
+        echo "WARN: the manifest's $manifestkey names '$packagefile', which is not a file in the mounted input volume -> 'cargo package' will refuse the crate" >&2
+        continue
+    fi
+    echo "Taking over the manifest's $manifestkey '$packagefile' into the crate"
+    mkdir -p "$CRATE_DIRECTORY/$(dirname "$packagefile")"
+    cp "$TEMP_SRC_DIRECTORY/$packagefile" "$CRATE_DIRECTORY/$packagefile" || { echo "ERROR: failed to copy the manifest's $manifestkey '$packagefile' into the crate" >&2; exit 1; }
+done
 
 # -------------- Running compilation steps
 bash ./compile-proto-2-stubs.sh "$CRATE_DIRECTORY" "$PROTOS_ROOT_PATH" "$COMPILE_SELECTED_PROTOS_DIR" "$MANIFEST_TEMPLATE" || { echo "ERROR: compile-proto-2-stubs.sh failed" >&2; exit 1; }

@@ -11,6 +11,11 @@
 #   validate       - fails when there is no composer.json in the CWD, like the real one
 #   update         - writes composer.lock and installs vendor/ (+ the autoloader)
 #   dump-autoload  - (re)writes vendor/composer/autoload_classmap.php
+#
+# Autoloader generation (update/install and dump-autoload) fails like the real composer when an
+# autoload.classmap entry does not exist in the CWD - `validate` does not check it. Without this,
+# a manifest naming a directory the staged package lacks passed here and aborted in the image:
+# 'Could not scan for classes inside "auth/" ...'.
 : "${COMPOSER_MOCK_LOG:=/dev/null}"
 printf 'composer %s\n' "$*" >> "$COMPOSER_MOCK_LOG"
 
@@ -38,6 +43,13 @@ if [ ! -f composer.json ]; then
 fi
 
 write_autoloader() {
+  local entry
+  while IFS= read -r entry; do
+    if [ -n "$entry" ] && [ ! -e "$entry" ]; then
+      echo "mock composer: Could not scan for classes inside \"$entry\" which does not appear to be a file nor a folder" >&2
+      exit 1
+    fi
+  done <<< "$(jq -r '.autoload.classmap // [] | .[]' composer.json)"
   mkdir -p vendor/composer
   printf '<?php\n// mock composer autoloader\n' > vendor/autoload.php
   printf '<?php\nreturn array();\n' > vendor/composer/autoload_classmap.php

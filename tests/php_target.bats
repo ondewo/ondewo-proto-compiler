@@ -1164,7 +1164,24 @@ JSON
   # autoload comes from the client, but src/ is forced in (it is compiler-owned)
   [ "$(jq -r '.autoload["psr-4"]["Ondewo\\Auth\\"]' "$OUT/composer.json")" = "auth/" ]
   [ "$(jq -r '.autoload.classmap | index("src/") != null' "$OUT/composer.json")" = "true" ]
-  [ "$(jq -r '.autoload.classmap | index("auth/") != null' "$OUT/composer.json")" = "true" ]
+  # ... and auth/ is the one classmap entry the compiler manages itself: it is
+  # dropped from the staged package (which has no auth/, so composer would abort
+  # on it) and added back only for an output volume that has an auth/ - this one
+  # has none (see the "php auth:" cases)
+  [ "$(jq -r '.autoload.classmap | index("auth/") != null' "$OUT/composer.json")" = "false" ]
+}
+
+@test "php manifest: auth/ is dropped from the classmap the package is staged with, nothing else is" {
+  mkdir -p "$SANDBOX/work"
+  printf '{"name":"c/p","autoload":{"classmap":["auth/","extra/"],"psr-4":{"C\\\\Auth\\\\":"auth/"}}}\n' \
+    > "$SANDBOX/work/composer.json"
+
+  run bash "$REPO_ROOT/php/image-data/make-lib-entry-point.sh" "$SANDBOX/work" \
+    "$REPO_ROOT/php/image-data/default-lib-files"
+  [ "$status" -eq 0 ]
+  [ "$(jq -r '.autoload.classmap | join(",")' "$SANDBOX/work/composer.json")" = "extra/,src/" ]
+  # psr-4 skips a missing directory, so the client's mapping of auth/ stays
+  [ "$(jq -r '.autoload["psr-4"]["C\\Auth\\"]' "$SANDBOX/work/composer.json")" = "auth/" ]
 }
 
 @test "php manifest: src/ is forced into a client classmap that omits it, without duplication" {
@@ -1244,8 +1261,9 @@ JSON
 @test "php auth: registering auth/ is idempotent across runs" {
   seed_default_protos
   # a client manifest that already lists auth/, plus the directory itself:
-  # both the merge step and the post-copy jq add it, so `unique` is what keeps
-  # the classmap from growing on every run
+  # the merge step drops the entry (the staged package has no auth/, and
+  # composer aborts on it) and the post-copy jq adds it back, with `unique`
+  # keeping the classmap from growing on every run
   printf '{"name":"c/p","autoload":{"classmap":["auth/"]}}\n' > "$IN/composer.json"
   stage_php
   mkdir -p "$OUT/auth"
@@ -1260,6 +1278,35 @@ JSON
   [ "$(jq -r '[.autoload.classmap[] | select(. == "auth/")] | length' "$OUT/composer.json")" = "1" ]
   [ "$(jq -r '[.autoload.classmap[] | select(. == "src/")] | length' "$OUT/composer.json")" = "1" ]
   [ -f "$OUT/auth/TokenProvider.php" ]
+}
+
+@test "php auth: with ONE directory as input and output volume, the second run builds on the first run's manifest" {
+  # The shape of ondewo-nlu-client-php, which mounts its repository root as both
+  # volumes: the manifest the first run writes back - auth/ now in its classmap -
+  # is the manifest the second run merges and stages. The staged package holds
+  # src/ only, so that entry made composer abort ('Could not scan for classes
+  # inside "auth/"') on every run after the first.
+  seed_default_protos
+  printf '{"name":"c/p","autoload":{"classmap":["src/"],"psr-4":{"C\\\\Auth\\\\":"auth/"}}}\n' > "$IN/composer.json"
+  mkdir -p "$IN/auth"
+  printf '<?php\nclass TokenProvider {}\n' > "$IN/auth/TokenProvider.php"
+  auth_before="$(cat "$IN/auth/TokenProvider.php")"
+  stage_php
+  export OUTPUT_VOLUME_FS="$IN"
+
+  run bash ./compile-proto-2-php.sh protos
+  [ "$status" -eq 0 ]
+  [ "$(jq -r '.autoload.classmap | join(",")' "$IN/composer.json")" = "auth/,src/" ]
+  first="$(snapshot_tree "$IN")"
+
+  rm -rf "$TEMP"
+  run bash ./compile-proto-2-php.sh protos
+  [ "$status" -eq 0 ]
+  second="$(snapshot_tree "$IN")"
+
+  [ "$first" = "$second" ]
+  [ "$(cat "$IN/auth/TokenProvider.php")" = "$auth_before" ]
+  [ "$(jq -r '.autoload["psr-4"]["C\\Auth\\"]' "$IN/composer.json")" = "auth/" ]
 }
 
 # =====================================================================

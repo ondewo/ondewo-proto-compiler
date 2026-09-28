@@ -2,6 +2,22 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.15.2
+
+### Bug Fixes
+
+* PHP: a client that mounts one directory as both the input and the output volume - as ondewo-nlu-client-php does - can generate a second time. When the output volume holds a hand-written `auth/`, a run adds `"auth/"` to the shipped `autoload.classmap`; the next run merged that same manifest into a package staged with `src/` and `composer.json` only, and `composer update` aborted with `Could not scan for classes inside "auth/"`. The manifest merge in `make-lib-entry-point.sh` now drops `"auth/"` before the package is staged, and the existing step after the copy-back adds it back whenever the output volume has `auth/`, so the shipped `composer.json` is unchanged and repeated runs are byte-identical. A client that removes the entry itself after every run can drop that workaround once it pins this release. The bats `composer` mock now fails on a classmap entry that does not exist, like the real tool; the old mock never read the classmap, which is how the existing idempotency case passed.
+* Rust: a crate manifest that names a `readme` or a `license-file` no longer fails every run. The image assembled its crate from `src/` and `Cargo.toml` only, so `cargo package` refused a manifest carrying `readme = "README.md"` with ``readme `README.md` does not appear to exist``. The files the `[package]` table names are now taken over from the input volume - a basic or literal string, and `readme = true`, cargo's alias for `README.md` - and nothing else: a manifest without the keys gets the same crate as before, a named file the input volume lacks is reported and left to `cargo package`'s own error, and an absolute path or one containing `..` is not copied. The client still stages the named file into the input volume beside its `Cargo.toml`. The packaged `.crate` now carries the README.
+* Javascript: the default library `package.json` depends on `google-protobuf` `^4.0.2` instead of `^3.21.4`. The generated stubs read strings with `readStringRequireUtf8()`, which google-protobuf 3.x does not have, and a js bundle embeds its runtime - so a bundle built against `^3.21.4` cannot decode a single string field. `release_update_proto_compiler_dependency` copies the image's dependency versions into every js client's `src/package.json`, so a compiler release put clients that had moved to 4.x back on `^3.21.4` - ondewo-nlu-client-js had to restore `^4.0.2` after the 5.15.0 bump. A js client without a `package.json` of its own now also gets `^4.0.2`.
+* Pre-commit: commits on ticket branches are accepted again. `giticket` was declared before `conventional-pre-commit`; both run at the commit-msg stage in declaration order, so the validator, which anchors its pattern at the start of the subject, rejected the `[OND211-2418] feat: ...` subject giticket had just written - every commit on a ticket branch failed. The validator now runs first. A new local `strip-ticket-prefix` hook runs before both and removes a ticket prefix an earlier run added, so `git commit --amend`, a rebase reword or `-C HEAD` validate the plain subject and end with exactly one prefix instead of being rejected or doubled.
+* Release automation: the GitHub release body is the whole section again. `CURRENT_RELEASE_NOTES` ended its slice of `RELEASE.md` at the first bold span inside the notes instead of at the `*****` separator, which is how the 5.15.0 release was published with 3 of its 8 lines. The slice now ends on `^\*{5}`, and its opening heading is anchored and matched literally, so a version that is a prefix of a newer one (`1.1.1` vs `1.1.10`) cannot select the newer section.
+
+### Improvements
+
+* Release automation: `make release` runs `check_release_credentials`, the new `check_release_notes` and `spc` before it pushes anything. The GitHub token used to be checked only inside the utils image, after the version commits, the release branch and the tag were already on origin, and a direct `make release` found an already-used version only at `git checkout -b`. `check_release_notes` fails when `RELEASE.md` has no notes for the version, instead of letting `gh release create` publish an empty body. The `Makefile`'s "BEFORE RELEASE" header now lists the steps that actually exist.
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.15.1
 
 ### Bug Fixes

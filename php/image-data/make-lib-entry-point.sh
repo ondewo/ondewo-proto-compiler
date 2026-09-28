@@ -22,6 +22,12 @@ set -e
 #                 overridable. src/ is compiler-owned (the orchestrator wipes it on every run), and a
 #                 client manifest that simply forgot the entry would otherwise ship a library whose
 #                 classmap contains nothing but vendor classes.
+#                 "auth/" is REMOVED, for the mirror-image reason: the package is staged with src/
+#                 only, and composer aborts on a classmap entry it cannot find ('Could not scan for
+#                 classes inside "auth/"'). The hand-written auth/ lives at the output-volume root, and
+#                 the orchestrator adds the entry back after the copy-back whenever that directory
+#                 exists - so a client whose input and output volume are the same directory, and whose
+#                 manifest therefore still carries the previous run's entry, builds again.
 
 SRC_DIRECTORY=$1
 DEFAULT_FILES_DIR=${2:-${IMAGE_DATA_DIRECTORY:-/image-data}/default-lib-files}
@@ -59,7 +65,7 @@ trap 'rm -f "$MERGED_MANIFEST"' EXIT
 jq -s '.[0] as $defaults | .[1] as $client | $client
        | .require = ($defaults.require + ($client.require // {}))
        | .autoload = (($client.autoload // {})
-           | .classmap = (((.classmap // []) + ["src/"]) | unique))' \
+           | .classmap = (((.classmap // []) - ["auth/"] + ["src/"]) | unique))' \
     "$DEFAULT_MANIFEST" "$MANIFEST" > "$MERGED_MANIFEST" \
     || { echo "ERROR: failed to merge '$MANIFEST' with the image defaults - is it valid JSON? - exiting" >&2; exit 1; }
 

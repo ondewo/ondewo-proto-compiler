@@ -295,6 +295,14 @@ node targets, and what to watch out for:
 - **`--grpc_out` is ambiguous across targets**: php drives `grpc_php_plugin` with it (emits `.php`) and cpp
   drives `grpc_cpp_plugin` with it (emits `.grpc.pb.h`/`.grpc.pb.cc`). The bats `protoc` mock disambiguates on
   the sibling `--php_out`/`--cpp_out` flag in the same argv - keep that branch intact.
+- **php: `"auth/"` leaves the classmap before staging and comes back after the copy-back (5.15.2).** Clients
+  mount ONE directory as input and output volume, so a run merges the manifest the previous run shipped. The
+  package is staged in `lib/` with `src/` + `composer.json` only, and composer aborts on a classmap entry it
+  cannot find (`Could not scan for classes inside "auth/"`), so `make-lib-entry-point.sh` drops `"auth/"` and
+  `compile-proto-2-php.sh` re-adds it when the output volume has `auth/`. Keep both halves.
+- **rust: the crate takes over exactly the `readme` / `license-file` the `[package]` table names (5.15.2)** from
+  the input volume - `cargo package` refuses the crate without them. Nothing else is copied; a `README.md`
+  cargo would auto-detect is deliberately not added, so a manifest without the keys builds as before.
 - **Windows wrappers exist for all eleven targets**: `build.bat` beside every `build.sh`,
   `example/run-compile.bat` beside every `example/run-compile.sh`, plus `build-all.bat`. They resolve their
   own directory from `%~dp0` and must check `if errorlevel 1` after the docker call - a wrapper that swallows
