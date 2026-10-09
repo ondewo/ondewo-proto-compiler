@@ -240,6 +240,27 @@ google/protobuf/descriptor.proto
 google/protobuf/duration.proto" ]
 }
 
+@test "node-deps: a listed dependency's own imports are compiled even under an excluded path" {
+  # google/api/service.proto imports experimental/experimental.proto, which imports
+  # experimental/authorization_config.proto. The google/ scan skips the excluded "experimental"
+  # tree, so experimental.proto was compiled without its import and experimental_pb.js required
+  # a stub that did not exist - the package entry point then failed to load.
+  stage
+  write_proto "$IN/protos/library/a.proto" 'import "google/api/service.proto";'
+  write_proto "$IN/protos/google/api/service.proto" 'import "google/api/experimental/experimental.proto";'
+  write_proto "$IN/protos/google/api/experimental/experimental.proto" \
+    'import "google/api/experimental/authorization_config.proto";'
+  write_proto "$IN/protos/google/api/experimental/authorization_config.proto"
+  run_compile protos library
+  echo "$output"
+  [ "$status" -eq 0 ]
+  echo "deps: [$(deps_file)]"
+  [ "$(deps_file)" = "google/api/experimental/authorization_config.proto
+google/api/experimental/experimental.proto
+google/api/service.proto" ]
+  grep -Fq "google/api/experimental/authorization_config.proto" "$PROTOC_MOCK_LOG"
+}
+
 @test "node-deps: the google/ exclusion list still keeps the ignored trees out" {
   # Guard on the filters the scan already had, so the parser rewrite cannot widen them.
   stage

@@ -118,6 +118,31 @@ run_append() {
   grep -Fq "export * from './auth/offlineTokenProvider';" "$OUT/public-api.js"
 }
 
+@test "append-auth-exports: a commonjs barrel gets a require line that loads" {
+  # the nodejs target's public-api.js is commonjs (see lib_entry_points.bats); an ES line
+  # appended to it would make Node load the whole barrel as an ES module and fail
+  for target in nodejs typescript; do
+    rm -f "$OUT/auth/"*
+    printf "'use strict';\nfunction reexport(m) { Object.keys(m).forEach(function (k) { exports[k] = m[k]; }); }\n" > "$OUT/public-api.js"
+    printf "exports.login = function () {};\n" > "$OUT/auth/offlineTokenProvider.js"
+    : > "$OUT/auth/offlineTokenProvider.ts"
+
+    run_append "$target"
+    [ "$status" -eq 0 ]
+    run_append "$target"
+    [ "$status" -eq 0 ]
+
+    run grep -c "^reexport(require('./auth/offlineTokenProvider'));$" "$OUT/public-api.js"
+    [ "$output" = "1" ]
+    run grep -c "^export " "$OUT/public-api.js"
+    [ "$output" = "0" ]
+    # the .d.ts barrel keeps the star export
+    grep -Fq "export * from './auth/offlineTokenProvider';" "$OUT/public-api.d.ts"
+    run node -e "if (typeof require('$OUT/public-api.js').login !== 'function') process.exit(1)"
+    [ "$status" -eq 0 ]
+  done
+}
+
 @test "append-auth-exports: requires the output root argument" {
   run bash "$REPO_ROOT/nodejs/image-data/append-auth-exports.sh"
   [ "$status" -ne 0 ]

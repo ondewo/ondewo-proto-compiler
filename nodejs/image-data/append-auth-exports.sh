@@ -46,7 +46,13 @@ find "$AUTH_DIR" -maxdepth 1 -type f \( -name "*.ts" -o -name "*.js" \) \
     for barrel in "$OUTPUT_ROOT/public-api.d.ts" "$OUTPUT_ROOT/public-api.js"; do
       [ -f "$barrel" ] || continue
       if ! grep -Fq "'./auth/$module'" "$barrel"; then
-        echo "export * from './auth/$module';" >>"$barrel"
+        # A commonjs barrel (the nodejs target's public-api.js, recognised by its `reexport`
+        # helper) gets a require line; an ES barrel (.d.ts, the typescript target's .js) a star export.
+        if grep -Fq "function reexport(" "$barrel"; then
+          echo "reexport(require('./auth/$module'));" >>"$barrel"
+        else
+          echo "export * from './auth/$module';" >>"$barrel"
+        fi
       fi
     done
   done

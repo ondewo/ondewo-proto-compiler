@@ -42,6 +42,19 @@ stage() {
   [ -f "$OUT/public-api.d.ts" ]
 }
 
+@test "e2e nodejs: the generated package entry point loads with require()" {
+  printf '{"name":"fixture","version":"0.0.1"}\n' > "$IN/package.json"
+  mkdir -p "$OUT/auth"
+  printf 'exports.login = function () {};\n' > "$OUT/auth/offlineTokenProvider.js"
+  stage nodejs
+  run bash ./compile-proto-2-nodejs.sh protos library
+  [ "$status" -eq 0 ]
+  grep -Fq "reexport(require('./api/mock_pb'));" "$OUT/public-api.js"
+  grep -Fq "reexport(require('./auth/offlineTokenProvider'));" "$OUT/public-api.js"
+  run node -e "const m = require('$OUT/public-api.js'); if (!Object.keys(m).length) process.exit(1)"
+  [ "$status" -eq 0 ]
+}
+
 @test "e2e nodejs: missing package.json in the input volume fails loudly" {
   stage nodejs
   run bash ./compile-proto-2-nodejs.sh protos library

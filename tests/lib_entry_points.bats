@@ -130,18 +130,62 @@ run_entry_point() {
   done
 }
 
-@test "nodejs/typescript entry point: closure .js stubs get star exports only" {
-  for target in nodejs typescript; do
-    rm -f "$SRC/public-api.js"
-    # protoc's closure/commonjs output carries no `export ` lines, so nothing to disambiguate
-    printf 'goog.exportSymbol("proto.ondewo.nlu.DetectIntentRequest", null, global);\n' \
-      > "$SRC/api/ondewo/nlu/session_pb.js"
+@test "typescript entry point: closure .js stubs get star exports only" {
+  # the typescript target's .js barrel is a bundler entry and stays an ES barrel
+  rm -f "$SRC/public-api.js"
+  # protoc's closure/commonjs output carries no `export ` lines, so nothing to disambiguate
+  printf 'goog.exportSymbol("proto.ondewo.nlu.DetectIntentRequest", null, global);\n' \
+    > "$SRC/api/ondewo/nlu/session_pb.js"
 
-    run_entry_point "$target" .js
-    [ "$status" -eq 0 ]
+  run_entry_point typescript .js
+  [ "$status" -eq 0 ]
 
-    grep -Fq "export * from './api/ondewo/nlu/session_pb';" "$SRC/public-api.js"
-    run grep -c '^export {' "$SRC/public-api.js"
-    [ "$output" = "0" ]
-  done
+  grep -Fq "export * from './api/ondewo/nlu/session_pb';" "$SRC/public-api.js"
+  run grep -c '^export {' "$SRC/public-api.js"
+  [ "$output" = "0" ]
+}
+
+@test "nodejs entry point: the .js barrel is commonjs, sorted, and has no ES syntax" {
+  printf 'exports.TranscribeRequest = 1;\n' > "$SRC/api/ondewo/s2t/s2t_pb.js"
+  printf 'exports.DetectIntentRequest = 1;\n' > "$SRC/api/ondewo/nlu/session_pb.js"
+  printf 'exports.SessionsClient = 1;\n' > "$SRC/api/ondewo/nlu/session_grpc_pb.js"
+
+  run_entry_point nodejs .js
+  [ "$status" -eq 0 ]
+
+  run grep -c '^export ' "$SRC/public-api.js"
+  [ "$output" = "0" ]
+  [ "$(grep '^reexport(' "$SRC/public-api.js")" = "reexport(require('./api/ondewo/nlu/session_grpc_pb'));
+reexport(require('./api/ondewo/nlu/session_pb'));
+reexport(require('./api/ondewo/s2t/s2t_pb'));" ]
+  run node --check "$SRC/public-api.js"
+  [ "$status" -eq 0 ]
+}
+
+@test "nodejs entry point: require() loads every stub, and the first stub keeps a shared name" {
+  # the .d.ts barrel binds a duplicated symbol to the first declaring stub in sorted order;
+  # the commonjs barrel must agree (nlu sorts before s2t)
+  printf "exports.ReasoningEffort = 'nlu';\nexports.DetectIntentRequest = 1;\n" > "$SRC/api/ondewo/nlu/session_pb.js"
+  printf "exports.ReasoningEffort = 's2t';\nexports.TranscribeRequest = 2;\n" > "$SRC/api/ondewo/s2t/s2t_pb.js"
+
+  run_entry_point nodejs .js
+  [ "$status" -eq 0 ]
+
+  run node -e "
+    const m = require('$SRC/public-api.js');
+    if (m.ReasoningEffort !== 'nlu' || m.DetectIntentRequest !== 1 || m.TranscribeRequest !== 2) process.exit(1);
+    if (Object.keys(m).sort().join() !== 'DetectIntentRequest,ReasoningEffort,TranscribeRequest') process.exit(2);
+  "
+  [ "$status" -eq 0 ]
+}
+
+@test "nodejs entry point: the .d.ts barrel keeps its ES star exports" {
+  printf 'export class DetectIntentRequest {}\n' > "$SRC/api/ondewo/nlu/session_pb.d.ts"
+
+  run_entry_point nodejs .d.ts
+  [ "$status" -eq 0 ]
+
+  grep -Fq "export * from './api/ondewo/nlu/session_pb.d';" "$SRC/public-api.d.ts"
+  run grep -c 'reexport' "$SRC/public-api.d.ts"
+  [ "$output" = "0" ]
 }
