@@ -55,6 +55,9 @@ generate_protos:
 	# The list is consumed with `while IFS= read -r`, never `for f in $$files`: an unquoted
 	#	expansion word-splits a path containing a space AND glob-expands one containing [ ] * ?,
 	#	which compiles the wrong file set (skipping the real proto) and still exits 0.
+	# The expected stub name follows protoc's python module naming: strip `.proto`, then every `-`
+	#	becomes `_` and every `.` a `/`, directories included (ondewo/s2t/speech-to-text.proto ->
+	#	ondewo/s2t/speech_to_text_pb2.py).
 	target="$$INTERNAL_TARGET_PROTO_DIR"; \
 	target="$${target%/}"; \
 	if [ -n "$$target" ]; then \
@@ -77,7 +80,7 @@ generate_protos:
 				--grpc_python_out=${INTERNAL_OUTPUT_DIR} \
 				"$$f" || exit 1; \
 			rel="$${f#${INTERNAL_PROTO_DIR}/}"; \
-			stub="${INTERNAL_OUTPUT_DIR}/$${rel%.proto}_pb2.py"; \
+			stub="${INTERNAL_OUTPUT_DIR}/$$(printf '%s' "$${rel%.proto}" | tr '.-' '/_')_pb2.py"; \
 			[ -f "$$stub" ] || { echo "ERROR: grpc_tools.protoc reported success for '$$rel' but produced no '$$stub' - there is nothing to build a library from - exiting" >&2; exit 1; }; \
 			count=$$((count + 1)); \
 		done; \

@@ -66,3 +66,23 @@ gen() {
   run grep -F -- "-I $PROTO_DIR/ " "$PY_MOCK_LOG"
   [ "$status" -ne 0 ]
 }
+
+@test "hyphenated .proto paths: the stub check expects protoc's underscore module name" {
+  # grpc_tools.protoc writes ondewo/s2t/speech-to-text.proto to speech_to_text_pb2.py (every '-'
+  # becomes '_', directories included); a check for 'speech-to-text_pb2.py' failed every s2t build.
+  mkdir -p "$PROTO_DIR/ondewo/s2t" "$PROTO_DIR/my-dir"
+  printf 'message S {}\n' > "$PROTO_DIR/ondewo/s2t/speech-to-text.proto"
+  printf 'message D {}\n' > "$PROTO_DIR/my-dir/a-b.proto"
+  gen
+  [ "$status" -eq 0 ]
+  [ -f "$OUT_DIR/ondewo/s2t/speech_to_text_pb2.py" ]
+  [ -f "$OUT_DIR/my_dir/a_b_pb2.py" ]
+}
+
+@test "a hyphenated .proto whose stub is really missing still fails loudly" {
+  mkdir -p "$PROTO_DIR/ondewo/s2t"
+  printf 'message S {}\n' > "$PROTO_DIR/ondewo/s2t/speech-to-text.proto"
+  PY_MOCK_NO_STUBS=1 gen
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"produced no '$OUT_DIR/ondewo/s2t/speech_to_text_pb2.py'"* ]]
+}
