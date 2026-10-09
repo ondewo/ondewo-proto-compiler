@@ -43,7 +43,9 @@ done
 [ -n "$proto" ] || exit 0
 
 rel="${proto#"$proto_root"/}"
-base="${rel%.proto}"
+# protoc's python module naming: every '-' becomes '_' and every '.' a '/', directories included
+# (my-dir/speech-to-text.proto -> my_dir/speech_to_text_pb2.py).
+base=$(printf '%s' "${rel%.proto}" | tr '.-' '/_')
 
 write_stub() {
   # $1 output dir (empty => that generator was not asked for), $2 file suffix
