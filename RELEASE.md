@@ -2,6 +2,14 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.15.4
+
+### Bug Fixes
+
+* Rust: the image pre-warms tonic's `tls-native-roots` feature (with `rustls-native-certs`) and `tracing`. The rust clients' hand-written `src/channel.rs` trusts the platform certificate store when no custom CA is configured and logs its insecure-channel warning through `tracing`; generation runs fully offline, so with 5.15.3 `make generate_ondewo_protos` of every rust client failed in `cargo build --offline` because `rustls-native-certs` was not in the image's cargo cache. No other target changed.
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.15.3
 
 ### Bug Fixes
