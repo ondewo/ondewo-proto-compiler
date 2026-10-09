@@ -2,6 +2,14 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.15.3
+
+### Bug Fixes
+
+* Python: a `.proto` file or directory with a hyphen in its name compiles again. `grpc_tools.protoc` names the python module after the proto path with every `-` turned into `_` and every `.` into `/`, directories included, so `ondewo/s2t/speech-to-text.proto` yields `ondewo/s2t/speech_to_text_pb2.py`. The post-protoc check added in 5.15.2 looked for `speech-to-text_pb2.py` instead and aborted with `grpc_tools.protoc reported success ... but produced no ...`, which broke the s2t, csi and vtsi python client builds on 5.15.2. The check now applies protoc's naming rule; the bats `python` mock writes its stubs under the same rule, and two cases pin it.
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.15.2
 
 ### Bug Fixes
