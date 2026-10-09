@@ -157,6 +157,28 @@ fi
 sort -u "$TEMP_SRC_DIRECTORY/proto-deps.txt" | grep '[^[:space:]]' > "$TEMP_SRC_DIRECTORY/proto-deps.txt.tmp" || true
 mv "$TEMP_SRC_DIRECTORY/proto-deps.txt.tmp" "$TEMP_SRC_DIRECTORY/proto-deps.txt"
 
+#Close the list over its OWN imports. The google/ scan above reads only the protos that pass its
+#include/exclude filters, but a listed dependency is compiled whether it passes them or not:
+#google/api/service.proto imports google/api/experimental/experimental.proto, which is listed and
+#compiled, while its own import google/api/experimental/authorization_config.proto sits under the
+#excluded "experimental" path and was never read - so experimental_pb.js required a stub that did
+#not exist and `require('<package>')` failed on it. Re-read every listed proto that exists under the
+#protos root until no new import appears (the list only grows, so this terminates).
+while :; do
+    DEPS_BEFORE=$(grep -c . "$TEMP_SRC_DIRECTORY/proto-deps.txt" || true)
+    while IFS= read -r dep; do
+        [ -f "$PROTOS_ROOT_PATH/$dep" ] || continue
+        sed -n 's|^[[:space:]]*import[[:space:]][[:space:]]*\(public[[:space:]][[:space:]]*\)\{0,1\}\(weak[[:space:]][[:space:]]*\)\{0,1\}"\([^"]*\)"[[:space:]]*;.*$|\3|p' "$PROTOS_ROOT_PATH/$dep" \
+            | grep "google/" || true
+    done < "$TEMP_SRC_DIRECTORY/proto-deps.txt" > "$TEMP_SRC_DIRECTORY/proto-deps.txt.closure"
+    cat "$TEMP_SRC_DIRECTORY/proto-deps.txt" "$TEMP_SRC_DIRECTORY/proto-deps.txt.closure" \
+        | sort -u | grep '[^[:space:]]' > "$TEMP_SRC_DIRECTORY/proto-deps.txt.tmp" || true
+    mv "$TEMP_SRC_DIRECTORY/proto-deps.txt.tmp" "$TEMP_SRC_DIRECTORY/proto-deps.txt"
+    rm -f "$TEMP_SRC_DIRECTORY/proto-deps.txt.closure"
+    DEPS_AFTER=$(grep -c . "$TEMP_SRC_DIRECTORY/proto-deps.txt" || true)
+    [ "$DEPS_AFTER" -eq "$DEPS_BEFORE" ] && break
+done
+
 echo "Google Protos Dependencies:"
 cat "$TEMP_SRC_DIRECTORY/proto-deps.txt"
 

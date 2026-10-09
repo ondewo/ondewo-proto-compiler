@@ -241,6 +241,19 @@ two target groups need different mechanisms because the clients put the sources 
   the clients' auth helper is a Node-only `undici` consumer that has no business in a browser bundle; it ships
   as its own CommonJS entry and is documented as a deep import.
 
+- **nodejs `public-api.js` is COMMONJS (5.15.5+).** It is the package's `main`, the package has no
+  `"type": "module"` and every stub is commonjs, so `make-lib-entry-point.sh` writes a `'use strict'` barrel
+  with a `reexport(m)` helper and one `reexport(require('./api/...'));` per stub in sorted order (the first
+  stub exporting a name keeps it, matching the `.d.ts` disambiguation). The old `export * from` barrel made
+  Node >= 20.19 load the file as an ES module and `require('<package>')` failed with ERR_MODULE_NOT_FOUND.
+  `append-auth-exports.sh` (shared verbatim with typescript) writes `reexport(require('./auth/<m>'));` into a
+  barrel that defines `function reexport(` and `export * from` everywhere else, so typescript's bundler-only ES
+  `.js` barrel and every `.d.ts` are unchanged.
+- **nodejs dependency closure (5.15.5+).** `compile-proto-2-nodejs.sh` re-reads every listed google dependency
+  until no new import appears. The google/ tree scan skips excluded paths (`experimental`, ...), but
+  `google/api/service.proto` pulls `experimental/experimental.proto` into the list, and its own import
+  `authorization_config.proto` was never compiled - `experimental_pb.js` then required a missing stub.
+
 A hand-written name that collides with a generated one is left to fail loudly as TS2308 rather than be
 auto-bound — **except** when the name is declared by two or more stubs, where the duplicate-disambiguation
 block emits an explicit re-export that silently beats the star export. Keep hand-written names distinct.
@@ -328,7 +341,7 @@ node targets, and what to watch out for:
   first, every commit on a ticket branch was rejected with `[Bad commit message] >> [OND211-2418] feat: …` —
   measured on a throwaway repo with the hooks installed. `tests/precommit_hooks.bats` pins the order; do not
   swap them.
-- **Amending is safe.** `.hooks/strip-ticket-prefix.py` removes a `[OND211-2418] ` that a previous run added,
+- **Amending is safe.** `.hooks/strip-ticket-prefix.py` removes a `[OND211-2418]` that a previous run added,
   so `git commit --amend`, `--no-edit`, a rebase reword and `-C HEAD` all re-validate your own subject and end
   up with exactly one ticket prefix. Verified end to end against real git + pre-commit + giticket: a fresh
   commit, two successive amends and a non-conventional message all behave (one prefix, one prefix, one prefix,
