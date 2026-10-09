@@ -2,6 +2,15 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.15.5
+
+### Bug Fixes
+
+* Nodejs: `require('<package>')` works. The generated `public-api.js` - the package's `main` - was a list of `export * from` lines in a commonjs package whose stubs are all commonjs, so Node 20.19+, 22 and 24 loaded it as an ES module and failed with `ERR_MODULE_NOT_FOUND` on the first extensionless path (older Node threw a `SyntaxError`). It is now a commonjs barrel: one `reexport(require('./api/...'));` per stub in sorted order, where the first stub that exports a name keeps it, the same binding the `.d.ts` barrel's explicit re-exports make. `append-auth-exports.sh` appends the hand-written `auth/` modules as `reexport(require('./auth/<module>'));` to such a barrel; the `.d.ts` barrel and the typescript target's `.js` barrel keep their `export *` lines.
+* Nodejs: the google dependency list is closed over its own imports. The scan of the `google/` tree skips its excluded paths, but `google/api/service.proto` put `google/api/experimental/experimental.proto` on the list, whose own import `authorization_config.proto` was never compiled - `experimental_pb.js` required a stub that did not exist, so loading the barrel failed even after the first fix. Every listed proto is now re-read until no new import appears.
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.15.4
 
 ### Bug Fixes
