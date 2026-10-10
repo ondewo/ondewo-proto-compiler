@@ -221,6 +221,21 @@ runs protoc-gen-ng, and the plugin then emits identical code for `optional bool 
 - Fixtures: `tests/fixtures/presence/` holds REAL generator output (`regenerate.sh` rebuilds it); cases in
   `tests/proto3_optional_presence.bats`.
 
+### Angular omits client-streaming / bidi RPCs (5.15.7+)
+
+gRPC-web cannot send a request stream from a browser, and protoc-gen-grpc-web (js / typescript) generates no
+method for such an RPC. protoc-gen-ng did (`foo(requestData: Observable<FooRequest>)`) and has no option to stop it,
+so `compile-proto-2-stubs.sh` runs it behind `omit-client-streaming-methods.js`, a protoc plugin wrapper that drops
+every `MethodDescriptorProto` with `client_streaming = true` from the `CodeGeneratorRequest` and pipes the rest into
+the real plugin (`PROTOC_GEN_NG_REAL` overrides its path for tests).
+
+- **Filter the request, not the generated `.ts`.** The wrapper walks the wire format with no dependency and copies
+  every byte it does not drop, so messages (incl. those of omitted RPCs) and unary / server-streaming methods are
+  generated exactly as before. Server-streaming works in gRPC-web: keep it.
+- The wrapper must stay executable in git (protoc executes it); a malformed request fails the run.
+- Fixture: `tests/fixtures/client-streams/streams.request.bin` is a REAL `CodeGeneratorRequest` (`regenerate.sh`);
+  cases in `tests/angular_client_streams.bats`.
+
 ### The public-api barrel and hand-written client sources (5.13.0+)
 
 Only the proto stubs are generated. Anything a client hand-writes beside them (the Keycloak/bearer `auth`

@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package ondewo.fixture.streams;
+
+// One RPC per gRPC call type. gRPC-web (and so the angular target) supports only the first two.
+service Streams {
+  rpc UnaryLookup (LookupRequest) returns (LookupResponse);
+  rpc ServerWatch (LookupRequest) returns (stream LookupResponse);
+  rpc ClientUpload (stream UploadChunk) returns (UploadSummary);
+  rpc BidiConverse (stream ConverseIn) returns (stream ConverseOut);
+}
+
+// A service made only of request-streaming RPCs keeps its (empty) client.
+service OnlyClientStreams {
+  rpc OnlyUpload (stream UploadChunk) returns (UploadSummary);
+}
+
+message LookupRequest {
+  string key = 1;
+}
+
+message LookupResponse {
+  string value = 1;
+}
+
+message UploadChunk {
+  bytes data = 1;
+}
+
+message UploadSummary {
+  int64 size = 1;
+}
+
+message ConverseIn {
+  string text = 1;
+}
+
+message ConverseOut {
+  string text = 1;
+}

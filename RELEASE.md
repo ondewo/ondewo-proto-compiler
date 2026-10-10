@@ -2,6 +2,14 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.15.7
+
+### Bug Fixes
+
+* Angular: client-streaming and bidirectional-streaming RPCs are no longer generated as service-client methods. gRPC-web cannot send a request stream from a browser, so such a method - e.g. `streamCallAudio(requestData: Observable<StreamCallAudioRequest>)` in `@ondewo/vtsi-client-angular` 9.0.0, `sipStreamCallAudio`, `streamingDetectIntent`, `transcribeStream`, `streamingSynthesize`, `ragUploadDocument`, `s2sStream` - type-checked and could never work. protoc-gen-grpc-web, which the js and typescript targets use, never generates them; the angular target now matches it. `@ngx-grpc/protoc-gen-ng` has no option for this, so the new protoc plugin wrapper `angular/image-data/omit-client-streaming-methods.js` drops every method with `client_streaming = true` from the `CodeGeneratorRequest` before protoc-gen-ng reads it, names each omitted method on stderr, and fails the run on a malformed request. Every message type, including the request and response messages of an omitted RPC, is still generated; unary and server-streaming methods are unchanged. A client that needs a request stream (live call audio, streaming recognition or synthesis) uses a native SDK (python, nodejs, go, ...). New bats cases in `tests/angular_client_streams.bats` run the wrapper over a real `CodeGeneratorRequest` fixture.
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.15.6
 
 ### Bug Fixes

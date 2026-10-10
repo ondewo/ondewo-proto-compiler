@@ -7,7 +7,10 @@ STUBS_TARGET_DIR=$1
 PROTOS_ROOT_DIR=$2
 PROTOS_SRC_DIR=$3
 
-PROTO_GEN_NG=./node_modules/.bin/protoc-gen-ng
+#protoc-gen-ng behind a wrapper that drops client-streaming and bidirectional-streaming RPCs from
+#the request first: gRPC-web cannot send a request stream from a browser, and protoc-gen-grpc-web
+#(js/typescript) generates no method for them either - see omit-client-streaming-methods.js
+PROTO_GEN_NG=./omit-client-streaming-methods.js
 
 #Find .protos in directory and count the occurrences
 echo "---------------------------------------------------------------"
