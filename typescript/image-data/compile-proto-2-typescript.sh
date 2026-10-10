@@ -85,6 +85,27 @@ done
 sort -u "$TEMP_SRC_DIRECTORY/proto-deps.txt" | grep '[^[:space:]]' > "$TEMP_SRC_DIRECTORY/proto-deps.txt.tmp" || true
 mv "$TEMP_SRC_DIRECTORY/proto-deps.txt.tmp" "$TEMP_SRC_DIRECTORY/proto-deps.txt"
 
+#Close the list over its OWN imports, as the nodejs target does (5.15.5). Only the selected protos
+#are scanned above, so a google dependency's own imports were never listed: google/api/annotations.proto
+#imports google/api/http.proto, annotations_pb.js requires ../../google/api/http_pb.js, and that stub
+#was never generated - loading any client that imports annotations failed with "Cannot find module".
+#Re-read every listed proto that exists under the protos root until no new import appears (the list
+#only grows, so this terminates).
+while :; do
+    DEPS_BEFORE=$(grep -c . "$TEMP_SRC_DIRECTORY/proto-deps.txt" || true)
+    while IFS= read -r dep; do
+        [ -f "$PROTOS_ROOT_PATH/$dep" ] || continue
+        sed -n 's|^[[:space:]]*import[[:space:]][[:space:]]*\(public[[:space:]][[:space:]]*\)\{0,1\}\(weak[[:space:]][[:space:]]*\)\{0,1\}"\([^"]*\)"[[:space:]]*;.*$|\3|p' "$PROTOS_ROOT_PATH/$dep" \
+            | grep "google/" || true
+    done < "$TEMP_SRC_DIRECTORY/proto-deps.txt" > "$TEMP_SRC_DIRECTORY/proto-deps.txt.closure"
+    cat "$TEMP_SRC_DIRECTORY/proto-deps.txt" "$TEMP_SRC_DIRECTORY/proto-deps.txt.closure" \
+        | sort -u | grep '[^[:space:]]' > "$TEMP_SRC_DIRECTORY/proto-deps.txt.tmp" || true
+    mv "$TEMP_SRC_DIRECTORY/proto-deps.txt.tmp" "$TEMP_SRC_DIRECTORY/proto-deps.txt"
+    rm -f "$TEMP_SRC_DIRECTORY/proto-deps.txt.closure"
+    DEPS_AFTER=$(grep -c . "$TEMP_SRC_DIRECTORY/proto-deps.txt" || true)
+    [ "$DEPS_AFTER" -eq "$DEPS_BEFORE" ] && break
+done
+
 echo "Google Protos Dependencies:"
 cat "$TEMP_SRC_DIRECTORY/proto-deps.txt"
 
