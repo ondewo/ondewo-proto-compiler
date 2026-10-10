@@ -296,7 +296,7 @@ test: lint ## Run the shellcheck gate and the bats test suite (no Docker require
 # `ondewo_release`, so a direct `make release` discovered an already-used version at
 # `git checkout -b` - again after three pushes to the current branch.
 check_release_credentials: ## Fail before any push if GITHUB_GH_TOKEN is missing or still the placeholder
-	@if [ -z "${GITHUB_GH_TOKEN}" ] || [ "${GITHUB_GH_TOKEN}" = "ENTER_YOUR_TOKEN_HERE" ]; then \
+	@if [ -z "$${GITHUB_GH_TOKEN}" ] || [ "$${GITHUB_GH_TOKEN}" = "ENTER_YOUR_TOKEN_HERE" ]; then \
 		echo "$(RED)[ERROR]$(NC) GITHUB_GH_TOKEN is not set - create one at https://github.com/settings/tokens"; \
 		exit 1; \
 	fi
@@ -495,8 +495,10 @@ create_release_tag: ## Create Release Tag and push it to origin
 # Both guards are repeated here rather than only in `release`, because these two targets are
 # what actually log in and publish - they also run on their own inside the utils image (see
 # push_to_gh), where the host-side pre-flight has no reach.
+# "$${GITHUB_GH_TOKEN}" is expanded by the shell from the environment. ${GITHUB_GH_TOKEN} would be
+# expanded by make INTO the recipe line, i.e. onto the argv of `/bin/sh -c`.
 login_to_gh: check_release_credentials ## Login to Github CLI with Access Token
-	@echo "${GITHUB_GH_TOKEN}" | gh auth login -p ssh --with-token
+	@printf '%s\n' "$${GITHUB_GH_TOKEN}" | gh auth login -p ssh --with-token
 
 build_gh_release: check_release_notes ## Generate Github Release with CLI
 	gh release create --repo $(GH_REPO) "$(ONDEWO_PROTO_COMPILER_VERSION)" -n "$(CURRENT_RELEASE_NOTES)" -t "Release ${ONDEWO_PROTO_COMPILER_VERSION}"
@@ -515,7 +517,7 @@ push_to_gh: login_to_gh build_gh_release ## Login to GitHub and publish the rele
 release_to_github_via_docker_image:  ## Release to Github via docker
 	@echo "$(BLUE)[INFO]$(NC) Releasing to GitHub via ${IMAGE_UTILS_NAME} ..."
 	@docker run --rm \
-		-e GITHUB_GH_TOKEN=${GITHUB_GH_TOKEN} \
+		-e GITHUB_GH_TOKEN \
 		${IMAGE_UTILS_NAME} make push_to_gh
 
 ########################################################
@@ -528,9 +530,14 @@ clone_devops_accounts: ## Clones devops-accounts repo
 	if [ -d $(DEVOPS_ACCOUNT_GIT) ]; then rm -Rf $(DEVOPS_ACCOUNT_GIT); fi
 	git clone git@bitbucket.org:ondewo/${DEVOPS_ACCOUNT_GIT}.git
 
+# The token is exported into the sub-make's ENVIRONMENT. `make release NAME=<value>` would put the
+# value on make's argv, which /proc/<pid>/cmdline shows to every user on the host. The release only
+# needs GITHUB_GH_TOKEN (nothing here publishes to PyPI), so the PyPI credentials are not loaded.
 run_release_with_devops: ## Read credentials from the cloned devops-accounts repo and run the full release
-	$(eval info:= $(shell cat ${DEVOPS_ACCOUNT_DIR}/account_github.env | grep GITHUB_GH & cat ${DEVOPS_ACCOUNT_DIR}/account_pypi.env | grep PYPI_USERNAME & cat ${DEVOPS_ACCOUNT_DIR}/account_pypi.env | grep PYPI_PASSWORD))
-	@make release $(info)
+	@set -a \
+		&& eval "$$(grep -h -E '^GITHUB_GH_TOKEN=' ${DEVOPS_ACCOUNT_DIR}/account_github.env)" \
+		&& set +a \
+		&& $(MAKE) release
 
 spc: ## Checks if the Release Branch and Tag already exist
 	$(eval filtered_branches:= $(shell git branch --all | grep -E "(^|[ /])release/$(subst .,\.,${ONDEWO_PROTO_COMPILER_VERSION})$$"))
