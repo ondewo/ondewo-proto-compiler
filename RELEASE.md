@@ -2,6 +2,14 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.15.6
+
+### Bug Fixes
+
+* Typescript: the google dependency list is closed over its own imports, as the nodejs target's has been since 5.15.5. The typescript target collected only the google/ protos the selected protos import directly, so `google/api/annotations.proto` was compiled without its own import `google/api/http.proto`: `annotations_pb.js` requires `../../google/api/http_pb.js`, which was never generated, and loading any client module that reaches `annotations_pb` failed with `Cannot find module` (`@ondewo/nlu-client-typescript` 7.3.1, `@ondewo/survey-client-typescript` 2.0.2). Every listed proto is now re-read until no new import appears. A client's `src/proto-deps.txt` that pre-seeds `google/api/http.proto` as a workaround is redundant from this release on, but harmless. The other targets were checked and need no change: js, rust, cpp and php resolve imports recursively, nodejs has the closure since 5.15.5, angular's `ng build` fails on an unresolved import, and python, go, java and csharp take the google protos from their runtime libraries instead of generating them.
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.15.5
 
 ### Bug Fixes
