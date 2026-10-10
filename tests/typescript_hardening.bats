@@ -327,3 +327,25 @@ google/protobuf/timestamp.proto" ]
   grep -Fq "export * from './api/ondewo/nlu/session_pb.d';" "$SRC/public-api.d.ts"
   grep -Fq "export * from './api/vendor.d.ts/inner.d';" "$SRC/public-api.d.ts"
 }
+
+@test "ts-deps: a google dependency's own imports are compiled (annotations.proto -> http.proto)" {
+  # Only the selected protos were scanned, so google/api/annotations.proto was compiled without
+  # its own import google/api/http.proto: annotations_pb.js required ../../google/api/http_pb.js,
+  # which was never generated, and loading the client failed with "Cannot find module"
+  # (@ondewo/nlu-client-typescript 7.3.1, @ondewo/survey-client-typescript 2.0.2).
+  stage
+  write_proto test.proto 'import "google/api/annotations.proto";'
+  mkdir -p "$IN/protos/google/api"
+  printf 'syntax = "proto3";\nimport "google/api/http.proto";\nimport "google/protobuf/descriptor.proto";\n' \
+    > "$IN/protos/google/api/annotations.proto"
+  printf 'syntax = "proto3";\nmessage HttpRule {}\n' > "$IN/protos/google/api/http.proto"
+  run_compile protos library
+  echo "$output"
+  [ "$status" -eq 0 ]
+  echo "deps: [$(deps_file)]"
+  [ "$(deps_file)" = "google/api/annotations.proto
+google/api/http.proto
+google/protobuf/descriptor.proto" ]
+  # the dependency protoc pass is really handed http.proto
+  grep -Fq " google/api/http.proto" "$PROTOC_MOCK_LOG"
+}

@@ -253,6 +253,11 @@ two target groups need different mechanisms because the clients put the sources 
   until no new import appears. The google/ tree scan skips excluded paths (`experimental`, ...), but
   `google/api/service.proto` pulls `experimental/experimental.proto` into the list, and its own import
   `authorization_config.proto` was never compiled - `experimental_pb.js` then required a missing stub.
+- **typescript dependency closure (5.15.6+).** `compile-proto-2-typescript.sh` has no google/ tree scan, only
+  the selected protos' direct imports, so it carries the same closure loop: without it
+  `google/api/annotations.proto` was compiled but its import `google/api/http.proto` was not, and
+  `annotations_pb.js` required a missing `http_pb.js` (nlu-client-typescript 7.3.1, survey 2.0.2). A client
+  `src/proto-deps.txt` pre-seeding `google/api/http.proto` is redundant from 5.15.6 on.
 
 A hand-written name that collides with a generated one is left to fail loudly as TS2308 rather than be
 auto-bound — **except** when the name is declared by two or more stubs, where the duplicate-disambiguation
