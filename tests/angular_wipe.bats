@@ -210,6 +210,9 @@ assert_previous_library_intact() {
   printf 'STALE\n' > "$OUT/fesm2015/old.js"
   printf 'STALE\n' > "$OUT/esm2022/old.mjs"
   printf 'STALE\n' > "$OUT/node_modules/old.json"
+  printf 'STALE\n' > "$OUT/index.d.ts"
+  mkdir -p "$OUT/types"
+  printf 'STALE\n' > "$OUT/types/old.d.ts"
   printf 'STALE\n' > "$OUT/ondewo-vtsi-client-angular.d.ts"
   printf 'STALE\n' > "$OUT/ondewo-vtsi-client-angular.metadata.json"
   printf 'STALE\n' > "$OUT/ondewo-vtsi-client-angular.d.ts.map"
@@ -224,10 +227,13 @@ assert_previous_library_intact() {
   local stale
   for stale in bundles esm2015 fesm2015 esm2022 fesm2022 node_modules \
     ondewo-vtsi-client-angular.d.ts ondewo-vtsi-client-angular.metadata.json \
-    ondewo-vtsi-client-angular.d.ts.map; do
+    ondewo-vtsi-client-angular.d.ts.map types/old.d.ts; do
     echo "still present: $stale"
     [ ! -e "$OUT/$stale" ]
   done
+  # index.d.ts (ng-packagr < 22's typings entry) is cleaned too; only a fresh build may bring it back
+  run grep -Fq 'STALE' "$OUT/index.d.ts"
+  [ "$status" -ne 0 ]
   # api/ and npm/api/ are replaced wholesale, so a stub of a deleted proto is gone too
   [ ! -e "$OUT/api/ondewo/session.pb.ts" ]
   [ ! -e "$OUT/npm/api/ondewo/gone.pb.ts" ]
