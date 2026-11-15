@@ -15,7 +15,7 @@
     "ext-grpc": "*",
     "google/protobuf": "@GOOGLE_PROTOBUF_PHP_VERSION@",
     "grpc/grpc": "@GRPC_PHP_VERSION@",
-    "php": ">=8.1.0"
+    "php": ">=8.2.0"
   },
   "type": "library",
   "version": "@ONDEWO_PROTO_COMPILER_VERSION@"

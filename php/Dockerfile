@@ -21,7 +21,7 @@ ARG PROTOC_VERSION=32.0
 # GOOGLE_PROTOBUF_PHP_VERSION must stay on the 4.x line that matches PROTOC_VERSION (protoc
 # 26.x-33.x <-> the PHP 4.x runtime); the 5.x line requires php >= 8.2.0.
 ARG GOOGLE_PROTOBUF_PHP_VERSION=4.33.6
-ARG GRPC_PHP_VERSION=1.84.1
+ARG GRPC_PHP_VERSION=1.85.0
 # Default <version> of the generated library, bumped by the release targets.
 ARG ONDEWO_PROTO_COMPILER_VERSION=5.15.7
 
