@@ -2,6 +2,17 @@
 
 *****************
 
+## Release ONDEWO Proto Compiler 5.16.0
+
+### Improvements
+
+* Angular: the image builds with the Angular 22 toolchain (`@angular/*`, `@angular-devkit/build-angular` and `ng-packagr` `>=22.0.0 <23.0.0`, TypeScript `>=6.0.0 <6.1.0`, Node 24.22.3 - the Angular 22 CLI refuses Node < 24.15.0), and the library it produces is proven to work on Angular 20, 21 and 22. Backward compatibility holds because Angular's linker selects a partial declaration's linker by its `minVersion`, not by the version of the compiler that built it, and every declaration protoc-gen-ng's code produces carries `minVersion` 12.0.0 or 14.0.0. A client opts in by widening its `src/package.json` (and root `package.json`) peer range to `"@angular/core": ">=20.0.0 <23.0.0"` / `"@angular/common": ">=20.0.0 <23.0.0"`; with the old `<21.0.0` range npm refuses to install the package on Angular 21 or 22 (ERESOLVE).
+* Angular: the default library `tsconfig.json` drops `baseUrl` and `downlevelIteration` and resolves modules with `bundler` instead of `node`, which TypeScript 6 rejects (TS5101 / TS5107) and with which `@angular/common/http` cannot be found. A client that ships its own `src/tsconfig.json` (ondewo-t2s-client-angular) must make the same change.
+* Angular: new integration test `make test_angular_compat` (`tests/angular-compat/`, needs Docker and the npm registry). It compiles a fixture client covering unary, server-streaming and client-streaming RPCs, proto3 explicit presence, enums, maps, oneofs, nested and well-known types, then, for every `ANGULAR_COMPAT_VERSIONS` entry (`20.0.0 20 21 22`), installs the packed library into a fresh app under strict peer resolution, runs an AOT production `ng build` with `skipLibCheck: false`, and runs a Node runtime check that injects every generated client, sends every RPC through `GrpcHandler`, round-trips every message and asserts the fixture's semantics. `tests/angular-compat/run-compat.sh <npm-dir>` runs the same check on any client's `npm/` output. New fast bats cases in `tests/angular_compat.bats` pin the linker gate, the toolchain major, the peer floor and a gap-free test matrix.
+* js / nodejs / typescript: `NODE_VERSION` 24.22.3 (shared with angular).
+
+*****************
+
 ## Release ONDEWO Proto Compiler 5.15.7
 
 ### Bug Fixes

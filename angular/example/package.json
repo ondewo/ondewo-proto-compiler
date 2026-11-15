@@ -4,8 +4,8 @@
   "license": "Apache-2.0",
   "name": "@ondewo/angular-proto-compiler-example",
   "peerDependencies": {
-    "@angular/common": ">=19.2.12 <20.0.0",
-    "@angular/core": ">=19.2.11 <20.0.0",
+    "@angular/common": ">=20.0.0 <23.0.0",
+    "@angular/core": ">=20.0.0 <23.0.0",
     "@ngx-grpc/common": ">=3.1.2",
     "@ngx-grpc/core": ">=3.1.2"
   },

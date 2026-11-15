@@ -236,3 +236,19 @@ are likewise never executed: `cmd.exe` exists on neither CI leg.
 `windows_wrappers.bats` pins them statically instead — symmetry with the `.sh`
 scripts, error propagation, argument drift and the cmd-specific footguns — but
 their actual runtime behaviour on Windows stays untested here.
+
+## Angular backward compatibility (`angular-compat/`, Docker + network)
+
+Not part of `make test`. `make test_angular_compat` compiles `angular-compat/fixture-client/` with
+`ondewo-angular-proto-compiler:latest` and runs `angular-compat/run-compat.sh` on the result for
+every `ANGULAR_COMPAT_VERSIONS` entry of the Makefile. Per version, inside `node:24-slim`, it
+installs the packed library into a fresh consumer app (`angular-compat/consumer/`) without
+`--legacy-peer-deps`, runs an AOT production `ng build` (`skipLibCheck: false`) and
+`runtime-check.mjs` (inject every `*Client`, call every RPC through `GrpcHandler`, round-trip every
+message), plus `fixture-assertions.mjs` for the fixture. To check a real client's output:
+
+```bash
+sh tests/angular-compat/run-compat.sh ~/ondewo/ondewo-nlu-client-angular/npm 20.0.0 20 21 22
+```
+
+The fast half lives in `angular_compat.bats` (linker gate, toolchain major, peer floor, matrix).
