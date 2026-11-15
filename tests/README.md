@@ -252,3 +252,24 @@ sh tests/angular-compat/run-compat.sh ~/ondewo/ondewo-nlu-client-angular/npm 20.
 ```
 
 The fast half lives in `angular_compat.bats` (linker gate, toolchain major, peer floor, matrix).
+
+## Client-SDK matrix (`client-matrix/`, Docker + network)
+
+Not part of `make test`. `tests/client-matrix/<lang>.sh <client_dir>` (`angular`, `js`, `nodejs`,
+`python`, `php`) regenerates one checked-out `ondewo-<product>-client-<lang>` IN PLACE with the
+prebuilt `ondewo-<lang>-proto-compiler:latest` image, deletes the committed stubs first so only this
+run's output can pass, and then runs the client's own checks: jest/eslint/prettier plus
+`run-compat.sh` on every `ANGULAR_COMPAT_VERSIONS` entry (angular), `make check_build` and `npm test`
+plus a smoke load (js, nodejs), ruff/mypy/pytest plus an import of every stub (python), and
+`make test` plus an autoload smoke check (php). The GitHub Actions workflow
+`.github/workflows/client-matrix.yml` runs all 5 × 7 cells. Each cell uses the client branch with the
+same name as the compiler branch when one exists, and the client's default branch otherwise. Point
+the script only at a throwaway checkout:
+
+```bash
+docker build -t ondewo-nodejs-proto-compiler:latest nodejs
+git clone --recurse-submodules https://github.com/ondewo/ondewo-nlu-client-nodejs /tmp/nlu-nodejs
+sh tests/client-matrix/nodejs.sh /tmp/nlu-nodejs
+```
+
+`client_matrix.bats` keeps the workflow matrix and the scripts in sync.
