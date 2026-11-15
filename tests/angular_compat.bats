@@ -112,3 +112,30 @@ dep_range() {
   [[ "$output" == *"holds no package.json"* ]]
   [ ! -s "$DOCKER_MOCK_LOG" ]
 }
+
+@test "harness: run-compat.sh defaults to the Makefile's ANGULAR_COMPAT_VERSIONS and runs each one" {
+  mkdir -p "$SANDBOX/pkg" "$SANDBOX/work"
+  echo '{"name":"x"}' > "$SANDBOX/pkg/package.json"
+  : > "$SANDBOX/work/x-0.0.0.tgz"
+  export DOCKER_MOCK_LOG="$SANDBOX/docker.log" ANGULAR_COMPAT_WORK_DIR="$SANDBOX/work"
+  unset ANGULAR_COMPAT_VERSIONS
+  run sh "$REPO_ROOT/tests/angular-compat/run-compat.sh" "$SANDBOX/pkg"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"library works on Angular $COMPAT_VERSIONS"* ]]
+  for v in $COMPAT_VERSIONS; do
+    grep -q "check.sh $v /work/x-0.0.0.tgz" "$DOCKER_MOCK_LOG" || { echo "no run for $v"; return 1; }
+  done
+}
+
+@test "harness: a failing version fails the run and is named, the others still run" {
+  mkdir -p "$SANDBOX/pkg" "$SANDBOX/work" "$SANDBOX/bin"
+  echo '{"name":"x"}' > "$SANDBOX/pkg/package.json"
+  : > "$SANDBOX/work/x-0.0.0.tgz"
+  printf '#!/bin/sh\necho "docker $*" >> "%s"\ncase "$*" in *"check.sh 21 "*) exit 1 ;; esac\nexit 0\n' "$SANDBOX/docker.log" > "$SANDBOX/bin/docker"
+  chmod +x "$SANDBOX/bin/docker"
+  PATH="$SANDBOX/bin:$PATH" ANGULAR_COMPAT_WORK_DIR="$SANDBOX/work" \
+    run sh "$REPO_ROOT/tests/angular-compat/run-compat.sh" "$SANDBOX/pkg" 20 21 22
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"failed for: 21"* ]]
+  grep -q "check.sh 22 " "$SANDBOX/docker.log"
+}

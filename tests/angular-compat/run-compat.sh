@@ -9,7 +9,9 @@
 #
 # Usage: run-compat.sh <npm_package_dir> [<angular_version> ...]
 #   <npm_package_dir>  the npm/ folder the compiler writes to the output volume
-#   <angular_version>  npm version spec of @angular/core, default: $ANGULAR_COMPAT_VERSIONS or "20 21 22"
+#   <angular_version>  npm version spec of @angular/core, default: $ANGULAR_COMPAT_VERSIONS, else the
+#                      ANGULAR_COMPAT_VERSIONS of this repo's Makefile (so a client running this script
+#                      from its ondewo-proto-compiler submodule tests exactly the compiler's matrix)
 # ANGULAR_COMPAT_EXTRA_CHECK=<file.mjs> adds library-specific assertions, run as a third step.
 # Needs docker and network (npm registry); it is an integration test, not part of `make test`.
 set -e
@@ -24,7 +26,11 @@ PACKAGE_DIR="$(cd "$1" && pwd)"
 shift
 VERSIONS="$*"
 if [ -z "$VERSIONS" ]; then
-  VERSIONS="${ANGULAR_COMPAT_VERSIONS:-20 21 22}"
+  VERSIONS="${ANGULAR_COMPAT_VERSIONS:-$(sed -n 's/^ANGULAR_COMPAT_VERSIONS=//p' "$SCRIPT_DIR/../../Makefile")}"
+fi
+if [ -z "$VERSIONS" ]; then
+  echo "ERROR: no Angular versions given and no ANGULAR_COMPAT_VERSIONS in $SCRIPT_DIR/../../Makefile" >&2
+  exit 2
 fi
 NODE_IMAGE="${ANGULAR_COMPAT_NODE_IMAGE:-node:24-slim}"
 WORK_DIR="${ANGULAR_COMPAT_WORK_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/angular-compat.XXXXXX")}"
