@@ -73,6 +73,21 @@ run_update() {
   [ "$output" = "9.9.9" ]
 }
 
+@test "angular: peerDependencies keep the client's compat range, devDependencies follow the image" {
+  # The image builds with ONE Angular major (its devDependencies); the client promises a range of
+  # majors to its consumers (its peerDependencies). The release bump must not narrow the promise.
+  run_update 5.9.0 angular 24.14.0 ondewo-nlu-client
+  [ "$status" -eq 0 ]
+  run jq -r '.peerDependencies["@angular/core"]' "$CAPTURE_DIR/src/package.json"
+  [ "$output" = ">=20.0.0 <23.0.0" ]
+  run jq -r '.peerDependencies["@angular/common"]' "$CAPTURE_DIR/src/package.json"
+  [ "$output" = ">=20.0.0 <23.0.0" ]
+  run jq -r '.peerDependencies["@ngx-grpc/core"]' "$CAPTURE_DIR/src/package.json"
+  [ "$output" = ">=3.0.0" ]
+  run jq -r '.devDependencies.prettier' "$CAPTURE_DIR/src/package.json"
+  [ "$output" = "9.9.9" ]
+}
+
 @test "rel-3: a corrupt source package.json fails loudly (no silent success)" {
   run_update 5.9.0 typescript 24.14.0 ondewo-nlu-client "$FIXTURES/client-repos/corrupt"
   [ "$status" -ne 0 ]

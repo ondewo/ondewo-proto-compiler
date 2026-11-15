@@ -1,0 +1,12 @@
+{
+  "name": "target",
+  "version": "1.0.0",
+  "peerDependencies": {
+    "@angular/common": ">=20.0.0 <23.0.0",
+    "@angular/core": ">=20.0.0 <23.0.0",
+    "@ngx-grpc/core": ">=3.0.0"
+  },
+  "devDependencies": {
+    "prettier": "1.0.0"
+  }
+}
