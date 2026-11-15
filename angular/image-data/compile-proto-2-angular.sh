@@ -110,7 +110,9 @@ echo "Clean output volume (remove everything except src-folder and dot prefixed 
 #tree this script copies to $TEMP_SRC_DIRECTORY precisely so it never modifies it - and out of
 #the very folder this clean says it preserves. Top-level names only, and rm does not follow a
 #final symlink, so nothing here can reach outside the output volume.
-for stale in bundles esm2015 fesm2015 esm2022 fesm2022 node_modules npm \
+#index.d.ts is ng-packagr < 22's typings entry; ng-packagr 22 writes types/<name>.d.ts instead, so an
+#index.d.ts left from an older run would sit beside the new typings, stale, for good.
+for stale in bundles esm2015 fesm2015 esm2022 fesm2022 node_modules npm index.d.ts types \
   ondewo-vtsi-client-angular.d.ts ondewo-vtsi-client-angular.metadata.json \
   ondewo-vtsi-client-angular.d.ts.map package.json public-api.d.ts public-api.ts; do
   rm -rf "${OUTPUT_VOLUME_FS:?}/$stale"

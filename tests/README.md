@@ -236,3 +236,40 @@ are likewise never executed: `cmd.exe` exists on neither CI leg.
 `windows_wrappers.bats` pins them statically instead — symmetry with the `.sh`
 scripts, error propagation, argument drift and the cmd-specific footguns — but
 their actual runtime behaviour on Windows stays untested here.
+
+## Angular backward compatibility (`angular-compat/`, Docker + network)
+
+Not part of `make test`. `make test_angular_compat` compiles `angular-compat/fixture-client/` with
+`ondewo-angular-proto-compiler:latest` and runs `angular-compat/run-compat.sh` on the result for
+every `ANGULAR_COMPAT_VERSIONS` entry of the Makefile. Per version, inside `node:24-slim`, it
+installs the packed library into a fresh consumer app (`angular-compat/consumer/`) without
+`--legacy-peer-deps`, runs an AOT production `ng build` (`skipLibCheck: false`) and
+`runtime-check.mjs` (inject every `*Client`, call every RPC through `GrpcHandler`, round-trip every
+message), plus `fixture-assertions.mjs` for the fixture. To check a real client's output:
+
+```bash
+sh tests/angular-compat/run-compat.sh ~/ondewo/ondewo-nlu-client-angular/npm 20.0.0 20 21 22
+```
+
+The fast half lives in `angular_compat.bats` (linker gate, toolchain major, peer floor, matrix).
+
+## Client-SDK matrix (`client-matrix/`, Docker + network)
+
+Not part of `make test`. `tests/client-matrix/<lang>.sh <client_dir>` (`angular`, `js`, `nodejs`,
+`python`, `php`) regenerates one checked-out `ondewo-<product>-client-<lang>` IN PLACE with the
+prebuilt `ondewo-<lang>-proto-compiler:latest` image, deletes the committed stubs first so only this
+run's output can pass, and then runs the client's own checks: jest/eslint/prettier plus
+`run-compat.sh` on every `ANGULAR_COMPAT_VERSIONS` entry (angular), `make check_build` and `npm test`
+plus a smoke load (js, nodejs), ruff/mypy/pytest plus an import of every stub (python), and
+`make test` plus an autoload smoke check (php). The GitHub Actions workflow
+`.github/workflows/client-matrix.yml` runs all 5 × 7 cells. Each cell uses the client branch with the
+same name as the compiler branch when one exists, and the client's default branch otherwise. Point
+the script only at a throwaway checkout:
+
+```bash
+docker build -t ondewo-nodejs-proto-compiler:latest nodejs
+git clone --recurse-submodules https://github.com/ondewo/ondewo-nlu-client-nodejs /tmp/nlu-nodejs
+sh tests/client-matrix/nodejs.sh /tmp/nlu-nodejs
+```
+
+`client_matrix.bats` keeps the workflow matrix and the scripts in sync.

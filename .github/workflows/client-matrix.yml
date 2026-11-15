@@ -1,0 +1,125 @@
+name: client-matrix
+
+# Full client-SDK matrix: every language target (angular, js, nodejs, python, php) of THIS compiler
+# checkout against every product client (nlu, csi, sip, vtsi, s2t, t2s, survey). Each cell builds the
+# language image from the working tree, regenerates the client in place with it and runs the client's
+# own checks (see tests/client-matrix/<lang>.sh).
+#
+# Client ref: the branch with the SAME NAME as the compiler branch when the client has one (a
+# cross-repo change is tested on its matching client branches), else the client's default branch.
+
+on:
+  workflow_dispatch:
+    inputs:
+      client_ref:
+        description: 'Client branch to test (empty: same-named branch if it exists, else master)'
+        required: false
+        default: ''
+  push:
+    paths:
+      - 'angular/**'
+      - 'js/**'
+      - 'nodejs/**'
+      - 'python/**'
+      - 'php/**'
+      - 'tests/client-matrix/**'
+      - 'tests/angular-compat/**'
+      - '.github/workflows/client-matrix.yml'
+  pull_request:
+    paths:
+      - 'angular/**'
+      - 'js/**'
+      - 'nodejs/**'
+      - 'python/**'
+      - 'php/**'
+      - 'tests/client-matrix/**'
+      - 'tests/angular-compat/**'
+      - '.github/workflows/client-matrix.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: client-matrix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cell:
+    name: ${{ matrix.lang }} / ${{ matrix.product }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        lang: [angular, js, nodejs, python, php]
+        product: [nlu, csi, sip, vtsi, s2t, t2s, survey]
+    env:
+      CLIENT_REPO: ondewo/ondewo-${{ matrix.product }}-client-${{ matrix.lang }}
+      CLIENT_DIR: ${{ github.workspace }}/../client/ondewo-${{ matrix.product }}-client-${{ matrix.lang }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve the client ref
+        id: ref
+        env:
+          INPUT_REF: ${{ inputs.client_ref }}
+          COMPILER_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          url="https://github.com/${CLIENT_REPO}"
+          if [ -n "${INPUT_REF}" ]; then
+            git ls-remote --exit-code --heads "${url}" "${INPUT_REF}" >/dev/null \
+              || { echo "::error::${CLIENT_REPO} has no branch '${INPUT_REF}'"; exit 1; }
+            ref="${INPUT_REF}"
+          elif git ls-remote --exit-code --heads "${url}" "${COMPILER_BRANCH}" >/dev/null; then
+            ref="${COMPILER_BRANCH}"
+          else
+            ref="$(git ls-remote --symref "${url}" HEAD | sed -n 's|^ref: refs/heads/\([^[:space:]]*\)[[:space:]]*HEAD$|\1|p')"
+          fi
+          echo "Testing ${CLIENT_REPO}@${ref}"
+          echo "ref=${ref}" >> "${GITHUB_OUTPUT}"
+
+      - name: Check out the client with its submodules
+        env:
+          REF: ${{ steps.ref.outputs.ref }}
+        run: |
+          # The clients' .gitmodules use git@github.com: URLs; the repos are public.
+          git config --global url.https://github.com/.insteadOf git@github.com:
+          mkdir -p "$(dirname "${CLIENT_DIR}")"
+          git clone --depth 1 --branch "${REF}" --recurse-submodules --shallow-submodules \
+            "https://github.com/${CLIENT_REPO}" "${CLIENT_DIR}" \
+            || { rm -rf "${CLIENT_DIR}"; git clone --branch "${REF}" --recurse-submodules "https://github.com/${CLIENT_REPO}" "${CLIENT_DIR}"; }
+          git -C "${CLIENT_DIR}" log -1 --format='%H %s'
+          git -C "${CLIENT_DIR}" submodule status --recursive
+
+      - name: Set up Node 24
+        if: contains(fromJSON('["angular","js","nodejs"]'), matrix.lang)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Set up uv
+        if: matrix.lang == 'python'
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install portaudio headers (python; csi's dev extra builds pyaudio)
+        if: matrix.lang == 'python'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends portaudio19-dev
+
+      - name: Set up PHP 8.3
+        if: matrix.lang == 'php'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: grpc, bcmath, pcov
+          coverage: pcov
+          tools: composer:v2
+
+      - name: Install the TLS test server dependency (php)
+        if: matrix.lang == 'php'
+        run: python3 -m pip install --user grpcio
+
+      - name: Build the ${{ matrix.lang }} compiler image from this checkout
+        run: docker build -t ondewo-${{ matrix.lang }}-proto-compiler:latest ${{ matrix.lang }}
+
+      - name: Regenerate the client and run its checks
+        run: sh tests/client-matrix/${{ matrix.lang }}.sh "${CLIENT_DIR}"

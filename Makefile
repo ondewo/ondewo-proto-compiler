@@ -46,20 +46,26 @@ export
 
 # Single source of truth for the release version. MUST match the ONDEWO API in major and
 # minor version. Propagated into all package.json + Dockerfile ARGs by the release targets.
-ONDEWO_PROTO_COMPILER_VERSION=5.15.7
+ONDEWO_PROTO_COMPILER_VERSION=5.16.0
 
 # Toolchain versions baked into the docker images via each Dockerfile's ARG lines.
 # Change here and run the release targets so every image stays in sync.
 PYTHON_VERSION=3.12
-NODE_VERSION=24.14.0
+NODE_VERSION=24.22.3
 PROTOC_VERSION=32.0
 GRPC_WEB_VERSION=1.5.0
+
+# --- angular
+# Every Angular the angular image's output must work on (`make test_angular_compat`). The image
+# builds with the NEWEST major listed here; the oldest is the clients' peer floor and is also
+# listed as <major>.0.0 so its oldest TypeScript is exercised (tests/angular_compat.bats).
+ANGULAR_COMPAT_VERSIONS=20.0.0 20 21 22
 
 # --- php
 PHP_VERSION=8.4
 COMPOSER_VERSION=2.8
 GOOGLE_PROTOBUF_PHP_VERSION=4.33.6
-GRPC_PHP_VERSION=1.82.0
+GRPC_PHP_VERSION=1.85.0
 
 # --- go
 GO_VERSION=1.27
@@ -283,6 +289,9 @@ lint: ## Run shellcheck over all tracked shell scripts
 
 test: lint ## Run the shellcheck gate and the bats test suite (no Docker required)
 	bats tests/
+
+test_angular_compat: ## Prove the angular image's output works on every ANGULAR_COMPAT_VERSIONS (Docker + network; run make build_angular first)
+	sh tests/angular-compat/compile-and-check.sh $(ANGULAR_COMPAT_VERSIONS)
 
 ########################################################
 #		Release

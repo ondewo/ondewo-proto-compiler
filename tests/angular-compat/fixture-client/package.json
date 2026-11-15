@@ -1,0 +1,12 @@
+{
+  "name": "@ondewo/angular-compat-fixture",
+  "version": "0.0.0",
+  "description": "Fixture client compiled by tests/angular-compat/compile-and-check.sh",
+  "license": "Apache-2.0",
+  "peerDependencies": {
+    "@angular/common": ">=20.0.0 <23.0.0",
+    "@angular/core": ">=20.0.0 <23.0.0",
+    "@ngx-grpc/common": ">=3.1.2",
+    "@ngx-grpc/core": ">=3.1.2"
+  }
+}

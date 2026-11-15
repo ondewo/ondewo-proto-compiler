@@ -236,6 +236,23 @@ the real plugin (`PROTOC_GEN_NG_REAL` overrides its path for tests).
 - Fixture: `tests/fixtures/client-streams/streams.request.bin` is a REAL `CodeGeneratorRequest` (`regenerate.sh`);
   cases in `tests/angular_client_streams.bats`.
 
+### Angular backward compatibility: built with the newest, works on the oldest (5.16.0+)
+
+The image builds with the NEWEST supported Angular major; the output must keep working on every
+`ANGULAR_COMPAT_VERSIONS` entry in the `Makefile` (`20.0.0 20 21 22`), and the clients' peer range is
+`>=<oldest>.0.0 <<newest+1>.0.0`.
+
+- **Why that is possible:** the linker picks a `ɵɵngDeclare*` linker by the declaration's `minVersion`
+  and throws only when it is newer than the consumer; the `version` stamp (the compiler that built
+  it) is ignored. protoc-gen-ng code yields `minVersion` 12.0.0 / 14.0.0 only. A generated or
+  hand-written construct that raises a `minVersion` above the oldest supported major breaks it -
+  `tests/angular-compat/consumer/declaration-gate.mjs` is the check.
+- **Proof:** `make test_angular_compat` (Docker + network) and, for a real client,
+  `sh tests/angular-compat/run-compat.sh <client>/npm 20.0.0 20 21 22`. Fast guards:
+  `tests/angular_compat.bats`. Upgrading to a new Angular major: `/ondewo-proto-comiler-angular-upgrade`.
+- Angular 22 needs Node >= 24.15.0 and TypeScript 6.0, which rejects `baseUrl`, `downlevelIteration`
+  and `moduleResolution: node` in a lib tsconfig - also in a client-shipped `src/tsconfig.json` (t2s).
+
 ### The public-api barrel and hand-written client sources (5.13.0+)
 
 Only the proto stubs are generated. Anything a client hand-writes beside them (the Keycloak/bearer `auth`
