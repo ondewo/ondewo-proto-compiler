@@ -137,6 +137,11 @@ if [ "$IS_NODE_FAMILY" = "true" ]; then
     .devDependencies // {},
     .peerDependencies // {}
   ] | add' "$IMAGE_DATA_PKG") || { log "${RED}[ERROR]${NC} Failed to parse $IMAGE_DATA_PKG" >&2; exit 1; }
+  # A client's peerDependencies are its compatibility contract with its consumers, not the image's
+  # build toolchain: they are only taken from the image's own peerDependencies. Taking them from the
+  # devDependencies too would narrow the angular clients' `>=20.0.0 <23.0.0` peer range down to the
+  # image's single toolchain major (`>=22.0.0 <23.0.0`) and break the backward compatibility.
+  IMAGE_PEERS=$(jq -c '.peerDependencies // {}' "$IMAGE_DATA_PKG") || { log "${RED}[ERROR]${NC} Failed to parse $IMAGE_DATA_PKG" >&2; exit 1; }
 
   # Explicit template: BSD/macOS mktemp requires a trailing run of X's (bare
   # `mktemp` with no operand errors there); GNU accepts the same template.
@@ -147,12 +152,12 @@ if [ "$IS_NODE_FAMILY" = "true" ]; then
   # NOT an `jq ... && mv ...` AND-OR list: `set -e` is specified to ignore the failure of
   # every command of such a list except the last, so a failing jq would be swallowed and the
   # script would go on to commit and push a manifest it never updated.
-  if ! jq --argjson imageDeps "$IMAGE_DEPS" '
-    def update_existing(section):
+  if ! jq --argjson imageDeps "$IMAGE_DEPS" --argjson imagePeers "$IMAGE_PEERS" '
+    def update_existing(section; $source):
       if .[section] then
         .[section] |= with_entries(
-          if $imageDeps[.key] then
-            .value = $imageDeps[.key]
+          if $source[.key] then
+            .value = $source[.key]
           else
             .
           end
@@ -162,9 +167,9 @@ if [ "$IS_NODE_FAMILY" = "true" ]; then
         .
       end;
 
-    update_existing("dependencies") |
-    update_existing("devDependencies") |
-    update_existing("peerDependencies")
+    update_existing("dependencies"; $imageDeps) |
+    update_existing("devDependencies"; $imageDeps) |
+    update_existing("peerDependencies"; $imagePeers)
   ' "$TARGET_PKG" > "$TMP_PKG"; then
     log "${RED}[ERROR]${NC} Failed to update dependency versions in $TARGET_PKG - leaving it untouched" >&2
     exit 1

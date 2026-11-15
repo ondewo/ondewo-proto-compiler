@@ -250,6 +250,9 @@ The image builds with the NEWEST supported Angular major; the output must keep w
 - **Proof:** `make test_angular_compat` (Docker + network) and, for a real client,
   `sh tests/angular-compat/run-compat.sh <client>/npm 20.0.0 20 21 22`. Fast guards:
   `tests/angular_compat.bats`. Upgrading to a new Angular major: `/ondewo-proto-comiler-angular-upgrade`.
+- The release bump (`update_proto_compiler_dependency.sh`) must never write the image's toolchain
+  range into a client's `peerDependencies`: peers are only taken from the image's own
+  `peerDependencies` (none today), so the clients keep the compat range.
 - Angular 22 needs Node >= 24.15.0 and TypeScript 6.0, which rejects `baseUrl`, `downlevelIteration`
   and `moduleResolution: node` in a lib tsconfig - also in a client-shipped `src/tsconfig.json` (t2s).
 
