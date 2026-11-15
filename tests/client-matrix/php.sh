@@ -134,7 +134,7 @@ $meta = 0; $stubs = 0;
 foreach ($it as $file) {
     if ($file->getExtension() !== "php") { continue; }
     $code = file_get_contents($file->getPathname());
-    if (!preg_match("/^namespace\s+([^;]+);/m", $code, $ns) || !preg_match("/^(?:final\s+)?class\s+(\w+)/m", $code, $cl)) { continue; }
+    if (!preg_match("/^namespace[[:space:]]+([^;]+);/m", $code, $ns) || !preg_match("/^(?:final[[:space:]]+)?class[[:space:]]+(\w+)/m", $code, $cl)) { continue; }
     $class = "\\" . $ns[1] . "\\" . $cl[1];
     if (!class_exists($class)) { fwrite(STDERR, "class does not autoload: $class\n"); exit(1); }
     if (strpos($ns[1], "GPBMetadata") === 0) { $class::initOnce(); $meta++; }
