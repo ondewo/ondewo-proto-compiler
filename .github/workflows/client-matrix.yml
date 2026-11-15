@@ -101,6 +101,10 @@ jobs:
         if: matrix.lang == 'python'
         uses: astral-sh/setup-uv@v6
 
+      - name: Install portaudio headers (python; csi's dev extra builds pyaudio)
+        if: matrix.lang == 'python'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends portaudio19-dev
+
       - name: Set up PHP 8.3
         if: matrix.lang == 'php'
         uses: shivammathur/setup-php@v2
