@@ -17,6 +17,10 @@ is a Dockerfile plus a thin shell wrapper, and the whole thing is orchestrated b
   `ARG` lines of each `Dockerfile`.
 - **Release:** driven entirely by `Makefile` targets (`release`, `ondewo_release`) and
   `update_proto_compiler_dependency.sh`, which bumps the compiler dependency across all client repos. See `RELEASE.md`.
+  Since 5.17.0 `make release` commits on the current branch, tags locally and **pushes nothing**; pushing, the GitHub
+  release and the client bumps (`make release_update_proto_compiler_dependency CLIENT_BRANCH=<branch>`, committed in
+  local clones, never pushed) are separate, explicit steps. `tests/release_pushes_nothing.bats` fails on any
+  `git push` in a release target or in the script.
 
 ## Working Principles
 
@@ -157,7 +161,16 @@ The scripts here are POSIX `sh` (`#!/bin/sh`), invoked with `bash`/`sh` from the
   images. When you change a script's behaviour, update or add the matching `*.bats` case.
 
 Anything that needs real `protoc`/`ng`/`webpack` code generation is an integration concern — run it with an end-to-end
-`make build_<lang>`, not the fast unit gate.
+`make build_<lang>`, not the fast unit gate. `make test_real_generation` (Docker + network) does that for all eleven
+built images: it generates a small proto set in each and compiles or imports the output there, and checks the generator
+stamps against the Makefile (`REAL_GENERATION_TAG` picks the image tag).
+
+**Version pins:** the Makefile is the source of every toolchain pin. Dockerfile `ARG` defaults are rewritten by the
+release target; the hand-maintained manifests (`python/requirements.txt`, the rust `Cargo.toml` files, the go module
+template, the node `package.json` files) are not, so the Makefile carries their pins too (`PYTHON_*`, `PROST_VERSION`,
+`TONIC_VERSION`, `NGX_GRPC_VERSION`, `NODEJS_*`, ...). `tests/check-version-pins.sh` (in `make test`) fails on any
+disagreement and on a java / csharp / php / python runtime that is off the line of `PROTOC_VERSION`: change a pin in
+the Makefile and its file together.
 
 ## Downstream Client SDKs & End-to-End Generation
 

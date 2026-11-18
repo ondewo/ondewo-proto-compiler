@@ -14,6 +14,7 @@ setup() {
   export CAPTURE_DIR="$SANDBOX/capture"
   export GIT_MOCK_LOG="$SANDBOX/git.log"
   export CLEAN_UP=false
+  export CLIENT_BRANCH=feature/OND000-1-test-branch
   mkdir -p "$CAPTURE_DIR"
 }
 
@@ -130,4 +131,38 @@ run_update() {
     run sh "$REPO_ROOT/update_proto_compiler_dependency.sh" 9.9.9 python 24.14.0 ondewo-nlu-client
   [ "$status" -eq 0 ]
   [[ "$output" == *"nothing to repin"* ]]
+}
+
+@test "D12: the bump is committed on CLIENT_BRANCH and never pushed" {
+  run_update 9.9.9 typescript 24.14.0 ondewo-nlu-client
+  echo "$output"
+  [ "$status" -eq 0 ]
+  run grep -Fq "git checkout feature/OND000-1-test-branch" "$GIT_MOCK_LOG"
+  [ "$status" -eq 0 ]
+  run grep -Eq '^git commit' "$GIT_MOCK_LOG"
+  [ "$status" -eq 0 ]
+  run grep -Eq '^git push' "$GIT_MOCK_LOG"
+  [ "$status" -ne 0 ]
+}
+
+@test "D12: without CLIENT_BRANCH nothing is cloned" {
+  unset CLIENT_BRANCH
+  run_update 9.9.9 typescript 24.14.0 ondewo-nlu-client
+  echo "$output"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"CLIENT_BRANCH is not set"* ]]
+  if [ -f "$GIT_MOCK_LOG" ]; then
+    run grep -Eq '^git clone' "$GIT_MOCK_LOG"
+    [ "$status" -ne 0 ]
+  fi
+}
+
+@test "D12: an existing clone (it may hold an unpushed bump) is never deleted" {
+  mkdir -p "$ONDEWO_TMP_DIR/ondewo-nlu-client-typescript"
+  : > "$ONDEWO_TMP_DIR/ondewo-nlu-client-typescript/keep-me"
+  run_update 9.9.9 typescript 24.14.0 ondewo-nlu-client
+  echo "$output"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"may hold an unpushed bump"* ]]
+  [ -f "$ONDEWO_TMP_DIR/ondewo-nlu-client-typescript/keep-me" ]
 }

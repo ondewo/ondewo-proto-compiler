@@ -22,6 +22,7 @@ setup() {
   export ONDEWO_TMP_DIR="$SANDBOX/ondewo"
   export CAPTURE_DIR="$SANDBOX/capture"
   export CLEAN_UP=false
+  export CLIENT_BRANCH=feature/OND000-1-test-branch
   mkdir -p "$CAPTURE_DIR"
   # Private copy of the typescript client fixture, so a test can corrupt it freely.
   FIXTURE="$SANDBOX/fixture"

@@ -78,13 +78,13 @@ teardown() { common_teardown; }
   [ ! -f "$REPO/tmp.json" ]
 }
 
-@test "version bump targets commit+push via git when there are staged changes" {
+@test "version bump targets commit via git when there are staged changes, and never push" {
   run make -C "$REPO" release_version_update_in_dockerfiles NODE_VERSION=99.99.0
   [ "$status" -eq 0 ]
   run grep -Eq '^git commit' "$GIT_MOCK_LOG"
   [ "$status" -eq 0 ]
   run grep -Eq '^git push' "$GIT_MOCK_LOG"
-  [ "$status" -eq 0 ]
+  [ "$status" -ne 0 ]
 }
 
 @test "version bump targets skip commit when nothing is staged (GIT_DIFF_RC=0)" {
@@ -167,15 +167,11 @@ teardown() { common_teardown; }
   [ "$status" -eq 0 ]
 }
 
-@test "release aborts on a missing token without pushing anything" {
-  run make -C "$REPO" release GITHUB_GH_TOKEN=ENTER_YOUR_TOKEN_HERE
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"GITHUB_GH_TOKEN is not set"* ]]
-  # nothing irreversible may have happened: no commit, no push, no branch, no tag
-  if [ -f "$GIT_MOCK_LOG" ]; then
-    run grep -Eq '^git (push|commit|tag|checkout)' "$GIT_MOCK_LOG"
-    [ "$status" -ne 0 ]
-  fi
+@test "release needs no GitHub token: it publishes nothing" {
+  run make -C "$REPO" -n release GITHUB_GH_TOKEN=ENTER_YOUR_TOKEN_HERE
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"GITHUB_GH_TOKEN is not set"* ]]
+  [[ "$output" != *"gh release create"* ]]
 }
 
 @test "release aborts on missing release notes without pushing anything" {
@@ -189,18 +185,16 @@ teardown() { common_teardown; }
   fi
 }
 
-@test "release runs all three pre-flight guards before the first push" {
-  run make -C "$REPO" -n release GITHUB_GH_TOKEN=gh_a_real_looking_token
+@test "release runs both pre-flight guards before its first commit" {
+  run make -C "$REPO" -n release
   [ "$status" -eq 0 ]
   printf '%s\n' "$output" > "$SANDBOX/dryrun.txt"
-  credentials="$(grep -n 'GITHUB_GH_TOKEN is not set' "$SANDBOX/dryrun.txt" | head -1 | cut -d: -f1)"
   notes="$(grep -n 'empty body' "$SANDBOX/dryrun.txt" | head -1 | cut -d: -f1)"
   spc="$(grep -n 'Test 2: Tag' "$SANDBOX/dryrun.txt" | head -1 | cut -d: -f1)"
-  push="$(grep -n 'git push' "$SANDBOX/dryrun.txt" | head -1 | cut -d: -f1)"
-  [ -n "$credentials" ] && [ -n "$notes" ] && [ -n "$spc" ] && [ -n "$push" ]
-  [ "$credentials" -lt "$push" ]
-  [ "$notes" -lt "$push" ]
-  [ "$spc" -lt "$push" ]
+  commit="$(grep -n 'git commit' "$SANDBOX/dryrun.txt" | head -1 | cut -d: -f1)"
+  [ -n "$notes" ] && [ -n "$spc" ] && [ -n "$commit" ]
+  [ "$notes" -lt "$commit" ]
+  [ "$spc" -lt "$commit" ]
 }
 
 @test "login_to_gh and build_gh_release carry the guards for the in-image push_to_gh path" {

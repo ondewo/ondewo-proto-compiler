@@ -31,14 +31,17 @@ export
 # 3 - make test               # shellcheck gate + bats suite
 # 4 - make check_release_notes  # confirm the GitHub release body will not be empty
 # -------------- Release Process Steps (the `release` prerequisite chain) --------------
-# 0 - Pre-flight: credentials present, release notes present, branch+tag still free
-#     (all three run BEFORE the first push - everything after this point is public)
+# `make release` works on the CURRENT branch and pushes NOTHING (since 5.17.0):
+# 0 - Pre-flight: release notes present, release branch + tag still free
 # 1 - Propagate the version into the Dockerfile ARGs, the package.json files and the
-#     rust/go manifests, committing and pushing each
-# 2 - Create the release branch and push
-# 3 - Create the release tag and push
-# 4 - GitHub Release (built and published from the utils docker image)
-# 5 - Bump the compiler dependency in every ONDEWO client repo
+#     rust/go manifests, committing each on the current branch
+# 2 - Create the annotated release tag, locally
+# -------------- After `make release`: explicit steps, each run on purpose --------------
+# 3 - Review the commits and the tag, then push the branch and the tag yourself
+# 4 - make build_and_release_to_github_via_docker   # GitHub release, needs GITHUB_GH_TOKEN
+# 5 - make release_update_proto_compiler_dependency CLIENT_BRANCH=<branch>
+#     commits the compiler bump on CLIENT_BRANCH in a local clone of every client repo and
+#     pushes nothing; review and push each clone yourself
 
 ########################################################
 # 		Variables
@@ -326,15 +329,13 @@ test_real_generation: ## Generate a small proto set in every built image and com
 ########################################################
 #		Release
 
-# Pre-flight guards. Everything from `release_version_update_in_dockerfiles` onwards is
-# public and not cleanly undoable - three commits pushed to the current branch, then a
-# pushed release branch, then a pushed tag - so the three cheap, read-only checks below run
-# first. The GitHub token used to be validated only inside the utils image at step 4, i.e.
-# after the branch and the tag were already on origin, which left a half-finished release
-# behind whenever GITHUB_GH_TOKEN was unset. `spc` was likewise only wired into
-# `ondewo_release`, so a direct `make release` discovered an already-used version at
-# `git checkout -b` - again after three pushes to the current branch.
-check_release_credentials: ## Fail before any push if GITHUB_GH_TOKEN is missing or still the placeholder
+# Pre-flight guards. `release` pushes nothing since 5.17.0: it commits the version bumps on the
+# current branch and tags locally, and publishing (push, GitHub release, client bumps) is a
+# separate, explicit step. Before that, `release` pushed three commits, a release branch and a tag,
+# published the GitHub release and pushed a submodule bump to the default branch of every client
+# repo in one go. The checks below still run first so a release with no notes or an already-used
+# version stops before its first commit; the token check guards the GitHub publish targets.
+check_release_credentials: ## Fail before publishing if GITHUB_GH_TOKEN is missing or still the placeholder
 	@if [ -z "$${GITHUB_GH_TOKEN}" ] || [ "$${GITHUB_GH_TOKEN}" = "ENTER_YOUR_TOKEN_HERE" ]; then \
 		echo "$(RED)[ERROR]$(NC) GITHUB_GH_TOKEN is not set - create one at https://github.com/settings/tokens"; \
 		exit 1; \
@@ -346,7 +347,7 @@ check_release_credentials: ## Fail before any push if GITHUB_GH_TOKEN is missing
 # slice is empty and `gh release create -n ""` happily publishes a release with no notes at
 # all. Counting only the lines that are neither the heading nor the separator also catches a
 # heading that was added without any bullets under it.
-check_release_notes: ## Fail before any push if RELEASE.md carries no notes for the current version
+check_release_notes: ## Fail before any release commit if RELEASE.md carries no notes for the current version
 	@notes="${CURRENT_RELEASE_NOTES}"; \
 	body=`printf '%s\n' "$$notes" | grep -v '^## Release ONDEWO Proto Compiler' | grep -v '^\*\*\*\*\*' | grep -c '[^[:space:]]' || true`; \
 	if [ "$$body" -eq 0 ]; then \
@@ -356,10 +357,12 @@ check_release_notes: ## Fail before any push if RELEASE.md carries no notes for 
 	fi; \
 	echo "$(GREEN)[SUCCESS]$(NC) RELEASE.md carries $$body line(s) of notes for ${ONDEWO_PROTO_COMPILER_VERSION}"
 
-release: check_release_credentials check_release_notes spc release_version_update_in_dockerfiles release_version_update_in_packages_json_files release_version_update_in_manifests create_release_branch create_release_tag build_and_release_to_github_via_docker release_update_proto_compiler_dependency ## Automate the entire release process
-	@echo "Release Finished"
+release: check_release_notes spc release_version_update_in_dockerfiles release_version_update_in_packages_json_files release_version_update_in_manifests create_release_tag ## Commit the release on the current branch and tag it locally - pushes nothing
+	@echo "$(GREEN)[SUCCESS]$(NC) Release ${ONDEWO_PROTO_COMPILER_VERSION} committed and tagged locally - nothing was pushed"
+	@echo "$(BLUE)[INFO]$(NC) Next, each on purpose: push the branch and the tag, make build_and_release_to_github_via_docker,"
+	@echo "$(BLUE)[INFO]$(NC) make release_update_proto_compiler_dependency CLIENT_BRANCH=<branch>"
 
-release_version_update_in_packages_json_files: ## Set ONDEWO_PROTO_COMPILER_VERSION in every package.json, then commit and push
+release_version_update_in_packages_json_files: ## Set ONDEWO_PROTO_COMPILER_VERSION in every package.json, then commit (no push)
 	@for file in \
 		angular/example/package.json \
 		angular/image-data/package.json \
@@ -373,15 +376,14 @@ release_version_update_in_packages_json_files: ## Set ONDEWO_PROTO_COMPILER_VERS
 		git add "$$file"; \
 	done; \
 	if ! git diff --cached --quiet; then \
-		echo "$(BLUE)[INFO]$(NC) Committing and pushing changes..."; \
+		echo "$(BLUE)[INFO]$(NC) Committing changes..."; \
 		git commit --no-verify -m "Prepare release ${ONDEWO_PROTO_COMPILER_VERSION} and update version in package.json files"; \
-		git push; \
-		echo "$(GREEN)[SUCCESS]$(NC) Version updated and pushed successfully."; \
+		echo "$(GREEN)[SUCCESS]$(NC) Version updated and committed - not pushed."; \
 	else \
 		echo "$(YELLOW)[NOOP]$(NC) No changes to commit."; \
 	fi
 
-release_version_update_in_dockerfiles: ## Update ARG versions in Dockerfiles
+release_version_update_in_dockerfiles: ## Update ARG versions in Dockerfiles, then commit (no push)
 	@for file in $(DOCKERFILES) ; do \
 		if [ ! -f "$$file" ]; then \
 			echo "$(RED)[ERROR]$(NC) $$file is listed in DOCKERFILES but does not exist"; \
@@ -395,10 +397,9 @@ release_version_update_in_dockerfiles: ## Update ARG versions in Dockerfiles
 		git add "$$file"; \
 	done; \
 	if ! git diff --cached --quiet; then \
-		echo "$(BLUE)[INFO]$(NC) Committing and pushing Dockerfile updates..."; \
+		echo "$(BLUE)[INFO]$(NC) Committing Dockerfile updates..."; \
 		git commit --no-verify -m "Prepare release ${ONDEWO_PROTO_COMPILER_VERSION} and update Dockerfile ARGs"; \
-		git push; \
-		echo "$(GREEN)[SUCCESS]$(NC) Version updated and pushed successfully."; \
+		echo "$(GREEN)[SUCCESS]$(NC) Version updated and committed - not pushed."; \
 	else \
 		echo "$(YELLOW)[NOOP]$(NC) No changes to commit."; \
 	fi
@@ -421,10 +422,9 @@ release_version_update_in_manifests: ## Set the release + toolchain versions in 
 		git add "$$file"; \
 	done; \
 	if ! git diff --cached --quiet; then \
-		echo "$(BLUE)[INFO]$(NC) Committing and pushing manifest updates..."; \
+		echo "$(BLUE)[INFO]$(NC) Committing manifest updates..."; \
 		git commit --no-verify -m "Prepare release ${ONDEWO_PROTO_COMPILER_VERSION} and update rust/go manifests"; \
-		git push; \
-		echo "$(GREEN)[SUCCESS]$(NC) Version updated and pushed successfully."; \
+		echo "$(GREEN)[SUCCESS]$(NC) Version updated and committed - not pushed."; \
 	else \
 		echo "$(YELLOW)[NOOP]$(NC) No changes to commit."; \
 	fi
@@ -432,6 +432,10 @@ release_version_update_in_manifests: ## Set the release + toolchain versions in 
 # Fans out to one sub-target per language; each runs update_proto_compiler_dependency.sh
 # for every ONDEWO client repo (nlu, s2t, t2s, sip, csi, vtsi, survey) to bump the pinned
 # compiler dependency there. Invoke a single language directly for a targeted update.
+# The bump is committed on CLIENT_BRANCH in a local clone under ONDEWO_TMP_DIR and NOT pushed:
+# it is an explicit step after the release, never part of `release`. CLIENT_BRANCH defaults to
+# this repository's current branch.
+CLIENT_BRANCH?=$(shell git branch --show-current 2>/dev/null)
 release_update_proto_compiler_dependency: release_update_proto_compiler_dependency_angular release_update_proto_compiler_dependency_python release_update_proto_compiler_dependency_js release_update_proto_compiler_dependency_nodejs release_update_proto_compiler_dependency_typescript release_update_proto_compiler_dependency_php release_update_proto_compiler_dependency_go release_update_proto_compiler_dependency_rust release_update_proto_compiler_dependency_cpp release_update_proto_compiler_dependency_java release_update_proto_compiler_dependency_csharp  ## Updates the proto compiler dependency in all submodules
 	echo "$(GREEN)[SUCCESS]$(NC) Updating proto compiler dependency for all programming languages completed"
 
@@ -523,13 +527,11 @@ release_update_proto_compiler_dependency_csharp: ## Bump the compiler dependency
 		sh update_proto_compiler_dependency.sh $(ONDEWO_PROTO_COMPILER_VERSION) $(PROGRAMMING_LANGUAGE) $(NODE_VERSION) $$repo || exit 1; \
 	done
 
-create_release_branch: ## Create Release Branch and push it to origin
+create_release_branch: ## Create the release branch locally (not part of `release`; pushes nothing)
 	git checkout -b "release/${ONDEWO_PROTO_COMPILER_VERSION}"
-	git push -u origin "release/${ONDEWO_PROTO_COMPILER_VERSION}"
 
-create_release_tag: ## Create Release Tag and push it to origin
+create_release_tag: ## Create the annotated release tag locally (pushes nothing)
 	git tag -a ${ONDEWO_PROTO_COMPILER_VERSION} -m "release/${ONDEWO_PROTO_COMPILER_VERSION}"
-	git push origin ${ONDEWO_PROTO_COMPILER_VERSION}
 
 # Both guards are repeated here rather than only in `release`, because these two targets are
 # what actually log in and publish - they also run on their own inside the utils image (see
