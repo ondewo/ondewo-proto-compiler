@@ -6,17 +6,17 @@ FROM golang:${GO_VERSION}
 ARG GO_VERSION=1.27
 
 # protobuf version for compiling proto files
-ARG PROTOC_VERSION=32.0
+ARG PROTOC_VERSION=35.1
 
 # protoc-gen-go doubles as the pin of the google.golang.org/protobuf runtime (same module)
 ARG PROTOC_GEN_GO_VERSION=1.36.12
 # protoc-gen-go-grpc is its own module, versioned independently of google.golang.org/grpc
 ARG PROTOC_GEN_GO_GRPC_VERSION=1.6.2
-ARG GRPC_GO_VERSION=1.83.2
+ARG GRPC_GO_VERSION=1.85.0
 # go-genproto publishes no semver tags - this is a pseudo-version and carries its own "v"
-ARG GENPROTO_VERSION=v0.0.0-20260911204522-f61a6ca850bd
-# `go` directive of the generated go.mod; must be >= grpc's own (`go 1.25.0`)
-ARG GO_MOD_DIRECTIVE=1.25.0
+ARG GENPROTO_VERSION=v0.0.0-20261116203732-fd2c7689a808
+# `go` directive of the generated go.mod; must be >= grpc's own (`go 1.26.0`)
+ARG GO_MOD_DIRECTIVE=1.26.0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates unzip wget \
