@@ -3,16 +3,16 @@ ARG DOTNET_SDK_VERSION=10.0
 FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_SDK_VERSION}
 
 # protobuf version for compiling proto files
-ARG PROTOC_VERSION=32.0
+ARG PROTOC_VERSION=35.1
 
 # --------------- Toolchain / package versions that reach MSBuild as properties
 # The generated project file (image-data/default-lib-files/stubs.csproj) carries no literal
 # version: every version below is handed to MSBuild as an environment property, so these ARG
 # lines stay the single source of truth and the Makefile release targets only have to rewrite
 # this Dockerfile.
-ARG GRPC_TOOLS_VERSION=2.83.0
-ARG GOOGLE_PROTOBUF_VERSION=3.32.0
-ARG GRPC_DOTNET_VERSION=2.83.0
+ARG GRPC_TOOLS_VERSION=2.85.0
+ARG GOOGLE_PROTOBUF_VERSION=3.35.1
+ARG GRPC_DOTNET_VERSION=2.85.0
 ARG GOOGLE_API_COMMONPROTOS_VERSION=2.17.0
 ARG DOTNET_TARGET_FRAMEWORK=netstandard2.0
 ARG ONDEWO_PACKAGE_ID=Ondewo.Grpc.Client
