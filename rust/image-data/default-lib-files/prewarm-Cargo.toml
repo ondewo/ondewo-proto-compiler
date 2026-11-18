@@ -25,14 +25,14 @@ path = "src/lib.rs"
 
 [dependencies]
 # --- what the generated stubs themselves need (keep in sync with Cargo.toml)
-prost = "0.14"
-prost-types = "0.14"
-tonic-prost = "0.14"
+prost = "0.14.6"
+prost-types = "0.14.6"
+tonic-prost = "0.14.9"
 # --- tonic with the feature set a real client channel needs (TLS + compression).
 # tls-native-roots: the clients' hand-written src/channel.rs trusts the platform's certificate
 # store when no custom CA is configured; without it rustls-native-certs is not cached and the
 # offline build of every rust client fails.
-tonic = { version = "0.14", features = ["tls-ring", "tls-native-roots", "gzip"] }
+tonic = { version = "0.14.9", features = ["tls-ring", "tls-native-roots", "gzip"] }
 # --- what a hand-written client surface on top of the stubs typically pulls in
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1"

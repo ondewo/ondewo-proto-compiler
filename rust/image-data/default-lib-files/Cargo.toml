@@ -14,9 +14,9 @@ repository = "https://github.com/ondewo/ondewo-proto-compiler"
 path = "src/lib.rs"
 
 [dependencies]
-prost = "0.14"
-prost-types = "0.14"
-tonic = "0.14"
+prost = "0.14.6"
+prost-types = "0.14.6"
+tonic = "0.14.9"
 # Since tonic 0.14 the prost codec lives in its own crate and protoc-gen-tonic emits
 # `tonic_prost::ProstCodec`; without tonic-prost every generated service fails to resolve.
-tonic-prost = "0.14"
+tonic-prost = "0.14.9"
