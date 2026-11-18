@@ -4,10 +4,29 @@ ARG COMPOSER_VERSION=2.8
 # --------------- Composer ships as a phar; take it from the official image (pinned, no installer script)
 FROM composer:${COMPOSER_VERSION} AS composer-bin
 
+# --------------- grpc_php_plugin, built from the grpc source tag of the runtime the manifest pins
+# Debian's protobuf-compiler-grpc ships a prebuilt plugin of ITS grpc (trixie: 1.51.1), unrelated
+# to the grpc/grpc runtime below, and no grpc release publishes a prebuilt php plugin. Built on
+# the same php:<v>-cli base as the final stage, so the binary links against the same libc and
+# libstdc++; grpc's CMake build links its own protobuf and abseil statically into it. Only the
+# plugin target is built, which is a fraction of a full grpc build.
+FROM php:${PHP_VERSION}-cli AS grpc-php-plugin
+ARG GRPC_PHP_VERSION=1.85.0
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates cmake g++ git make \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 --branch "v${GRPC_PHP_VERSION}" --recurse-submodules --shallow-submodules \
+      https://github.com/grpc/grpc /tmp/grpc && \
+    cmake -S /tmp/grpc -B /tmp/grpc/cmake-build -DCMAKE_BUILD_TYPE=Release -DgRPC_BUILD_TESTS=OFF && \
+    cmake --build /tmp/grpc/cmake-build --target grpc_php_plugin -j"$(nproc)" && \
+    cp /tmp/grpc/cmake-build/grpc_php_plugin /usr/local/bin/grpc_php_plugin && \
+    rm -rf /tmp/grpc
+
 FROM php:${PHP_VERSION}-cli
 
 # protobuf version for compiling proto files
-ARG PROTOC_VERSION=32.0
+ARG PROTOC_VERSION=35.1
 
 # --------------- Versions baked into the shipped library manifest
 # image-data/default-lib-files/composer.json carries no literal version: every version below is
@@ -18,23 +37,22 @@ ARG PROTOC_VERSION=32.0
 # Both runtime packages are pinned EXACTLY rather than floated with `^`: the prewarm below freezes
 # the image on whatever it resolves, so a floating constraint would silently change the shipped
 # protobuf/grpc runtime on every image rebuild.
-# GOOGLE_PROTOBUF_PHP_VERSION must stay on the 4.x line that matches PROTOC_VERSION (protoc
-# 26.x-33.x <-> the PHP 4.x runtime); the 5.x line requires php >= 8.2.0.
-ARG GOOGLE_PROTOBUF_PHP_VERSION=4.33.6
+# GOOGLE_PROTOBUF_PHP_VERSION must stay on the runtime line that matches PROTOC_VERSION (protoc
+# 26.x-33.x <-> the PHP 4.x runtime, protoc 34.x and later <-> 5.x, which requires php >= 8.2.0).
+# GRPC_PHP_VERSION pins BOTH the grpc/grpc runtime and the grpc source tag the plugin above is
+# built from.
+ARG GOOGLE_PROTOBUF_PHP_VERSION=5.35.1
 ARG GRPC_PHP_VERSION=1.85.0
 # Default <version> of the generated library, bumped by the release targets.
 ARG ONDEWO_PROTO_COMPILER_VERSION=5.16.0
 
 # --------------- Installing the OS toolchain
-# protobuf-compiler-grpc ships a PREBUILT /usr/bin/grpc_php_plugin (Debian trixie 1.51.1-6);
-# building grpc from source just for that plugin takes tens of minutes. It pulls in Debian's own
-# protobuf-compiler (protoc 3.21.12 at /usr/bin/protoc), which the pinned protoc below shadows
-# from /usr/local/bin. unzip is load-bearing TWICE over: once for the protoc release zip, and once
+# unzip is load-bearing TWICE over: once for the protoc release zip, and once
 # because php:<v>-cli ships no ext-zip, so composer extracts every --prefer-dist archive through
 # the unzip binary. jq drives the composer.json rewrites in make-lib-entry-point.sh. tree is only
 # used interactively through the `--entrypoint /bin/bash` debug branch of example/run-compile.sh.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates git jq protobuf-compiler-grpc unzip tree wget \
+    ca-certificates git jq unzip tree wget \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
@@ -48,7 +66,7 @@ RUN wget --tries=3 --waitretry=5 --retry-connrefused \
     chmod a+x /usr/local/bin/protoc && \
     rm -rf /tmp/protoc.zip /tmp/protoc/
 
-# --------------- Fail the build loudly if Debian's protoc wins the PATH lookup, or the plugin is gone.
+# --------------- Fail the build loudly if another protoc wins the PATH lookup, or the plugin is gone.
 # NOTE: never pipe these checks into `head` - a pipeline's exit status is the LAST command's, so a
 # missing binary would still exit 0. And `grpc_php_plugin --help` itself exits 1 ("Unknown option:
 # --help"), because protoc plugins read a CodeGeneratorRequest on stdin rather than parsing a CLI;
@@ -56,6 +74,7 @@ RUN wget --tries=3 --waitretry=5 --retry-connrefused \
 # names which half broke.
 RUN protoc --version | grep -Fq "libprotoc $PROTOC_VERSION" \
  || { echo "ERROR: /usr/local/bin/protoc is not $PROTOC_VERSION" >&2; exit 1; }
+COPY --from=grpc-php-plugin /usr/local/bin/grpc_php_plugin /usr/bin/grpc_php_plugin
 RUN command -v grpc_php_plugin > /dev/null \
  || { echo "ERROR: grpc_php_plugin missing from PATH" >&2; exit 1; }
 
