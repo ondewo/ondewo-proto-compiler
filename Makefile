@@ -60,6 +60,25 @@ PROTOC_GEN_JS_VERSION=4.0.3
 WEBPACK_VERSION=5.112.2
 WEBPACK_CLI_VERSION=7.3.1
 
+# Pins of hand-maintained manifests. No release target writes them and no Dockerfile ARG carries
+# them: tests/check-version-pins.sh (part of `make test`) fails when a manifest disagrees with
+# them. Change the manifest and the line here together.
+# --- python (python/requirements.txt; grpcio-tools stamps its version into every _pb2_grpc.py)
+PYTHON_GRPCIO_VERSION=1.85.1
+PYTHON_PROTOBUF_VERSION=7.36.2
+PYTHON_MYPY_PROTOBUF_VERSION=5.1.0
+# --- rust (rust/image-data/default-lib-files/{Cargo,prewarm-Cargo}.toml)
+PROST_VERSION=0.14.6
+TONIC_VERSION=0.14.9
+# --- angular (angular/image-data/package.json; grpc-web is GRPC_WEB_VERSION through an override)
+NGX_GRPC_VERSION=3.1.2
+ANGULAR_GOOGLE_PROTOBUF_VERSION=3.21.4
+# --- nodejs (nodejs/image-data/package.json, nodejs/example/package.json)
+NODEJS_GRPC_TOOLS_VERSION=1.13.1
+NODEJS_PROTOC_GEN_JS_VERSION=3.21.4
+NODEJS_GRPC_JS_VERSION=1.14.7
+NODEJS_GOOGLE_PROTOBUF_VERSION=3.21.4
+
 # --- angular
 # Every Angular the angular image's output must work on (`make test_angular_compat`). The image
 # builds with the NEWEST major listed here; the oldest is the clients' peer floor and is also
@@ -300,6 +319,9 @@ test: lint ## Run the shellcheck gate and the bats test suite (no Docker require
 
 test_angular_compat: ## Prove the angular image's output works on every ANGULAR_COMPAT_VERSIONS (Docker + network; run make build_angular first)
 	sh tests/angular-compat/compile-and-check.sh $(ANGULAR_COMPAT_VERSIONS)
+
+test_real_generation: ## Generate a small proto set in every built image and compile/import the output (Docker + network; run make build first)
+	sh tests/real-generation/run.sh
 
 ########################################################
 #		Release
