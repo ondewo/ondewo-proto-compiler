@@ -3,7 +3,7 @@ ARG NODE_VERSION=24.22.3
 FROM node:${NODE_VERSION}-slim
 
 # protobuf version for compiling proto files
-ARG PROTOC_VERSION=32.0
+ARG PROTOC_VERSION=35.1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates parallel gnupg gnupg2 wget sed vim tmux curl unzip tree \

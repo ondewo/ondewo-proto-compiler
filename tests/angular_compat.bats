@@ -139,3 +139,17 @@ dep_range() {
   [[ "$output" == *"failed for: 21"* ]]
   grep -q "check.sh 22 " "$SANDBOX/docker.log"
 }
+
+@test "toolchain: @ngx-grpc is capped at ~3.1.2 and grpc-web is the exact GRPC_WEB_VERSION, overriding @ngx-grpc's ^1.2.1 peer" {
+  local pkg="$REPO_ROOT/angular/image-data/package.json" name want
+  want="$(sed -n 's/^GRPC_WEB_VERSION=//p' "$REPO_ROOT/Makefile")"
+  # an open `>=3.1.2` floats to whatever @ngx-grpc publishes next (5.0.0 today) at image build
+  for name in common core grpc-web-client protoc-gen-ng well-known-types; do
+    [ "$(dep_range "$pkg" devDependencies "@ngx-grpc/$name")" = "~3.1.2" ]
+  done
+  # npm `overrides` only accept a "$grpc-web" reference to a direct dependency of the SAME exact spec
+  [ "$(dep_range "$pkg" devDependencies grpc-web)" = "$want" ]
+  [ "$(node -p "require('$pkg').overrides['grpc-web']")" = '$grpc-web' ]
+  # @ngx-grpc/common and well-known-types peer google-protobuf ^3.10.0: stay on 3.21.x
+  [ "$(dep_range "$pkg" devDependencies google-protobuf)" = "~3.21.4" ]
+}
