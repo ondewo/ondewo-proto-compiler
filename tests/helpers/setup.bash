@@ -6,8 +6,10 @@
 # that log their argv and return configurable exit codes, letting us assert on
 # behaviour without Docker, network, or a real protoc toolchain.
 
-TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-REPO_ROOT="$(cd "$TESTS_DIR/.." && pwd)"
+TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+# Physical (-P): make's ${shell pwd} and node's import.meta.url resolve symlinks, so a logical path
+# reached through a symlinked checkout (/home -> /mnt/md0/home) matched neither.
+REPO_ROOT="$(cd "$TESTS_DIR/.." && pwd -P)"
 MOCK_BIN="$TESTS_DIR/helpers/bin"
 FIXTURES="$TESTS_DIR/fixtures"
 

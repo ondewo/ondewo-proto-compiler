@@ -6,7 +6,7 @@
 // newer Angular links on an older one as long as every minVersion is <= that older version.
 //
 // CLI: node declaration-gate.mjs <bundle.mjs> <angular_version>  -> exit 0 and a summary, or exit 1.
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const parse = (version) => version.split('-')[0].split('.').map(Number);
@@ -29,7 +29,9 @@ export function checkDeclarations(bundle, angularVersion) {
   };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// import.meta.url is the REAL path, argv[1] the path as typed: compare real paths, or a run through a
+// symlinked checkout skips this block and exits 0 without judging anything.
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [bundlePath, angularVersion] = process.argv.slice(2);
   const { count, builtBy, tooNew } = checkDeclarations(readFileSync(bundlePath, 'utf8'), angularVersion);
   if (count === 0) {

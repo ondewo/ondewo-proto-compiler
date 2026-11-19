@@ -65,6 +65,16 @@ dep_range() {
   [[ "$output" == *"no ɵɵngDeclare* partial declarations"* ]]
 }
 
+@test "gate: run through a symlinked path it still judges the bundle instead of exiting 0 silently" {
+  # node resolves import.meta.url to the real path but leaves argv[1] as typed, so a checkout reached
+  # through a symlink (/home -> /mnt/md0/home) used to skip the CLI block and exit 0 with no output.
+  ln -s "$REPO_ROOT/tests/angular-compat/consumer" "$SANDBOX/linked-consumer"
+  printf '%s\n' 'i0.ɵɵngDeclareComponent({ minVersion: "21.1.0", version: "22.2.6", ngImport: i0 });' > "$SANDBOX/b.mjs"
+  run node "$SANDBOX/linked-consumer/declaration-gate.mjs" "$SANDBOX/b.mjs" 20.3.35
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"need Angular >= 21.1.0"* ]]
+}
+
 @test "matrix: ANGULAR_COMPAT_VERSIONS covers every major from the oldest to the newest, and the floor as .0.0" {
   [ -n "$COMPAT_VERSIONS" ]
   major=$OLDEST
