@@ -3,7 +3,7 @@ ARG NODE_VERSION=24.22.3
 FROM node:${NODE_VERSION}-slim
 
 # protobuf version for compiling proto files
-ARG PROTOC_VERSION=32.0
+ARG PROTOC_VERSION=35.1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates parallel unzip tree nano wget \
@@ -19,14 +19,20 @@ RUN wget --tries=3 --waitretry=5 --retry-connrefused \
     chmod a+x /usr/local/bin/protoc && \
     rm -rf /tmp/protoc.zip /tmp/protoc/
 
-ARG GRPC_WEB_VERSION=1.5.0
+ARG GRPC_WEB_VERSION=2.1.1
 RUN wget https://github.com/grpc/grpc-web/releases/download/${GRPC_WEB_VERSION}/protoc-gen-grpc-web-${GRPC_WEB_VERSION}-linux-x86_64 -O /usr/local/bin/protoc-gen-grpc-web &&\
   chmod a+x /usr/local/bin/protoc-gen-grpc-web
 
 # --------------- Install npm modules required for compilation with webpack
 # Retry to ride out transient npm registry / network failures (mirrors the wget --tries above).
+# Pinned exactly: an unpinned `npm install -g` takes whatever the registry serves on the day the
+# image is built. protoc-gen-js emits code for the google-protobuf major of the same version.
+ARG PROTOC_GEN_JS_VERSION=4.0.3
+ARG WEBPACK_VERSION=5.112.2
+ARG WEBPACK_CLI_VERSION=7.3.1
 RUN for i in 1 2 3 4 5; do \
-      npm install -g protoc-gen-js webpack webpack-cli && exit 0; \
+      npm install -g "protoc-gen-js@${PROTOC_GEN_JS_VERSION}" "webpack@${WEBPACK_VERSION}" \
+        "webpack-cli@${WEBPACK_CLI_VERSION}" && exit 0; \
       echo "npm install failed (attempt $i/5); retrying in 15s ..." >&2; \
       sleep 15; \
     done; \

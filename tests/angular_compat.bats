@@ -65,6 +65,16 @@ dep_range() {
   [[ "$output" == *"no ɵɵngDeclare* partial declarations"* ]]
 }
 
+@test "gate: run through a symlinked path it still judges the bundle instead of exiting 0 silently" {
+  # node resolves import.meta.url to the real path but leaves argv[1] as typed, so a checkout reached
+  # through a symlink (/home -> /mnt/md0/home) used to skip the CLI block and exit 0 with no output.
+  ln -s "$REPO_ROOT/tests/angular-compat/consumer" "$SANDBOX/linked-consumer"
+  printf '%s\n' 'i0.ɵɵngDeclareComponent({ minVersion: "21.1.0", version: "22.2.6", ngImport: i0 });' > "$SANDBOX/b.mjs"
+  run node "$SANDBOX/linked-consumer/declaration-gate.mjs" "$SANDBOX/b.mjs" 20.3.35
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"need Angular >= 21.1.0"* ]]
+}
+
 @test "matrix: ANGULAR_COMPAT_VERSIONS covers every major from the oldest to the newest, and the floor as .0.0" {
   [ -n "$COMPAT_VERSIONS" ]
   major=$OLDEST
@@ -138,4 +148,25 @@ dep_range() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"failed for: 21"* ]]
   grep -q "check.sh 22 " "$SANDBOX/docker.log"
+}
+
+@test "toolchain: the @ngx-grpc runtime packages are an open >=NGX_GRPC_VERSION range, protoc-gen-ng is exactly NGX_GRPC_VERSION, and grpc-web is the exact GRPC_WEB_VERSION, overriding @ngx-grpc's ^1.2.1 peer" {
+  local pkg="$REPO_ROOT/angular/image-data/package.json" name want ngx
+  want="$(sed -n 's/^GRPC_WEB_VERSION=//p' "$REPO_ROOT/Makefile")"
+  ngx="$(sed -n 's/^NGX_GRPC_VERSION=//p' "$REPO_ROOT/Makefile")"
+  # Deliberately NOT capped (decision 2026-11-20): the clients declare the same open peer range, and an
+  # Angular 22 app needs @ngx-grpc 5.x, whose typings compile under TypeScript 6 (3.1.2's do not, TS1540)
+  for name in common core grpc-web-client well-known-types; do
+    [ "$(dep_range "$pkg" devDependencies "@ngx-grpc/$name")" = ">=$ngx" ]
+  done
+  # ...except the build-time GENERATOR, which is exact: protoc-gen-ng >= 4.0.0 reads a packed repeated enum
+  # with readPackableEnumInto, which only google-protobuf 4.x has, while @ngx-grpc peers google-protobuf ^3
+  [ "$(dep_range "$pkg" devDependencies "@ngx-grpc/protoc-gen-ng")" = "$ngx" ]
+  # the compat consumer installs what that open range resolves to, not a pinned line of its own
+  grep -q '"@ngx-grpc/core@>='"$ngx"'"' "$REPO_ROOT/tests/angular-compat/consumer/check.sh"
+  # npm `overrides` only accept a "$grpc-web" reference to a direct dependency of the SAME exact spec
+  [ "$(dep_range "$pkg" devDependencies grpc-web)" = "$want" ]
+  [ "$(node -p "require('$pkg').overrides['grpc-web']")" = '$grpc-web' ]
+  # @ngx-grpc/common and well-known-types peer google-protobuf ^3.10.0: stay on 3.21.x
+  [ "$(dep_range "$pkg" devDependencies google-protobuf)" = "~3.21.4" ]
 }

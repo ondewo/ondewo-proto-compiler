@@ -3,7 +3,7 @@ ARG NODE_VERSION=24.22.3
 FROM node:${NODE_VERSION}-slim
 
 # protobuf version for compiling proto files
-ARG PROTOC_VERSION=32.0
+ARG PROTOC_VERSION=35.1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates parallel unzip tree wget \
@@ -25,9 +25,11 @@ WORKDIR /image-data
 COPY image-data/ /image-data/
 
 # --------------- Install npm modules required for compilation with nodejs
+# package.json pins the generator plugins (protoc-gen-js, grpc-tools' grpc_node_plugin,
+# grpc_tools_node_protoc_ts); compile-proto-2-stubs.sh runs them with the protoc installed above.
 # Retry to ride out transient npm registry / network failures (mirrors the wget --tries above).
 RUN for i in 1 2 3 4 5; do \
-      npm install && npm install -g grpc-tools && exit 0; \
+      npm install && exit 0; \
       echo "npm install failed (attempt $i/5); retrying in 15s ..." >&2; \
       sleep 15; \
     done; \

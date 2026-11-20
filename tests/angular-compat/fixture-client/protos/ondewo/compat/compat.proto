@@ -1,7 +1,7 @@
 // Fixture for the Angular backward-compatibility check (tests/angular-compat). It exercises every
 // shape of generated code the ONDEWO clients ship: unary + server-streaming RPCs (a client-streaming
-// one is omitted by the image), proto3 explicit presence, enums, oneofs, maps, nested and
-// well-known-type messages.
+// one is omitted by the image), proto3 explicit presence, enums (also packed repeated), oneofs, maps,
+// nested and well-known-type messages.
 syntax = "proto3";
 
 package ondewo.compat;
@@ -31,6 +31,8 @@ message Item {
     repeated string values = 1;
   }
   repeated Part parts = 10;
+  // packed on the wire (proto3 default): the generated reader must use a google-protobuf 3.21.x API
+  repeated Mode modes = 11;
 }
 
 service Compat {

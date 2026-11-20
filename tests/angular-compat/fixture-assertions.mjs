@@ -26,6 +26,12 @@ assert.deepEqual(back.labels, { a: 'b' });
 assert.equal(back.url, 'u');
 assert.deepEqual(back.parts[0].values, ['v']);
 
+// a packed repeated enum decodes. @ngx-grpc/protoc-gen-ng >= 4.0.0 reads it with readPackableEnumInto, which
+// only google-protobuf 4.x has; @ngx-grpc and every client peer google-protobuf 3.21.x, whose reader has
+// readPackedEnum only, so such a generator fails here with "readPackableEnumInto is not a function".
+const modes = Item.deserializeBinary(new Item({ modes: [Mode.MODE_FULL, Mode.MODE_UNSPECIFIED] }).serializeBinary());
+assert.deepEqual(modes.modes, [Mode.MODE_FULL, Mode.MODE_UNSPECIFIED], 'a packed repeated enum must round-trip');
+
 // client-streaming RPCs are not generated (gRPC-web cannot send a request stream), the rest are.
 const paths = [];
 const transport = (path, request, metadata, requestClass, responseClass) => {

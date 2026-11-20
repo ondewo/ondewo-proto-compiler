@@ -1,6 +1,10 @@
 #!/usr/bin/env sh
 
-# This script updates the ondewo-nlu-client-python dependency in the REPO_DIR project
+# This script updates the ondewo-proto-compiler dependency in the REPO_DIR client project.
+#
+# It commits the bump on CLIENT_BRANCH (required, from the environment) in a local clone under
+# ONDEWO_TMP_DIR and pushes NOTHING: the clone is kept for review, and pushing it is a separate,
+# explicit step. Until 5.17.0 it committed to the client's default branch (master) and pushed.
 
 # --- Usage Check ---
 if [ "$#" -ne 4 ]; then
@@ -16,8 +20,15 @@ REPO=$4
 # =============================================
 # Script to update ondewo-proto-compiler version
 # =============================================
-CLEAN_UP="${CLEAN_UP:-true}"
+# The clone holds the unpushed commit, so it is kept unless CLEAN_UP=true is asked for.
+CLEAN_UP="${CLEAN_UP:-false}"
+CLIENT_BRANCH="${CLIENT_BRANCH:-}"
 REPO_DIR=$REPO-$PROGRAMMING_LANGUAGE
+
+if [ -z "$CLIENT_BRANCH" ]; then
+  echo "ERROR: CLIENT_BRANCH is not set - name the client branch the bump is committed on" >&2
+  exit 1
+fi
 
 set -eu  # Exit on error and treat unset variables as an error
 
@@ -48,10 +59,10 @@ cd "$ONDEWO_TMP_DIR" || {
   exit 1
 }
 
-# --- Clean up existing clone if present ---
+# --- An existing clone may hold a bump that was committed but never pushed: never delete it
 if [ -d "$TMP_DIR" ]; then
-  log "${YELLOW}[WARN]${NC} Removing existing temporary directory: ${TMP_DIR}"
-  rm -rf "${TMP_DIR:?}"
+  log "${RED}[ERROR]${NC} ${TMP_DIR} already exists and may hold an unpushed bump - push or remove it first" >&2
+  exit 1
 fi
 
 # --- Clone repository ---
@@ -64,6 +75,15 @@ cd "$REPO_DIR" || {
   log "${RED}[ERROR]${NC} Cannot enter repository directory: $REPO_DIR"
   exit 1
 }
+
+# --- Work on CLIENT_BRANCH: the remote one when it exists, else a new one from the default branch
+if git ls-remote --exit-code --heads origin "$CLIENT_BRANCH" > /dev/null 2>&1; then
+  git checkout "$CLIENT_BRANCH"
+else
+  log "${YELLOW}[WARN]${NC} ${CLIENT_BRANCH} does not exist on origin - creating it from the default branch"
+  git checkout -b "$CLIENT_BRANCH"
+fi
+log "${BLUE}[INFO]${NC} Committing on branch ${GREEN}${CLIENT_BRANCH}${NC}"
 
 # --- Node-family clients (and only those) ship a node-based Dockerfile.utils carrying ENV NODE_VERSION.
 # The php/go/rust/cpp/java/csharp clients have no node toolchain, so the NODE_VERSION rewrite below and the
@@ -87,7 +107,6 @@ elif [ -f "Dockerfile.utils" ]; then
   git add Dockerfile.utils
   if ! git diff --cached --quiet; then
     git commit -m "Set NODE_VERSION to ${NODE_VERSION} in Dockerfile.utils"
-    git push
     log "${BLUE}[INFO]${NC} Set NODE_VERSION in Dockerfile.utils to ${NODE_VERSION}"
   else
     log "${YELLOW}[NOOP]${NC} No changes to commit for Dockerfile.utils."
@@ -217,15 +236,14 @@ if ! git diff --cached --quiet; then
   log "${BLUE}[INFO]${NC} Changes detected, preparing to commit..."
   log "${BLUE}[INFO]${NC} Committing version update..."
   git commit -m "Update proto compiler dependency to version $VERSION"
-  log "${BLUE}[INFO]${NC} Pushing to remote..."
-  git push
-  log "${GREEN}[SUCCESS]${NC} Updated $REPO_DIR dependency to ondewo-proto-compiler to version $VERSION."
+  log "${GREEN}[SUCCESS]${NC} Committed the ondewo-proto-compiler $VERSION bump of $REPO_DIR on $CLIENT_BRANCH - NOT pushed."
+  log "${BLUE}[INFO]${NC} Review it, then push it yourself: git -C ${TMP_DIR} push -u origin ${CLIENT_BRANCH}"
 else
   log "${YELLOW}[NOOP]${NC} No changes to commit."
 fi
 
 # --- Cleanup ---
-if [ "${CLEAN_UP:-true}" = "true" ]; then
+if [ "$CLEAN_UP" = "true" ]; then
   log "${BLUE}[INFO]${NC} Cleaning up temporary files for ${TMP_DIR} ..."
   rm -rf "${TMP_DIR:?}"
   log "${GREEN}[DONE]${NC} Update process completed successfully for ${TMP_DIR}."

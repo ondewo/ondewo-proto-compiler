@@ -184,3 +184,31 @@ run_stubs() {
   run grep -Fq "google/protobuf/struct.proto" "$PROTOC_MOCK_LOG"
   [ "$status" -ne 0 ]
 }
+
+# ---------------------------------------------------------------------------
+# the generator toolchain: the image's pinned protoc, not grpc-tools' bundled one
+# ---------------------------------------------------------------------------
+
+@test "node-h10: js + grpc stubs come from the image's protoc with the pinned plugins, never grpc_tools_node_protoc" {
+  # grpc_tools_node_protoc runs the protoc BUNDLED in grpc-tools (1.13.1: protoc 3.19.1), not
+  # the PROTOC_VERSION the image installs; no grpc-tools release bundles protoc 35.x.
+  write_proto "$IN/protos/test.proto"
+  printf '%s\n' "$IN/protos/test.proto" > "$SANDBOX/deps.txt"
+  run_stubs "$IN/protos" "$SANDBOX/deps.txt"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  run grep -c '^grpc_tools_node_protoc ' "$PROTOC_MOCK_LOG"
+  [ "$output" = "0" ]
+  # every js/grpc generation (entry set AND dependency set) names both plugins explicitly
+  [ "$(grep -c -- '--js_out=' "$PROTOC_MOCK_LOG")" -eq 2 ]
+  [ "$(grep -- '--js_out=' "$PROTOC_MOCK_LOG" | grep -c -- '--plugin=protoc-gen-js=./node_modules/.bin/protoc-gen-js')" -eq 2 ]
+  [ "$(grep -- '--grpc_out=grpc_js:' "$PROTOC_MOCK_LOG" | grep -c -- '--plugin=protoc-gen-grpc=./node_modules/.bin/grpc_tools_node_protoc_plugin')" -eq 2 ]
+}
+
+@test "node-h11: the nodejs image pins the generator plugins exactly and installs no global grpc-tools" {
+  local pkg="$REPO_ROOT/nodejs/image-data/package.json"
+  [ "$(jq -r '.devDependencies["grpc-tools"]' "$pkg")" = "1.13.1" ]
+  [ "$(jq -r '.devDependencies["protoc-gen-js"]' "$pkg")" = "3.21.4" ]
+  run grep -Fq 'npm install -g grpc-tools' "$REPO_ROOT/nodejs/Dockerfile"
+  [ "$status" -ne 0 ]
+}

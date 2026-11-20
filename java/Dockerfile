@@ -15,27 +15,27 @@ ARG MAVEN_VERSION=3.9.16
 FROM --platform=linux/amd64 maven:${MAVEN_VERSION}-eclipse-temurin-${JAVA_VERSION}
 
 # protobuf version for compiling proto files
-ARG PROTOC_VERSION=32.0
+ARG PROTOC_VERSION=35.1
 
 # Java toolchain pins baked into the generated library's pom.xml.
 # GRPC_JAVA_VERSION pins BOTH the prebuilt protoc plugin downloaded below AND the io.grpc
 # coordinates written into the pom, so the generator and the runtime can never drift apart.
-ARG GRPC_JAVA_VERSION=1.84.0
-# MUST stay >= 4.<PROTOC_VERSION> (the generated code is 4.32.x) and >= the protobuf-java
+ARG GRPC_JAVA_VERSION=1.85.1
+# MUST stay >= 4.<PROTOC_VERSION> (the generated code is 4.35.x) and >= the protobuf-java
 # version proto-google-common-protos was generated against. protobuf supports a runtime NEWER
 # than the gencode, never older.
-ARG PROTOBUF_JAVA_VERSION=4.33.6
+ARG PROTOBUF_JAVA_VERSION=4.35.1
 # Supplies the java classes for google/api/annotations.proto, google/rpc/status.proto and
 # google/type/latlng.proto, which the ondewo protos import and which are therefore NOT
 # generated (that would duplicate com.google.* classes on every consumer's classpath).
-ARG GOOGLE_COMMON_PROTOS_VERSION=2.76.0
+ARG GOOGLE_COMMON_PROTOS_VERSION=2.82.0
 # maven-source-plugin is not part of the default lifecycle, so its version has to be explicit
 # or there is nothing for the offline resolution to resolve.
 ARG MAVEN_SOURCE_PLUGIN_VERSION=3.4.0
 # Bytecode floor of the published client SDK, independent of the JDK that builds it.
 ARG JAVA_RELEASE=11
 # Default <version> of the generated library when the caller passes no explicit version.
-ARG ONDEWO_PROTO_COMPILER_VERSION=5.16.0
+ARG ONDEWO_PROTO_COMPILER_VERSION=5.17.0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates parallel unzip tree wget \

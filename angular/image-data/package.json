@@ -12,13 +12,13 @@
     "@ngx-grpc/common": ">=3.1.2",
     "@ngx-grpc/core": ">=3.1.2",
     "@ngx-grpc/grpc-web-client": ">=3.1.2",
-    "@ngx-grpc/protoc-gen-ng": ">=3.1.2",
+    "@ngx-grpc/protoc-gen-ng": "3.1.2",
     "@ngx-grpc/well-known-types": ">=3.1.2",
     "eslint": "^9.33.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
-    "google-protobuf": "^3.21.4",
-    "grpc-web": "^1.5.0",
+    "google-protobuf": "~3.21.4",
+    "grpc-web": "2.1.1",
     "ng-packagr": ">=22.0.0 <23.0.0",
     "tslib": ">=2.4.1",
     "typescript": ">=6.0.0 <6.1.0",
@@ -28,10 +28,13 @@
   "license": "Apache-2.0",
   "main": "index.js",
   "name": "ondewo-angular-proto-compiler",
+  "overrides": {
+    "grpc-web": "$grpc-web"
+  },
   "scripts": {
     "build": "ng analytics off && CI=true ng build --configuration production",
     "clean": "rm -rf node_modules",
     "reinstall": "npm run clean && npm install -y -g npm@latest && npm install"
   },
-  "version": "5.16.0"
+  "version": "5.17.0"
 }

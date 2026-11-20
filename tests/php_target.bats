@@ -1388,3 +1388,30 @@ JSON
   run grep -Fq -- "ondewo-php-proto-compiler protos" "$DOCKER_MOCK_LOG"
   [ "$status" -eq 0 ]
 }
+
+# ------------------------------------------------------------------ grpc_php_plugin provenance
+
+@test "php Dockerfile: grpc_php_plugin is built from the grpc tag GRPC_PHP_VERSION, not Debian's 1.51.1" {
+  # Debian's protobuf-compiler-grpc ships a grpc_php_plugin that is unrelated to the grpc/grpc
+  # runtime the manifest pins (trixie: 1.51.1 against grpc/grpc 1.85.0). The plugin is built
+  # from the grpc source tag of the SAME version the composer manifest requires.
+  local df="$REPO_ROOT/php/Dockerfile"
+  # comments may name the Debian package; no instruction may install it
+  run sh -c "grep -v '^[[:space:]]*#' '$df' | grep -Fq protobuf-compiler-grpc"
+  [ "$status" -ne 0 ]
+  run grep -Fq -- '--branch "v${GRPC_PHP_VERSION}"' "$df"
+  [ "$status" -eq 0 ]
+  run grep -Fq -- '--target grpc_php_plugin' "$df"
+  [ "$status" -eq 0 ]
+  run grep -Eq '^COPY --from=grpc-php-plugin .*/grpc_php_plugin /usr/bin/grpc_php_plugin$' "$df"
+  [ "$status" -eq 0 ]
+}
+
+@test "php Dockerfile: GOOGLE_PROTOBUF_PHP_VERSION is on the 5.x line that matches protoc 35.x" {
+  local protoc php
+  protoc=$(sed -n 's|^ARG PROTOC_VERSION=\([0-9]*\)\..*|\1|p' "$REPO_ROOT/php/Dockerfile")
+  php=$(sed -n 's|^ARG GOOGLE_PROTOBUF_PHP_VERSION=\([0-9]*\)\.\([0-9]*\)\..*|\1 \2|p' "$REPO_ROOT/php/Dockerfile")
+  echo "protoc minor=$protoc php runtime=$php"
+  # protoc 35.x pairs with the php runtime 5.35.x (protoc 26-33 <-> 4.26-4.33).
+  [ "$php" = "5 $protoc" ]
+}

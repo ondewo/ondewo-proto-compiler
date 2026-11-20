@@ -3,7 +3,7 @@ ARG RUST_VERSION=1.98.1
 FROM rust:${RUST_VERSION}-slim
 
 # protobuf version for compiling proto files
-ARG PROTOC_VERSION=32.0
+ARG PROTOC_VERSION=35.1
 
 # protoc plugin versions (neoeinstein/protoc-gen-prost workspace)
 ARG PROTOC_GEN_PROST_VERSION=0.5.0

@@ -2,7 +2,7 @@
 # Mount your own Cargo.toml in the input volume to publish under a client-specific name.
 [package]
 name = "ondewo-proto-stubs"
-version = "5.16.0"
+version = "5.17.0"
 edition = "2021"
 rust-version = "1.88"
 description = "gRPC client stubs generated from ONDEWO protocol buffer definitions"
@@ -14,9 +14,9 @@ repository = "https://github.com/ondewo/ondewo-proto-compiler"
 path = "src/lib.rs"
 
 [dependencies]
-prost = "0.14"
-prost-types = "0.14"
-tonic = "0.14"
+prost = "0.14.6"
+prost-types = "0.14.6"
+tonic = "0.14.9"
 # Since tonic 0.14 the prost codec lives in its own crate and protoc-gen-tonic emits
 # `tonic_prost::ProstCodec`; without tonic-prost every generated service fails to resolve.
-tonic-prost = "0.14"
+tonic-prost = "0.14.9"
