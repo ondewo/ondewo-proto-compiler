@@ -134,7 +134,7 @@ expect "$PKG" google-protobuf "$(json "$PKG" '.dependencies["google-protobuf"]')
 PKG=angular/image-data/package.json
 ngx=$(mk NGX_GRPC_VERSION)
 for name in common core grpc-web-client protoc-gen-ng well-known-types; do
-  expect "$PKG" "@ngx-grpc/$name" "$(json "$PKG" ".devDependencies[\"@ngx-grpc/$name\"]")" "~$ngx"
+  expect "$PKG" "@ngx-grpc/$name" "$(json "$PKG" ".devDependencies[\"@ngx-grpc/$name\"]")" ">=$ngx"
 done
 expect "$PKG" grpc-web "$(json "$PKG" '.devDependencies["grpc-web"]')" "$grpc_web"
 expect "$PKG" "overrides.grpc-web" "$(json "$PKG" '.overrides["grpc-web"]')" '$grpc-web'

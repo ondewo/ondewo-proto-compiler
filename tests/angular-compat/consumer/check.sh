@@ -10,8 +10,8 @@ TARBALL=$2
 npm install --no-audit --no-fund --loglevel=error \
   "@angular/core@$VERSION" "@angular/common@$VERSION" "@angular/compiler@$VERSION" \
   "@angular/platform-browser@$VERSION" "@angular/compiler-cli@$VERSION" "@angular/build@$VERSION" "@angular/cli@$VERSION" \
-  "@ngx-grpc/common@>=5.0.0 <6.0.0" "@ngx-grpc/core@>=5.0.0 <6.0.0" \
-  "@ngx-grpc/well-known-types@>=5.0.0 <6.0.0" "google-protobuf@^3.21.4" "@types/google-protobuf@^3.15.12" \
+  "@ngx-grpc/common@>=3.1.2" "@ngx-grpc/core@>=3.1.2" \
+  "@ngx-grpc/well-known-types@>=3.1.2" "google-protobuf@^3.21.4" "@types/google-protobuf@^3.15.12" \
   "$TARBALL"
 
 PACKAGE_NAME="$(tar -xOzf "$TARBALL" package/package.json | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).name')"
