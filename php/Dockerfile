@@ -44,7 +44,7 @@ ARG PROTOC_VERSION=35.1
 ARG GOOGLE_PROTOBUF_PHP_VERSION=5.35.1
 ARG GRPC_PHP_VERSION=1.85.0
 # Default <version> of the generated library, bumped by the release targets.
-ARG ONDEWO_PROTO_COMPILER_VERSION=5.16.0
+ARG ONDEWO_PROTO_COMPILER_VERSION=5.17.0
 
 # --------------- Installing the OS toolchain
 # unzip is load-bearing TWICE over: once for the protoc release zip, and once
