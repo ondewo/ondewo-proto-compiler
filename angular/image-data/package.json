@@ -12,7 +12,7 @@
     "@ngx-grpc/common": ">=3.1.2",
     "@ngx-grpc/core": ">=3.1.2",
     "@ngx-grpc/grpc-web-client": ">=3.1.2",
-    "@ngx-grpc/protoc-gen-ng": ">=3.1.2",
+    "@ngx-grpc/protoc-gen-ng": "3.1.2",
     "@ngx-grpc/well-known-types": ">=3.1.2",
     "eslint": "^9.33.0",
     "eslint-config-prettier": "^10.1.8",

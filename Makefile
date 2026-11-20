@@ -74,8 +74,11 @@ PYTHON_MYPY_PROTOBUF_VERSION=5.1.0
 PROST_VERSION=0.14.6
 TONIC_VERSION=0.14.9
 # --- angular (angular/image-data/package.json; grpc-web is GRPC_WEB_VERSION through an override).
-# NGX_GRPC_VERSION is the FLOOR of an open range (>=), never a cap: the clients declare the same open peer
-# range, so an app gets @ngx-grpc 5.x, whose typings Angular 22 needs (3.1.2's fail there with TS1540).
+# NGX_GRPC_VERSION is the FLOOR of an open range (>=) for the @ngx-grpc RUNTIME packages, never a cap: the
+# clients declare the same open peer range, so an app gets @ngx-grpc 5.x, whose typings Angular 22 needs
+# (3.1.2's fail there with TS1540). The build-time generator @ngx-grpc/protoc-gen-ng is EXACTLY this version:
+# 4.0.0 and later read a packed repeated enum with readPackableEnumInto, which only google-protobuf 4.x has,
+# while @ngx-grpc (5.0.0 included) and every client peer google-protobuf ^3.
 NGX_GRPC_VERSION=3.1.2
 ANGULAR_GOOGLE_PROTOBUF_VERSION=3.21.4
 # --- nodejs (nodejs/image-data/package.json, nodejs/example/package.json)
