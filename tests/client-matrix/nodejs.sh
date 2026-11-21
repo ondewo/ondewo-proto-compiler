@@ -59,6 +59,15 @@ PROTO_COUNT="$(find "$SELECTED_DIR" -name '*.proto' | grep -c . || true)"
 API_STATUS_BEFORE="$(git -C "$API_SUBMODULE" status --porcelain)" \
     || fail "'$API_SUBMODULE' is not a git checkout (api submodule not initialised?)"
 
+# Protos the client's Makefile leaves out of its codegen (CODEGEN_EXCLUDED_PROTOS, paths relative to the
+# api submodule; vtsi drops the vendored ondewo/nlu/logs.proto, whose `service Logs` would otherwise take
+# its own LogsClient's name). Moved aside for the generate run exactly as the client's `make build` does.
+EXCLUDED_PROTOS="$(sed -n 's|^CODEGEN_EXCLUDED_PROTOS[[:space:]]*[:?]\{0,1\}=[[:space:]]*||p' "$CLIENT_DIR/Makefile" 2>/dev/null | head -n 1)"
+EXCLUDED_KEEP="$(mktemp -d "${TMPDIR:-/tmp}/client-matrix-excluded.XXXXXX")"
+for excluded in $EXCLUDED_PROTOS; do
+    [ -f "$API_SUBMODULE/$excluded" ] || fail "CODEGEN_EXCLUDED_PROTOS names '$excluded', which is not under $API_SUBMODULE"
+done
+
 # The make `build` recipe is the authority on which post-codegen steps a client runs.
 BUILD_RECIPE="$(sed -n '/^build:/,/^[A-Za-z_][A-Za-z_]*:/p' "$CLIENT_DIR/Makefile")"
 [ -n "$BUILD_RECIPE" ] || fail "$CLIENT_DIR/Makefile has no 'build' target"
@@ -83,11 +92,19 @@ echo "---------------------------------------------------------------"
 # the files the repo already carries.
 rm -rf "$API_DIR" "$CLIENT_DIR/public-api.js" "$CLIENT_DIR/public-api.d.ts"
 
+for excluded in $EXCLUDED_PROTOS; do
+    mkdir -p "$EXCLUDED_KEEP/$(dirname "$excluded")"
+    mv "$API_SUBMODULE/$excluded" "$EXCLUDED_KEEP/$excluded"
+done
 GEN_STATUS=0
 # shellcheck disable=SC2086  # intentional word splitting of the compiler argument list
 docker run --rm -v "$SRC_DIR":/input-volume -v "$CLIENT_DIR":/output-volume "$IMAGE" $COMPILER_ARGS || GEN_STATUS=$?
 # The image runs as root: hand the output back to the invoking user before checking anything.
 docker run --rm -v "$CLIENT_DIR":/w alpine chown -R "$(id -u):$(id -g)" /w
+for excluded in $EXCLUDED_PROTOS; do
+    mv "$EXCLUDED_KEEP/$excluded" "$API_SUBMODULE/$excluded"
+done
+rm -rf "$EXCLUDED_KEEP"
 [ "$GEN_STATUS" -eq 0 ] || fail "$IMAGE exited with status $GEN_STATUS"
 
 [ -z "$COPIED_GOOGLE" ] || rm -rf "$API_SUBMODULE/google"
@@ -102,6 +119,7 @@ GENERATED_COUNT="$(find "$API_DIR" -type f | grep -c . || true)"
 [ "$GENERATED_COUNT" -gt 0 ] || fail "no files generated in $API_DIR"
 # Every selected proto must come out as message + service stubs at its own relative path.
 MISSING_STUBS="$(cd "$API_SUBMODULE" && find "$TARGET_SUBDIR" -name '*.proto' | while IFS= read -r proto; do
+    case " $EXCLUDED_PROTOS " in *" $proto "*) continue ;; esac
     stem="${proto%.proto}"
     for suffix in _pb.js _pb.d.ts _grpc_pb.js; do
         [ -f "$API_DIR/$stem$suffix" ] || echo "api/$stem$suffix"

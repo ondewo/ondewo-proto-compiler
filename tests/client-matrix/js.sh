@@ -53,6 +53,15 @@ SELECTED_DIR="$PROTOS_DIR/$3"
 PROTO_COUNT="$(find "$SELECTED_DIR" -name '*.proto' | grep -c . || true)"
 [ "$PROTO_COUNT" -gt 0 ] || fail "no .proto files under '$SELECTED_DIR' (api submodule empty?)"
 
+# Protos the client's Makefile leaves out of its codegen (CODEGEN_EXCLUDED_PROTOS, paths relative to the
+# api submodule; vtsi drops the vendored ondewo/nlu/logs.proto, whose `service Logs` would otherwise take
+# its own LogsClient's name). Moved aside for the generate run exactly as the client's `make build` does.
+EXCLUDED_PROTOS="$(sed -n 's|^CODEGEN_EXCLUDED_PROTOS[[:space:]]*[:?]\{0,1\}=[[:space:]]*||p' "$CLIENT_DIR/Makefile" 2>/dev/null | head -n 1)"
+EXCLUDED_KEEP="$(mktemp -d "${TMPDIR:-/tmp}/client-matrix-excluded.XXXXXX")"
+for excluded in $EXCLUDED_PROTOS; do
+    [ -f "$PROTOS_DIR/$excluded" ] || fail "CODEGEN_EXCLUDED_PROTOS names '$excluded', which is not under $PROTOS_DIR"
+done
+
 # An api repo that vendors googleapis as a submodule (survey) has no top-level google/; the client's
 # own `check_out_correct_submodule_versions` copies googleapis/google into place before generating.
 if [ ! -d "$PROTOS_DIR/google" ] && [ -d "$PROTOS_DIR/googleapis/google" ]; then
@@ -69,11 +78,19 @@ echo "---------------------------------------------------------------"
 mkdir -p "$API_DIR"
 rm -f "$API_DIR/$LIB_NAME.js" "$API_DIR/$LIB_NAME.min.js" "$API_DIR/$LIB_NAME.min.js.map"
 
+for excluded in $EXCLUDED_PROTOS; do
+    mkdir -p "$EXCLUDED_KEEP/$(dirname "$excluded")"
+    mv "$PROTOS_DIR/$excluded" "$EXCLUDED_KEEP/$excluded"
+done
 GEN_STATUS=0
 # shellcheck disable=SC2086  # intentional word splitting of the compiler argument list
 docker run --rm -v "$SRC_DIR":/input-volume -v "$API_DIR":/output-volume "$IMAGE" $COMPILER_ARGS || GEN_STATUS=$?
 # The image runs as root: hand the output back to the invoking user before checking anything.
 docker run --rm -v "$API_DIR":/w alpine chown -R "$(id -u):$(id -g)" /w
+for excluded in $EXCLUDED_PROTOS; do
+    mv "$EXCLUDED_KEEP/$excluded" "$PROTOS_DIR/$excluded"
+done
+rm -rf "$EXCLUDED_KEEP"
 [ "$GEN_STATUS" -eq 0 ] || fail "$IMAGE exited with status $GEN_STATUS"
 
 GENERATED_COUNT="$(find "$API_DIR" -type f | grep -c . || true)"
