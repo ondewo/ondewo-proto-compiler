@@ -36,13 +36,26 @@ SRC_PACKAGE_JSON="$CLIENT_DIR/src/package.json"
   fail "$NAME has no committed root package.json / package-lock.json"
 [ -f "$CLIENT_DIR/jest.config.js" ] || fail "$NAME has no jest.config.js - no client test suite to run"
 
-# The api dir is the first entrypoint argument of the client's own generate script.
-API_DIR="$(sed -n 's|.*ondewo-angular-proto-compiler[:a-z0-9.]* \([A-Za-z0-9_.-]*\) ondewo".*|\1|p' "$SRC_PACKAGE_JSON")"
+# The api dir is the first entrypoint argument of the client's own generate script. The image may be
+# written as `${CODEGEN_IMAGE:-ondewo-angular-proto-compiler}` (nlu, s2t), hence the optional `}`.
+API_DIR="$(sed -n 's|.*ondewo-angular-proto-compiler[:a-z0-9.]*}\{0,1\} \([A-Za-z0-9_.-]*\) ondewo".*|\1|p' "$SRC_PACKAGE_JSON")"
 [ -n "$API_DIR" ] || fail "could not read the api dir from the generate script in $SRC_PACKAGE_JSON"
 PROTOS_DIR="$CLIENT_DIR/src/$API_DIR/ondewo"
 [ -d "$PROTOS_DIR" ] || fail "$PROTOS_DIR is missing - is the api submodule initialised?"
 PROTO_COUNT="$(find "$PROTOS_DIR" -name '*.proto' | grep -c . || true)"
 [ "$PROTO_COUNT" -gt 0 ] || fail "no .proto files under $PROTOS_DIR"
+
+# Protos the client's Makefile leaves out of its codegen (CODEGEN_EXCLUDED_PROTOS, paths relative to
+# src/<api>; vtsi drops the vendored ondewo/nlu/logs.proto, whose `service Logs` would otherwise take its
+# own LogsClient's name in the barrel). Removed for the generate run exactly as `make build` does.
+EXCLUDED_PROTOS=""
+if [ -f "$CLIENT_DIR/Makefile" ]; then
+  EXCLUDED_PROTOS="$(sed -n 's|^CODEGEN_EXCLUDED_PROTOS[[:space:]]*[:?]\{0,1\}=[[:space:]]*||p' "$CLIENT_DIR/Makefile" | head -n 1)"
+fi
+for excluded in $EXCLUDED_PROTOS; do
+  [ -f "$CLIENT_DIR/src/$API_DIR/$excluded" ] ||
+    fail "$NAME: CODEGEN_EXCLUDED_PROTOS names '$excluded', which is not under src/$API_DIR"
+done
 
 # survey-style prebuild: `cp <api>/googleapis/google <api>/ -R` before generate, removed after.
 GOOGLE_COPY_API="$(sed -n 's|.*"prebuild": "cp \([A-Za-z0-9_.-]*\)/googleapis/google \1/ -R".*|\1|p' "$SRC_PACKAGE_JSON")"
@@ -70,6 +83,10 @@ done
 if [ -n "$GOOGLE_COPY_API" ]; then
   cp -R "$CLIENT_DIR/src/$GOOGLE_COPY_API/googleapis/google" "$CLIENT_DIR/src/$GOOGLE_COPY_API/"
 fi
+for excluded in $EXCLUDED_PROTOS; do
+  mkdir -p "$KEEP_DIR/excluded/$(dirname "$excluded")"
+  mv "$CLIENT_DIR/src/$API_DIR/$excluded" "$KEEP_DIR/excluded/$excluded"
+done
 rc=0
 docker run --rm -v "$CLIENT_DIR/src":/input-volume -v "$CLIENT_DIR":/output-volume "$IMAGE" "$API_DIR" ondewo || rc=$?
 # The image runs as root: hand the output back to the caller before anything else touches it.
@@ -77,6 +94,9 @@ docker run --rm -v "$CLIENT_DIR":/w alpine chown -R "$(id -u):$(id -g)" /w
 if [ -n "$GOOGLE_COPY_API" ]; then
   rm -rf "${CLIENT_DIR:?}/src/${GOOGLE_COPY_API:?}/google"
 fi
+for excluded in $EXCLUDED_PROTOS; do
+  mv "$KEEP_DIR/excluded/$excluded" "$CLIENT_DIR/src/$API_DIR/$excluded"
+done
 [ "$rc" -eq 0 ] || fail "$NAME: code generation failed (docker run rc=$rc)"
 cp "$KEEP_DIR/package.json" "$KEEP_DIR/package-lock.json" "$CLIENT_DIR/"
 rm -rf "$KEEP_DIR"
@@ -93,6 +113,7 @@ GENERATED_COUNT="$(find "$CLIENT_DIR/api" -name '*.pb.ts' 2>/dev/null | grep -c 
 # One <name>.pb.ts per proto; protoc-gen-ng kebab-cases the file name (entity_type -> entity-type).
 MISSING=""
 for proto in $(cd "$CLIENT_DIR/src/$API_DIR" && find ondewo -name '*.proto'); do
+  case " $EXCLUDED_PROTOS " in *" $proto "*) continue ;; esac
   stub="$(dirname "$proto")/$(basename "$proto" .proto | tr '_' '-').pb.ts"
   [ -f "$CLIENT_DIR/api/$stub" ] || MISSING="$MISSING $stub"
 done
